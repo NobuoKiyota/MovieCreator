@@ -1,0 +1,210 @@
+{
+  "version": "1.0",
+  "master": {
+    "duration": 5,
+    "bgMode": "black",
+    "fadeOut": 1,
+    "vignette": 0.3,
+    "grain": 0.03
+  },
+  "layers": [
+    {
+      "type": "rain",
+      "name": "Neon Rain",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "lighter",
+      "randomSpread": 50,
+      "currentPresetName": "slow-evolution",
+      "params": {
+        "count": 120,
+        "speed": 15,
+        "length": 25,
+        "thickness": 1.5,
+        "angle": 15,
+        "color": "#06b6d4",
+        "colorLightness": 50
+      },
+      "effects": {
+        "rotation": 0,
+        "scale": 1,
+        "strobe": 0,
+        "glowIntensity": 15,
+        "glowMix": 0.5,
+        "feedbackDecay": 0,
+        "feedbackScale": 1.002,
+        "feedbackRotate": 0.005,
+        "distortionIntensity": 0,
+        "distortionFrequency": 0.02,
+        "distortionSpeed": 3
+      },
+      "modulations": {
+        "count": {
+          "enabled": false,
+          "min": 10,
+          "max": 300,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "speed": {
+          "enabled": false,
+          "min": 2,
+          "max": 40,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "length": {
+          "enabled": false,
+          "min": 5,
+          "max": 80,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "thickness": {
+          "enabled": false,
+          "min": 0.5,
+          "max": 8,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "angle": {
+          "enabled": false,
+          "min": -45,
+          "max": 45,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "colorLightness": {
+          "enabled": false,
+          "min": 0,
+          "max": 100,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "rotation": {
+          "enabled": false,
+          "min": -360,
+          "max": 360,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "scale": {
+          "enabled": false,
+          "min": 0.1,
+          "max": 5,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "strobe": {
+          "enabled": false,
+          "min": 0,
+          "max": 30,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glowIntensity": {
+          "enabled": false,
+          "min": 0,
+          "max": 50,
+          "timePct": 50,
+          "behavior": "return"
+        }
+      }
+    },
+    {
+      "type": "ripple",
+      "name": "Pulse Ripples",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "lighter",
+      "randomSpread": 30,
+      "currentPresetName": "slow-evolution",
+      "params": {
+        "spawnRate": 4.871333333333382,
+        "expansionSpeed": 5.336000000000013,
+        "thickness": 2.5,
+        "maxRadius": 255,
+        "color": "#9b06e0",
+        "colorLightness": 82
+      },
+      "effects": {
+        "rotation": 59,
+        "scale": 1.9,
+        "strobe": 0,
+        "glowIntensity": 30.38286594901807,
+        "glowMix": 0.5,
+        "feedbackDecay": 0.87,
+        "feedbackScale": 1.002,
+        "feedbackRotate": -0.016,
+        "distortionIntensity": 0,
+        "distortionFrequency": 0.02,
+        "distortionSpeed": 3
+      },
+      "modulations": {
+        "spawnRate": {
+          "enabled": false,
+          "min": 3,
+          "max": 6.5,
+          "timePct": 15,
+          "behavior": "return"
+        },
+        "expansionSpeed": {
+          "enabled": false,
+          "min": 2,
+          "max": 8,
+          "timePct": 15,
+          "behavior": "return"
+        },
+        "thickness": {
+          "enabled": false,
+          "min": 2.5,
+          "max": 2.5,
+          "timePct": 33,
+          "behavior": "return"
+        },
+        "maxRadius": {
+          "enabled": false,
+          "min": 255,
+          "max": 255,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "colorLightness": {
+          "enabled": false,
+          "min": 82,
+          "max": 82,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "rotation": {
+          "enabled": false,
+          "min": 59,
+          "max": 59,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "scale": {
+          "enabled": false,
+          "min": 1.9,
+          "max": 1.9,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "strobe": {
+          "enabled": false,
+          "min": 0,
+          "max": 0,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glowIntensity": {
+          "enabled": false,
+          "min": 30.38286594901807,
+          "max": 30.38286594901807,
+          "timePct": 50,
+          "behavior": "return"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "version": "1.0",
+  "type": "movie-creator-layer-preset",
+  "layer": {
+    "type": "particles",
+    "name": "Hotaru-02",
+    "opacity": 0.7,
+    "blendMode": "lighter",
+    "randomSpread": 50,
+    "currentPresetName": "pulsing-heart",
+    "params": {
+      "count": 20,
+      "minSize": 5.5,
+      "maxSize": 30,
+      "speed": 10,
+      "color": "#564f39",
+      "colorLightness": 51,
+      "glow": 0
+    },
+    "effects": {
+      "rotation": -360,
+      "scale": 0.8,
+      "strobe": 0,
+      "glowIntensity": 20,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.6,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.05,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3
+    },
+    "modulations": {
+      "count": {
+        "enabled": false,
+        "min": 20,
+        "max": 20,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "minSize": {
+        "enabled": false,
+        "min": 5.5,
+        "max": 5.5,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "maxSize": {
+        "enabled": false,
+        "min": 30,
+        "max": 30,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "speed": {
+        "enabled": false,
+        "min": 10,
+        "max": 10,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "glow": {
+        "enabled": false,
+        "min": 0,
+        "max": 0,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "colorLightness": {
+        "enabled": false,
+        "min": 51,
+        "max": 51,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "rotation": {
+        "enabled": false,
+        "min": -360,
+        "max": -360,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "scale": {
+        "enabled": false,
+        "min": 0.8,
+        "max": 0.8,
+        "timePct": 25,
+        "behavior": "return"
+      },
+      "strobe": {
+        "enabled": false,
+        "min": 0,
+        "max": 0,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "glowIntensity": {
+        "enabled": false,
+        "min": 20,
+        "max": 20,
+        "timePct": 25,
+        "behavior": "return"
+      },
+      "feedbackDecay": {
+        "enabled": false,
+        "min": 0.6,
+        "max": 0.6,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "feedbackRotate": {
+        "enabled": false,
+        "min": 0.05,
+        "max": 0.05,
+        "timePct": 50,
+        "behavior": "return"
+      },
+      "distortionIntensity": {
+        "enabled": false,
+        "min": 0,
+        "max": 0,
+        "timePct": 50,
+        "behavior": "return"
+      }
+    }
+  }
+}

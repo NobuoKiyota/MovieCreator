@@ -1,0 +1,152 @@
+{
+  "version": "1.0",
+  "master": {
+    "duration": 10,
+    "bgMode": "black",
+    "fadeOut": 2,
+    "vignette": 0.3,
+    "grain": 0.03
+  },
+  "layers": [
+    {
+      "type": "geometry",
+      "name": "Lissajous Orbit",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "lighter",
+      "randomSpread": 50,
+      "currentPresetName": "cosmic-spin",
+      "params": {
+        "freqA": 15,
+        "freqB": 4,
+        "speed": 1,
+        "strokeWidth": 2,
+        "color": "#10b981",
+        "colorLightness": 50,
+        "radius": 355,
+        "scaleX": 0.9,
+        "phaseOffset": 1.5
+      },
+      "effects": {
+        "rotation": -86.42945454467467,
+        "scale": 1.1151499999960284,
+        "strobe": 0,
+        "glowIntensity": 15,
+        "glowMix": 0.5,
+        "feedbackDecay": 0,
+        "feedbackScale": 1.002,
+        "feedbackRotate": 0.005,
+        "distortionIntensity": 0,
+        "distortionFrequency": 0.02,
+        "distortionSpeed": 3
+      },
+      "modulations": {
+        "freqA": {
+          "enabled": false,
+          "min": 15,
+          "max": 15,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "freqB": {
+          "enabled": false,
+          "min": 1,
+          "max": 20,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "speed": {
+          "enabled": false,
+          "min": 0.1,
+          "max": 5,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "strokeWidth": {
+          "enabled": false,
+          "min": 0.5,
+          "max": 15,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "radius": {
+          "enabled": false,
+          "min": 355,
+          "max": 355,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "scaleX": {
+          "enabled": false,
+          "min": 0.9,
+          "max": 0.9,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "phaseOffset": {
+          "enabled": false,
+          "min": 0,
+          "max": 6.283185307179586,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "colorLightness": {
+          "enabled": false,
+          "min": 0,
+          "max": 100,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "rotation": {
+          "enabled": true,
+          "min": -90,
+          "max": 90,
+          "timePct": 55,
+          "behavior": "return"
+        },
+        "scale": {
+          "enabled": true,
+          "min": 0.8,
+          "max": 1.3,
+          "timePct": 30,
+          "behavior": "return"
+        },
+        "strobe": {
+          "enabled": false,
+          "min": 0,
+          "max": 30,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glowIntensity": {
+          "enabled": false,
+          "min": 0,
+          "max": 50,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "feedbackDecay": {
+          "enabled": false,
+          "min": 0,
+          "max": 0.95,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "feedbackRotate": {
+          "enabled": false,
+          "min": -0.05,
+          "max": 0.05,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "distortionIntensity": {
+          "enabled": false,
+          "min": 0,
+          "max": 40,
+          "timePct": 50,
+          "behavior": "return"
+        }
+      }
+    }
+  ]
+}

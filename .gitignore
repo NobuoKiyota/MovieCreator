@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.zip
+*.mp4
+ai_archives/
+.DS_Store

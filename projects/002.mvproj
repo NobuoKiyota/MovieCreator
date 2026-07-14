@@ -1,0 +1,235 @@
+{
+  "version": "1.0",
+  "master": {
+    "duration": 5,
+    "bgMode": "black",
+    "fadeOut": 1,
+    "vignette": 0.3,
+    "grain": 0.03
+  },
+  "layers": [
+    {
+      "type": "cube-3d",
+      "name": "003_RedCube (Imported)",
+      "visible": true,
+      "opacity": 0.5,
+      "blendMode": "lighter",
+      "randomSpread": 80,
+      "currentPresetName": "pulsing-heart",
+      "params": {
+        "size": 31.83199999999988,
+        "speedX": 4.649999999999145,
+        "speedY": 3.201999999999998,
+        "speedZ": 2.7179999999999893,
+        "thickness": 6.521599999999943,
+        "fillOpacity": 0.475858163249692,
+        "color": "#730000",
+        "fillColor": "#ff6666",
+        "colorLightness": 45.49599999999964,
+        "glow": 34.5799999999997
+      },
+      "effects": {
+        "rotation": -5.040000000003602,
+        "scale": 1.6713333333333367,
+        "strobe": 0,
+        "glowIntensity": 22.74799999999982,
+        "glowMix": 0.5,
+        "feedbackDecay": 0.85,
+        "feedbackScale": 1.002,
+        "feedbackRotate": -0.05,
+        "distortionIntensity": 0,
+        "distortionFrequency": 0.02,
+        "distortionSpeed": 3
+      },
+      "modulations": {
+        "size": {
+          "enabled": true,
+          "min": 20,
+          "max": 50,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "speedX": {
+          "enabled": true,
+          "min": 0,
+          "max": 5,
+          "timePct": 2,
+          "behavior": "repeat"
+        },
+        "speedY": {
+          "enabled": false,
+          "min": 0,
+          "max": 5,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "speedZ": {
+          "enabled": false,
+          "min": 0,
+          "max": 5,
+          "timePct": 50,
+          "behavior": "repeat"
+        },
+        "thickness": {
+          "enabled": true,
+          "min": 1,
+          "max": 15,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "fillOpacity": {
+          "enabled": true,
+          "min": 0.475858163249692,
+          "max": 0.475858163249692,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "colorLightness": {
+          "enabled": true,
+          "min": 10,
+          "max": 100,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "glow": {
+          "enabled": true,
+          "min": 5,
+          "max": 80,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "rotation": {
+          "enabled": true,
+          "min": -360,
+          "max": 180,
+          "timePct": 15,
+          "behavior": "return"
+        },
+        "scale": {
+          "enabled": true,
+          "min": 1,
+          "max": 2,
+          "timePct": 30,
+          "behavior": "return"
+        },
+        "strobe": {
+          "enabled": false,
+          "min": 0,
+          "max": 0,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glowIntensity": {
+          "enabled": true,
+          "min": 5,
+          "max": 50,
+          "timePct": 25,
+          "behavior": "return"
+        }
+      }
+    },
+    {
+      "type": "particles",
+      "name": "002 (Imported)",
+      "visible": true,
+      "opacity": 1,
+      "blendMode": "lighter",
+      "randomSpread": 50,
+      "currentPresetName": "pulsing-heart",
+      "params": {
+        "count": 141.46329167628144,
+        "minSize": 3.2184127366057753,
+        "maxSize": 14.497361626516884,
+        "speed": 2.2996863300821624,
+        "color": "#7457a8",
+        "colorLightness": 70.3414408940116,
+        "glow": 16.269102626957984
+      },
+      "effects": {
+        "rotation": -290,
+        "scale": 3.718100225264243,
+        "strobe": 0,
+        "glowIntensity": 42.469083613996446,
+        "glowMix": 0.5,
+        "feedbackDecay": 0.22,
+        "feedbackScale": 1.002,
+        "feedbackRotate": -0.03,
+        "distortionIntensity": 0,
+        "distortionFrequency": 0.02,
+        "distortionSpeed": 3
+      },
+      "modulations": {
+        "count": {
+          "enabled": false,
+          "min": 141.46329167628144,
+          "max": 141.46329167628144,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "minSize": {
+          "enabled": false,
+          "min": 3.2184127366057753,
+          "max": 3.2184127366057753,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "maxSize": {
+          "enabled": false,
+          "min": 14.497361626516884,
+          "max": 14.497361626516884,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "speed": {
+          "enabled": false,
+          "min": 2.2996863300821624,
+          "max": 2.2996863300821624,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glow": {
+          "enabled": false,
+          "min": 16.269102626957984,
+          "max": 16.269102626957984,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "colorLightness": {
+          "enabled": false,
+          "min": 70.3414408940116,
+          "max": 70.3414408940116,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "rotation": {
+          "enabled": false,
+          "min": -290,
+          "max": -290,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "scale": {
+          "enabled": true,
+          "min": 2.883256646737536,
+          "max": 5,
+          "timePct": 25,
+          "behavior": "return"
+        },
+        "strobe": {
+          "enabled": false,
+          "min": 0,
+          "max": 0,
+          "timePct": 50,
+          "behavior": "return"
+        },
+        "glowIntensity": {
+          "enabled": true,
+          "min": 37.564537011222754,
+          "max": 50,
+          "timePct": 25,
+          "behavior": "return"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MovieCreator - Generative Video Generator</title>
+  <link rel="stylesheet" href="/src/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-logo">
+        <span class="logo-icon">✦</span>
+        <h1>MovieCreator</h1>
+      </div>
+
+      <!-- 再生/録画・プロジェクトコントローラーを一列に統合 -->
+      <div class="transport-controls">
+        <button id="btn-play-pause" class="btn btn-primary">
+          <span class="btn-icon">▶</span> <span class="btn-text">Play</span>
+        </button>
+        
+        <div class="controls-divider"></div>
+        
+        <div class="control-group inline">
+          <label for="export-duration">Duration</label>
+          <div class="input-with-unit">
+            <input type="number" id="export-duration" value="10" min="1" max="120" step="1">
+            <span class="unit">sec</span>
+          </div>
+        </div>
+        
+        <div class="control-group inline">
+          <label for="export-bg">Background</label>
+          <select id="export-bg">
+            <option value="transparent">Transparent (WebM)</option>
+            <option value="black" selected>Black (MP4)</option>
+            <option value="green">Green Screen (MP4)</option>
+            <option value="white">White (MP4)</option>
+          </select>
+        </div>
+        
+        <div class="control-group inline">
+          <label for="master-fade-out">Fade Out</label>
+          <div class="input-with-unit">
+            <input type="number" id="master-fade-out" value="2.0" min="0" max="10" step="0.1">
+            <span class="unit">sec</span>
+          </div>
+        </div>
+        
+        <button id="btn-export" class="btn btn-accent">
+          <span class="btn-icon">🎬</span> Export Video
+        </button>
+        
+        <div class="controls-divider"></div>
+        
+        <div class="control-group inline">
+          <label for="project-select">Projects</label>
+          <div class="select-wrapper">
+            <select id="project-select" style="min-width: 140px; font-size: 0.8rem; height: 32px;">
+              <option value="">-- Load Project --</option>
+            </select>
+          </div>
+        </div>
+        <button id="btn-api-load-project" class="btn btn-secondary" title="Load selected project from projects/ directory">Load</button>
+        <button id="btn-api-save-project-quick" class="btn btn-secondary" title="Quick save current project config">Save</button>
+        <button id="btn-api-save-project" class="btn btn-secondary" title="Save current project config to projects/ directory as a new file">Save As...</button>
+        <button id="btn-project-new" class="btn btn-secondary" title="Create a new empty project">New</button>
+        <div class="controls-divider"></div>
+        <button id="btn-local-export-project" class="btn btn-secondary" title="Export project to local file (.mvproj)">Export</button>
+        <button id="btn-local-import-project" class="btn btn-secondary" title="Import project from local file (.mvproj)">Import</button>
+        <input type="file" id="input-local-import-project" accept=".mvproj" style="display: none;">
+      </div>
+    </header>
+    
+    <main class="app-body">
+      <!-- プレビュー＆エクスポートエリア -->
+      <section class="preview-section">
+        <div class="canvas-wrapper">
+          <div class="canvas-container">
+            <canvas id="preview-canvas" width="1280" height="720"></canvas>
+            <div id="recording-overlay" class="recording-overlay hidden">
+              <div class="glass-panel">
+                <div class="spinner"></div>
+                <span id="recording-status">Rendering: 0%</span>
+                <progress id="recording-progress" value="0" max="100"></progress>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- パラメータ＆レイヤーパネル (インスペクター構造) -->
+      <section class="panel-section">
+        <!-- 上半分: レイヤーヒエラルキー -->
+        <div class="layers-manager-container">
+          <div class="panel-header">
+            <h2>Layers</h2>
+            <div class="layer-actions" style="display: flex; gap: 0.4rem; align-items: center;">
+              <button id="btn-add-layer" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.75rem;">+ Add</button>
+              <div class="select-wrapper">
+                <select id="preset-select" style="min-width: 100px; font-size: 0.75rem; height: 26px; padding: 0.15rem 1.25rem 0.15rem 0.4rem;">
+                  <option value="">-- Import Preset --</option>
+                </select>
+              </div>
+              <button id="btn-api-import-layer" class="btn btn-secondary btn-small" title="Import selected layer preset from presets/ directory" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; height: 26px;">Import</button>
+
+              
+              <div id="layer-selector-container" class="layer-selector-popup hidden">
+                <div class="select-wrapper">
+                  <select id="layer-type-select">
+                    <option value="sine-wave">Sine Wave (波線)</option>
+                    <option value="noise-wave">Noise Wave (ノイズ波)</option>
+                    <option value="particles">Firefly Particles (ホタル)</option>
+                    <option value="geometry">Lissajous Geometry (幾何学模様)</option>
+                    <option value="growing-sketch">Growing Sketch (成長する線)</option>
+                    <option value="rain">Neon Rain (雨)</option>
+                    <option value="meteor">Meteor Shower (流星)</option>
+                    <option value="ripple">Pulse Ripples (波紋)</option>
+                    <option value="spectrum">Audio Spectrum (スペクトル)</option>
+                    <option value="cube-3d">3D Glowing Cube (3D回転キューブ)</option>
+                    <option value="lightning">Neon Lightning (稲妻)</option>
+                    <option value="fog">Neon Fog (フォグ)</option>
+                  </select>
+                </div>
+                <button id="btn-confirm-add-layer" class="btn btn-small btn-primary">Add</button>
+              </div>
+            </div>
+          </div>
+          <div id="layers-list" class="layers-simple-list">
+            <!-- 簡素なレイヤー行が動的に生成される -->
+          </div>
+        </div>
+
+        <!-- 下半分: パラメータインスペクター -->
+        <div class="inspector-container">
+          <div class="inspector-header">
+            <h2>Inspector</h2>
+            <div style="display: flex; align-items: center; gap: 0.4rem;">
+              <input type="text" id="inspector-layer-name" value="No Layer Selected">
+              <button id="btn-detach-inspector" class="btn btn-secondary btn-small" title="Detach Inspector to float window" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; height: 26px;">↗️ Float</button>
+              <button id="btn-api-export-layer-inspector" class="btn btn-secondary btn-small btn-api-export-layer" title="Save Selected Layer Preset to presets/ directory" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; height: 26px; line-height: 1;">💾 Save</button>
+            </div>
+          </div>
+          <div id="inspector-content" class="inspector-content">
+            <!-- 選択されたアクティブレイヤーの全スライダー・LFOが動的に生成される -->
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
