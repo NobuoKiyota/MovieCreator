@@ -23,6 +23,10 @@
           <span class="btn-icon">▶</span> <span class="btn-text">Play</span>
         </button>
         
+        <button id="btn-timecode-toggle" class="btn btn-secondary btn-tc" title="Toggle Timecode Overlay on Preview" aria-pressed="false">
+          T.C
+        </button>
+        
         <div class="controls-divider"></div>
         
         <div class="control-group inline">
@@ -89,6 +93,26 @@
                 <progress id="recording-progress" value="0" max="100"></progress>
               </div>
             </div>
+          </div>
+        </div>
+        
+        <!-- Timeline & Keyframe Panel -->
+        <div id="timeline-panel" class="timeline-panel">
+          <div class="timeline-header">
+            <div class="timeline-info">
+              <span class="timeline-title">🔑 KEYFRAME TIMELINE</span>
+              <span id="timeline-active-param" class="timeline-active-param">Select a parameter to animate</span>
+            </div>
+            <div class="timeline-keyframe-editor">
+              <label for="key-precise-frame">Frame</label>
+              <input type="number" id="key-precise-frame" min="0" step="1" disabled>
+              <label for="key-precise-value">Value</label>
+              <input type="number" id="key-precise-value" step="0.001" disabled>
+              <button id="btn-key-precise-delete" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Delete</button>
+            </div>
+          </div>
+          <div class="timeline-body">
+            <canvas id="timeline-canvas"></canvas>
           </div>
         </div>
       </section>

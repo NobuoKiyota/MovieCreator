@@ -35,6 +35,18 @@ export class Controls {
     this.btnApiSaveProjectQuickEl = document.getElementById('btn-api-save-project-quick');
     this.btnProjectNewEl = document.getElementById('btn-project-new');
 
+    // Timeline / Keyframe elements
+    this.timelinePanelEl = document.getElementById('timeline-panel');
+    this.timelineActiveParamEl = document.getElementById('timeline-active-param');
+    this.keyPreciseFrameEl = document.getElementById('key-precise-frame');
+    this.keyPreciseValueEl = document.getElementById('key-precise-value');
+    this.btnKeyPreciseDeleteEl = document.getElementById('btn-key-precise-delete');
+    this.timelineCanvas = document.getElementById('timeline-canvas');
+    this.activeTimelineParam = null;
+    this.selectedKeyframeIndex = -1;
+    this.isDraggingKeyframe = false;
+    this.isTimelineSeeking = false;
+
     // Local Import/Export elements
     this.btnLocalExportProjectEl = document.getElementById('btn-local-export-project');
     this.btnLocalImportProjectEl = document.getElementById('btn-local-import-project');
@@ -203,6 +215,512 @@ export class Controls {
     }
     this.rebuildLayersList();
     this.rebuildInspector();
+    this.initTimeline();
+  }
+
+  getParamConfig(layer, paramName) {
+    if (!layer) return null;
+    if (this.fxConfigs[paramName]) return this.fxConfigs[paramName];
+    return layer.generator.getParameterConfig().find(c => c.name === paramName) || null;
+  }
+
+  getMousePos(canvas, e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  initTimeline() {
+    if (!this.timelineCanvas) return;
+
+    // Window resize binding
+    window.addEventListener('resize', () => {
+      this.drawTimeline();
+    });
+
+    // Precise input fields events
+    this.keyPreciseFrameEl.addEventListener('input', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      if (mod && this.selectedKeyframeIndex !== -1) {
+        const duration = parseFloat(this.exportDurationEl.value) || 10;
+        const maxFrames = duration * 60;
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        kf.frame = Math.max(0, Math.min(maxFrames, parseInt(this.keyPreciseFrameEl.value) || 0));
+        mod.keyframes.sort((a, b) => a.frame - b.frame);
+        this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k === kf);
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    this.keyPreciseValueEl.addEventListener('input', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+      if (mod && config && this.selectedKeyframeIndex !== -1) {
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        kf.value = Math.max(config.min, Math.min(config.max, parseFloat(this.keyPreciseValueEl.value) || 0));
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    // Delete keyframe event
+    this.btnKeyPreciseDeleteEl.addEventListener('click', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      if (mod && this.selectedKeyframeIndex !== -1) {
+        mod.keyframes.splice(this.selectedKeyframeIndex, 1);
+        this.selectedKeyframeIndex = -1;
+        this.keyPreciseFrameEl.value = '';
+        this.keyPreciseFrameEl.disabled = true;
+        this.keyPreciseValueEl.value = '';
+        this.keyPreciseValueEl.disabled = true;
+        this.btnKeyPreciseDeleteEl.disabled = true;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    // Canvas mousedown event
+    this.timelineCanvas.addEventListener('mousedown', (e) => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+      if (!mod || !config) return;
+
+      const pos = this.getMousePos(this.timelineCanvas, e);
+      const W = this.timelineCanvas.width;
+      const H = this.timelineCanvas.height;
+      const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
+      const graphWidth = W - leftMargin - rightMargin;
+      const graphHeight = H - topMargin - bottomMargin;
+      const duration = parseFloat(this.exportDurationEl.value) || 10;
+      const maxFrames = duration * 60;
+
+      // 1. Check if clicking on the ruler (top margin) for seek operation
+      if (pos.y <= topMargin) {
+        this.isTimelineSeeking = true;
+        const f = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        this.mainApp.accumulatedTime = (f / 60) * 1000;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+        return;
+      }
+
+      // 2. Check if clicking near a keyframe point
+      let clickedIdx = -1;
+      for (let i = 0; i < mod.keyframes.length; i++) {
+        const kf = mod.keyframes[i];
+        const kfX = leftMargin + (kf.frame / maxFrames) * graphWidth;
+        const kfY = topMargin + (1 - (kf.value - config.min) / (config.max - config.min)) * graphHeight;
+        const dist = Math.hypot(pos.x - kfX, pos.y - kfY);
+        if (dist <= 8) {
+          clickedIdx = i;
+          break;
+        }
+      }
+
+      if (clickedIdx !== -1) {
+        this.selectedKeyframeIndex = clickedIdx;
+        this.isDraggingKeyframe = true;
+        
+        // Populate precise edit UI
+        const kf = mod.keyframes[clickedIdx];
+        this.keyPreciseFrameEl.value = kf.frame;
+        this.keyPreciseFrameEl.disabled = false;
+        this.keyPreciseValueEl.value = kf.value.toFixed(4);
+        this.keyPreciseValueEl.disabled = false;
+        this.btnKeyPreciseDeleteEl.disabled = false;
+      } else {
+        // Clear selection
+        this.selectedKeyframeIndex = -1;
+        this.keyPreciseFrameEl.value = '';
+        this.keyPreciseFrameEl.disabled = true;
+        this.keyPreciseValueEl.value = '';
+        this.keyPreciseValueEl.disabled = true;
+        this.btnKeyPreciseDeleteEl.disabled = true;
+      }
+
+      this.drawTimeline();
+    });
+
+    // Window mousemove / mouseup to keep drag & seek working smoothly off-canvas
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isDraggingKeyframe && !this.isTimelineSeeking) return;
+
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+      if (!mod || !config) return;
+
+      const pos = this.getMousePos(this.timelineCanvas, e);
+      const W = this.timelineCanvas.width;
+      const H = this.timelineCanvas.height;
+      const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
+      const graphWidth = W - leftMargin - rightMargin;
+      const graphHeight = H - topMargin - bottomMargin;
+      const duration = parseFloat(this.exportDurationEl.value) || 10;
+      const maxFrames = duration * 60;
+
+      if (this.isTimelineSeeking) {
+        const f = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        this.mainApp.accumulatedTime = (f / 60) * 1000;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      } else if (this.isDraggingKeyframe && this.selectedKeyframeIndex !== -1) {
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        
+        // Calculate new values based on mouse position
+        const newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
+        
+        kf.frame = newFrame;
+        kf.value = newVal;
+
+        // Update precise edit inputs in real time
+        this.keyPreciseFrameEl.value = newFrame;
+        this.keyPreciseValueEl.value = newVal.toFixed(4);
+
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (this.isDraggingKeyframe) {
+        // Sort keyframes by frame ascending on drag finish
+        const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+        if (activeLayer && this.activeTimelineParam) {
+          const mod = activeLayer.modulations[this.activeTimelineParam];
+          if (mod && this.selectedKeyframeIndex !== -1) {
+            const currentKf = mod.keyframes[this.selectedKeyframeIndex];
+            mod.keyframes.sort((a, b) => a.frame - b.frame);
+            this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k === currentKf);
+          }
+        }
+        this.isDraggingKeyframe = false;
+        this.drawTimeline();
+      }
+      this.isTimelineSeeking = false;
+    });
+
+    // Double click to add keyframe
+    this.timelineCanvas.addEventListener('dblclick', (e) => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+      if (!mod || !config) return;
+
+      const pos = this.getMousePos(this.timelineCanvas, e);
+      const W = this.timelineCanvas.width;
+      const H = this.timelineCanvas.height;
+      const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
+      const graphWidth = W - leftMargin - rightMargin;
+      const graphHeight = H - topMargin - bottomMargin;
+      
+      // Do not add keyframes if clicking in ruler area
+      if (pos.y <= topMargin) return;
+
+      const duration = parseFloat(this.exportDurationEl.value) || 10;
+      const maxFrames = duration * 60;
+
+      const newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+      const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
+
+      // Add and sort
+      const newKf = { frame: newFrame, value: newVal };
+      mod.keyframes.push(newKf);
+      mod.keyframes.sort((a, b) => a.frame - b.frame);
+      
+      this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k === newKf);
+
+      // Populate precise edit UI
+      this.keyPreciseFrameEl.value = newFrame;
+      this.keyPreciseFrameEl.disabled = false;
+      this.keyPreciseValueEl.value = newVal.toFixed(4);
+      this.keyPreciseValueEl.disabled = false;
+      this.btnKeyPreciseDeleteEl.disabled = false;
+
+      this.mainApp.renderSingleFrame();
+      this.drawTimeline();
+    });
+
+    // Keydown delete keyframe listener (only when canvas is active/focused)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Verify target is not an input field to avoid deleting while typing
+        if (document.activeElement.tagName === 'INPUT') return;
+
+        const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+        if (!activeLayer || !this.activeTimelineParam) return;
+        const mod = activeLayer.modulations[this.activeTimelineParam];
+        if (mod && this.selectedKeyframeIndex !== -1) {
+          mod.keyframes.splice(this.selectedKeyframeIndex, 1);
+          this.selectedKeyframeIndex = -1;
+          this.keyPreciseFrameEl.value = '';
+          this.keyPreciseFrameEl.disabled = true;
+          this.keyPreciseValueEl.value = '';
+          this.keyPreciseValueEl.disabled = true;
+          this.btnKeyPreciseDeleteEl.disabled = true;
+          this.mainApp.renderSingleFrame();
+          this.drawTimeline();
+        }
+      }
+    });
+  }
+
+  drawTimeline() {
+    if (!this.timelineCanvas) return;
+    const ctx = this.timelineCanvas.getContext('2d');
+    
+    // Fit canvas resolution to actual client container size
+    const W = this.timelineCanvas.clientWidth;
+    const H = this.timelineCanvas.clientHeight;
+    this.timelineCanvas.width = W;
+    this.timelineCanvas.height = H;
+
+    ctx.clearRect(0, 0, W, H);
+
+    const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+    if (!activeLayer || !this.activeTimelineParam) {
+      // Draw placeholder with seek ruler showing current position
+      const duration = parseFloat(this.exportDurationEl.value) || 10;
+      const maxFrames = duration * 60;
+      const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
+      const graphWidth = W - leftMargin - rightMargin;
+
+      // Empty state text
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Select a parameter and click 🔑 to edit its keyframes timeline', W / 2, H / 2 + 8);
+      this.timelineActiveParamEl.textContent = 'Select a parameter to animate';
+
+      // Draw second marks on empty ruler
+      ctx.fillStyle = 'rgba(15, 15, 26, 0.95)';
+      ctx.fillRect(0, 0, W, topMargin);
+      for (let f = 0; f <= maxFrames; f += 60) {
+        const x = leftMargin + (f / maxFrames) * graphWidth;
+        ctx.strokeStyle = 'rgba(124, 58, 237, 0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, topMargin);
+        ctx.lineTo(x, H - bottomMargin);
+        ctx.stroke();
+        ctx.fillStyle = '#4b5563';
+        ctx.font = '9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText(`${f / 60}s`, x, topMargin - 4);
+      }
+
+      // Playhead on empty timeline
+      const currentFrame = (this.mainApp.accumulatedTime / 1000) * 60;
+      if (currentFrame >= 0 && currentFrame <= maxFrames) {
+        const x = leftMargin + (currentFrame / maxFrames) * graphWidth;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = '#ef4444';
+        ctx.beginPath();
+        ctx.moveTo(x, topMargin);
+        ctx.lineTo(x, H - bottomMargin);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.beginPath();
+        ctx.moveTo(x - 6, 2);
+        ctx.lineTo(x + 6, 2);
+        ctx.lineTo(x, topMargin - 2);
+        ctx.closePath();
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = '#ef4444';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        const tcSec = Math.floor(this.mainApp.accumulatedTime / 1000);
+        const tcMs  = Math.floor(this.mainApp.accumulatedTime) % 1000;
+        const tcLabel = `${String(tcSec).padStart(2,'0')}.${String(tcMs).padStart(3,'0')}`;
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#fca5a5';
+        const labelX = Math.max(leftMargin + 22, Math.min(W - rightMargin - 22, x));
+        ctx.fillText(tcLabel, labelX, 3);
+      }
+      return;
+    }
+
+    const mod = activeLayer.modulations[this.activeTimelineParam];
+    const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+    if (!mod || !config) return;
+
+    this.timelineActiveParamEl.textContent = `${activeLayer.name} : ${config.label} (Min: ${config.min}, Max: ${config.max})`;
+
+    const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
+    const graphWidth = W - leftMargin - rightMargin;
+    const graphHeight = H - topMargin - bottomMargin;
+    const duration = parseFloat(this.exportDurationEl.value) || 10;
+    const maxFrames = duration * 60;
+
+    // 1. Draw Grid Lines
+    ctx.strokeStyle = 'rgba(124, 58, 237, 0.1)';
+    ctx.lineWidth = 1;
+    
+    // Vertical frame lines (every 60 frames = 1 sec)
+    for (let f = 0; f <= maxFrames; f += 60) {
+      const x = leftMargin + (f / maxFrames) * graphWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, topMargin);
+      ctx.lineTo(x, H - bottomMargin);
+      ctx.stroke();
+
+      // Label under grid
+      ctx.fillStyle = '#4b5563';
+      ctx.font = '0.65rem monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${f}f`, x, H - 5);
+    }
+
+    // Horizontal value lines (5 subdivisions)
+    for (let i = 0; i <= 4; i++) {
+      const val = config.min + (i / 4) * (config.max - config.min);
+      const y = topMargin + (1 - i / 4) * graphHeight;
+      ctx.beginPath();
+      ctx.moveTo(leftMargin, y);
+      ctx.lineTo(W - rightMargin, y);
+      ctx.stroke();
+
+      // Label on the left
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '0.65rem monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(val.toFixed(2), leftMargin - 5, y);
+    }
+
+    // 2. Draw Ruler Ruler Background
+    ctx.fillStyle = 'rgba(15, 15, 26, 0.9)';
+    ctx.fillRect(leftMargin, 0, graphWidth, topMargin);
+    ctx.strokeStyle = 'rgba(124, 58, 237, 0.3)';
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin);
+    ctx.lineTo(W - rightMargin, topMargin);
+    ctx.stroke();
+
+    // Draw Ruler Tick Marks
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    for (let f = 0; f <= maxFrames; f += 10) {
+      const x = leftMargin + (f / maxFrames) * graphWidth;
+      ctx.beginPath();
+      ctx.moveTo(x, topMargin);
+      if (f % 60 === 0) {
+        ctx.lineTo(x, topMargin - 8);
+        ctx.fillText(`${f / 60}s`, x, topMargin - 10);
+      } else {
+        ctx.lineTo(x, topMargin - 4);
+      }
+      ctx.strokeStyle = 'rgba(156, 163, 175, 0.4)';
+      ctx.stroke();
+    }
+
+    // 3. Draw Interpolation Line / Path
+    if (mod.keyframes.length > 0) {
+      ctx.beginPath();
+      for (let i = 0; i < mod.keyframes.length; i++) {
+        const kf = mod.keyframes[i];
+        const x = leftMargin + (kf.frame / maxFrames) * graphWidth;
+        const y = topMargin + (1 - (kf.value - config.min) / (config.max - config.min)) * graphHeight;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#c084fc';
+      ctx.stroke();
+      ctx.shadowBlur = 0; // reset
+    }
+
+    // 4. Draw Keyframe Dots
+    for (let i = 0; i < mod.keyframes.length; i++) {
+      const kf = mod.keyframes[i];
+      const x = leftMargin + (kf.frame / maxFrames) * graphWidth;
+      const y = topMargin + (1 - (kf.value - config.min) / (config.max - config.min)) * graphHeight;
+
+      const isSelected = (i === this.selectedKeyframeIndex);
+      
+      ctx.beginPath();
+      ctx.arc(x, y, isSelected ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = isSelected ? '#fbbf24' : '#a855f7';
+      ctx.shadowBlur = isSelected ? 10 : 4;
+      ctx.shadowColor = isSelected ? '#fbbf24' : '#a855f7';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.stroke();
+      ctx.shadowBlur = 0; // reset
+    }
+
+    // 5. Draw Current Position (Red Playback Seek Line + ▼ marker)
+    const currentFrame = (this.mainApp.accumulatedTime / 1000) * 60;
+    if (currentFrame >= 0 && currentFrame <= maxFrames) {
+      const x = leftMargin + (currentFrame / maxFrames) * graphWidth;
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = '#ef4444';
+      
+      // Vertical line through graph area
+      ctx.beginPath();
+      ctx.moveTo(x, topMargin);
+      ctx.lineTo(x, H - bottomMargin);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // ▼ downward triangle marker at top of ruler
+      ctx.beginPath();
+      ctx.moveTo(x - 6, 2);
+      ctx.lineTo(x + 6, 2);
+      ctx.lineTo(x, topMargin - 2);
+      ctx.closePath();
+      ctx.fillStyle = '#ef4444';
+      ctx.shadowBlur = 6;
+      ctx.shadowColor = '#ef4444';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Timecode label just below the ▼ marker (in ruler band)
+      const tcSec = Math.floor(this.mainApp.accumulatedTime / 1000);
+      const tcMs  = Math.floor(this.mainApp.accumulatedTime) % 1000;
+      const tcLabel = `${String(tcSec).padStart(2,'0')}.${String(tcMs).padStart(3,'0')}`;
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#fca5a5';
+      ctx.shadowBlur = 0;
+      // Keep label inside canvas bounds
+      const labelX = Math.max(leftMargin + 22, Math.min(W - rightMargin - 22, x));
+      ctx.fillText(tcLabel, labelX, topMargin + 2);
+    }
   }
 
   updatePlayPauseButton(isPlaying) {
@@ -241,6 +759,9 @@ export class Controls {
     for (let fxName in this.fxConfigs) {
       this.updateSliderUI(fxName, activeLayer.effects[fxName]);
     }
+
+    // 3. Update timeline playhead position
+    this.drawTimeline();
   }
 
   updateSliderUI(paramName, currentVal) {
@@ -512,6 +1033,8 @@ export class Controls {
       const mod = layer.modulations[config.name];
       const isModExpanded = this.expandedMods.has(`${layer.id}-${config.name}`);
       const modActiveGlow = mod.enabled ? 'style="color: var(--color-accent); text-shadow: 0 0 8px var(--color-accent);"' : '';
+      const keyActiveGlow = mod.keyframeEnabled ? 'class="btn-keyframe-toggle active"' : 'class="btn-keyframe-toggle"';
+      const showAddKey = mod.keyframeEnabled ? 'display: inline-block;' : 'display: none;';
 
       const mainField = this.createElement('div');
       mainField.className = 'layer-field';
@@ -526,7 +1049,11 @@ export class Controls {
         <div class="layer-field-header">
           <label>${config.label}</label>
           <span class="val-display">${displayVal}</span>
-          <button class="btn-modulation-toggle" ${modActiveGlow} title="Toggle Automation">🧬</button>
+          <div style="display: flex; gap: 0.2rem; align-items: center;">
+            <button class="btn-modulation-toggle" ${modActiveGlow} title="Toggle LFO Automation">🧬</button>
+            <button ${keyActiveGlow} title="Toggle Keyframe Timeline">🔑</button>
+            <button class="btn-add-keyframe" style="${showAddKey} font-size: 0.65rem; padding: 0.1rem 0.25rem; line-height: 1;" title="Add Keyframe at Current Time">+ Key</button>
+          </div>
         </div>
         <input type="range" class="param-slider" min="${config.min}" max="${config.max}" step="${config.step}" value="${currentVal}">
       `;
@@ -534,13 +1061,15 @@ export class Controls {
       const rangeInput = mainField.querySelector('.param-slider');
       const valDisplay = mainField.querySelector('.val-display');
       const btnModToggle = mainField.querySelector('.btn-modulation-toggle');
+      const btnKeyframeToggle = mainField.querySelector('.btn-keyframe-toggle');
+      const btnAddKeyframe = mainField.querySelector('.btn-add-keyframe');
 
       rangeInput.addEventListener('input', (e) => {
         const v = parseFloat(e.target.value);
         valDisplay.textContent = v % 1 === 0 ? v.toString() : v.toFixed(4);
         onValUpdate(v);
         
-        if (mod && !mod.enabled) {
+        if (mod && !mod.enabled && !mod.keyframeEnabled) {
           mod.min = v;
           mod.max = v;
         }
@@ -551,18 +1080,74 @@ export class Controls {
         e.stopPropagation();
         mod.enabled = !mod.enabled;
         
+        if (mod.enabled) {
+          mod.keyframeEnabled = false; // LFO and keyframe are mutually exclusive
+          if (this.activeTimelineParam === config.name) {
+            this.activeTimelineParam = null;
+            this.selectedKeyframeIndex = -1;
+          }
+        }
+        
         const modKey = `${layer.id}-${config.name}`;
         if (mod.enabled) {
           this.expandedMods.add(modKey);
-          btnModToggle.style.color = 'var(--color-accent)';
-          btnModToggle.style.textShadow = '0 0 8px var(--color-accent)';
         } else {
           this.expandedMods.delete(modKey);
-          btnModToggle.style.color = '';
-          btnModToggle.style.textShadow = '';
         }
         this.rebuildInspector(); // Redraw parameter structure
+        this.drawTimeline();
         this.mainApp.renderSingleFrame();
+      });
+
+      btnKeyframeToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mod.keyframeEnabled = !mod.keyframeEnabled;
+        
+        if (mod.keyframeEnabled) {
+          mod.enabled = false; // LFO and keyframe are mutually exclusive
+          const modKey = `${layer.id}-${config.name}`;
+          this.expandedMods.delete(modKey);
+          
+          this.activeTimelineParam = config.name;
+          this.selectedKeyframeIndex = -1;
+        } else {
+          if (this.activeTimelineParam === config.name) {
+            this.activeTimelineParam = null;
+            this.selectedKeyframeIndex = -1;
+          }
+        }
+        this.rebuildInspector();
+        this.drawTimeline();
+        this.mainApp.renderSingleFrame();
+      });
+
+      btnAddKeyframe.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const duration = parseFloat(this.exportDurationEl.value) || 10;
+        const maxFrames = duration * 60;
+        const currentFrame = Math.max(0, Math.min(maxFrames, Math.round((this.mainApp.accumulatedTime / 1000) * 60)));
+        const currentVal = isFx ? layer.effects[config.name] : layer.generator.params[config.name];
+
+        const existingKf = mod.keyframes.find(k => k.frame === currentFrame);
+        if (existingKf) {
+          existingKf.value = currentVal;
+        } else {
+          mod.keyframes.push({ frame: currentFrame, value: currentVal });
+        }
+        mod.keyframes.sort((a, b) => a.frame - b.frame);
+
+        this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k.frame === currentFrame);
+
+        // Precise inputs sync
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        this.keyPreciseFrameEl.value = kf.frame;
+        this.keyPreciseFrameEl.disabled = false;
+        this.keyPreciseValueEl.value = kf.value.toFixed(4);
+        this.keyPreciseValueEl.disabled = false;
+        this.btnKeyPreciseDeleteEl.disabled = false;
+
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
       });
 
       fieldWrapper.appendChild(mainField);
@@ -916,7 +1501,18 @@ export class Controls {
           newLayer.effects = { ...newLayer.effects, ...layerData.effects };
         }
         if (layerData.modulations) {
-          newLayer.modulations = { ...newLayer.modulations, ...layerData.modulations };
+          for (let paramName in layerData.modulations) {
+            if (newLayer.modulations[paramName]) {
+              const srcMod = layerData.modulations[paramName];
+              newLayer.modulations[paramName].enabled = srcMod.enabled;
+              newLayer.modulations[paramName].min = srcMod.min;
+              newLayer.modulations[paramName].max = srcMod.max;
+              newLayer.modulations[paramName].timePct = srcMod.timePct !== undefined ? srcMod.timePct : 50;
+              newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
+              newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
+              newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+            }
+          }
         }
       });
 
@@ -1100,7 +1696,18 @@ export class Controls {
             newLayer.effects = { ...newLayer.effects, ...layerData.effects };
           }
           if (layerData.modulations) {
-            newLayer.modulations = { ...newLayer.modulations, ...layerData.modulations };
+            for (let paramName in layerData.modulations) {
+              if (newLayer.modulations[paramName]) {
+                const srcMod = layerData.modulations[paramName];
+                newLayer.modulations[paramName].enabled = srcMod.enabled;
+                newLayer.modulations[paramName].min = srcMod.min;
+                newLayer.modulations[paramName].max = srcMod.max;
+                newLayer.modulations[paramName].timePct = srcMod.timePct !== undefined ? srcMod.timePct : 50;
+                newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
+                newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
+                newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+              }
+            }
           }
         });
 

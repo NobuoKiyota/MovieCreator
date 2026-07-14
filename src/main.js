@@ -30,6 +30,10 @@ class MovieCreatorApp {
     this.recordingOverlayEl = document.getElementById('recording-overlay');
     this.recordingStatusEl = document.getElementById('recording-status');
     this.recordingProgressEl = document.getElementById('recording-progress');
+
+    // Timecode overlay
+    this.showTimecode = false;
+    this.btnTimecodeToggleEl = document.getElementById('btn-timecode-toggle');
   }
 
   init() {
@@ -62,6 +66,16 @@ class MovieCreatorApp {
 
     // 2. Initialize UI Controls
     this.controls.init();
+
+    // T.C toggle button
+    if (this.btnTimecodeToggleEl) {
+      this.btnTimecodeToggleEl.addEventListener('click', () => {
+        this.showTimecode = !this.showTimecode;
+        this.btnTimecodeToggleEl.classList.toggle('active', this.showTimecode);
+        this.btnTimecodeToggleEl.setAttribute('aria-pressed', this.showTimecode);
+        if (!this.isPlaying) this.renderSingleFrame();
+      });
+    }
 
     // 3. Start Main Render Loop
     this.lastTime = performance.now();
@@ -97,6 +111,14 @@ class MovieCreatorApp {
     const duration = parseFloat(document.getElementById('export-duration').value) || 10;
     const bgMode = document.getElementById('export-bg').value;
 
+    // Loop: reset time when duration is exceeded
+    const durationMs = duration * 1000;
+    if (this.accumulatedTime >= durationMs) {
+      this.accumulatedTime = this.accumulatedTime % durationMs;
+      // Also reset frameCount to keep in sync
+      this.frameCount = Math.floor(this.accumulatedTime / 1000 * 60);
+    }
+
     // 1. Evaluate Dynamic Modulations (LFO)
     this.layerManager.applyModulations(this.accumulatedTime, duration);
 
@@ -108,6 +130,11 @@ class MovieCreatorApp {
 
     // 4. Draw layers and composition onto Master Context
     this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0);
+
+    // 5. Draw Timecode Overlay (preview only, not during export)
+    if (this.showTimecode) {
+      this.drawTimecodeOverlay(this.accumulatedTime);
+    }
 
     requestAnimationFrame(() => this.tick());
   }
@@ -126,6 +153,69 @@ class MovieCreatorApp {
     this.controls.updateUIValues();
     // Render master frame
     this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0);
+    // Timecode overlay
+    if (this.showTimecode) {
+      this.drawTimecodeOverlay(this.accumulatedTime);
+    }
+  }
+
+  /**
+   * Draws a timecode overlay on the top-right of the preview canvas.
+   * Format: xx.yyy  Frame: NNNN
+   * Only called during live preview; never during export.
+   */
+  drawTimecodeOverlay(timeMs) {
+    const ctx = this.ctx;
+    const totalSec = timeMs / 1000;
+    const sec = Math.floor(totalSec);
+    const ms = Math.floor(totalSec * 1000) % 1000;
+    const frame = Math.floor(totalSec * 60);
+
+    const secStr = String(sec).padStart(2, '0');
+    const msStr  = String(ms).padStart(3, '0');
+    const tcStr  = `${secStr}.${msStr}`;
+    const fStr   = `Frame: ${frame}`;
+
+    const x = this.width - 16;
+    const y1 = 20;
+    const fontSize1 = 28;
+    const fontSize2 = 16;
+
+    ctx.save();
+    // MUST reset composite/alpha — LayerManager may leave these non-default after blending
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    ctx.textBaseline = 'top';
+
+    // Measure both lines first (set font before measuring)
+    ctx.font = `bold ${fontSize1}px 'JetBrains Mono', monospace`;
+    const tcWidth = ctx.measureText(tcStr).width;
+    ctx.font = `${fontSize2}px 'JetBrains Mono', monospace`;
+    const frWidth = ctx.measureText(fStr).width;
+
+    const boxW = Math.max(tcWidth, frWidth) + 20;
+    const boxH = fontSize1 + fontSize2 + 14;
+
+    // Semi-transparent dark background pill for readability
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.beginPath();
+    ctx.roundRect(x - boxW - 8, y1 - 6, boxW + 12, boxH, 6);
+    ctx.fill();
+
+    // Timecode text (white)
+    ctx.font = `bold ${fontSize1}px 'JetBrains Mono', monospace`;
+    ctx.textAlign = 'right';
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(tcStr, x, y1);
+
+    // Frame label (cyan)
+    ctx.font = `${fontSize2}px 'JetBrains Mono', monospace`;
+    ctx.fillStyle = 'rgb(6, 182, 212)';
+    ctx.fillText(fStr, x, y1 + fontSize1 + 4);
+
+    ctx.restore();
   }
 
   /**

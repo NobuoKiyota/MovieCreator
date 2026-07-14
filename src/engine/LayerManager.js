@@ -129,7 +129,9 @@ export class Layer {
           min: config.min,
           max: config.max,
           timePct: 50, // 50% of the total duration by default
-          behavior: 'return' // 'repeat' (saw), 'return' (ping-pong), 'one' (ramp & hold)
+          behavior: 'return', // 'repeat' (saw), 'return' (ping-pong), 'one' (ramp & hold)
+          keyframeEnabled: false,
+          keyframes: []
         };
       }
     });
@@ -150,7 +152,9 @@ export class Layer {
         min: config.min,
         max: config.max,
         timePct: config.timePct !== undefined ? config.timePct : 50,
-        behavior: config.behavior !== undefined ? config.behavior : 'return'
+        behavior: config.behavior !== undefined ? config.behavior : 'return',
+        keyframeEnabled: false,
+        keyframes: []
       };
     });
   }
@@ -300,27 +304,65 @@ export class Layer {
     if (!this.visible) return;
 
     const tSec = time / 1000;
+    const currentFrame = tSec * 60; // Calculate current frame based on 60fps
 
     for (let key in this.modulations) {
       const mod = this.modulations[key];
-      if (!mod.enabled) continue;
+      let val;
 
-      const cycleDuration = duration * (mod.timePct / 100);
-      if (cycleDuration <= 0) continue;
+      if (mod.keyframeEnabled) {
+        if (!mod.keyframes || mod.keyframes.length === 0) {
+          // If no keyframes, use minimum modulation bound as initial fallback
+          val = mod.min;
+        } else if (mod.keyframes.length === 1) {
+          val = mod.keyframes[0].value;
+        } else {
+          // Linear interpolation between the two nearest keyframes surrounding currentFrame
+          const kfs = mod.keyframes;
+          if (currentFrame <= kfs[0].frame) {
+            val = kfs[0].value;
+          } else if (currentFrame >= kfs[kfs.length - 1].frame) {
+            val = kfs[kfs.length - 1].value;
+          } else {
+            // Find surrounding points
+            let idx = 0;
+            for (let i = 0; i < kfs.length - 1; i++) {
+              if (currentFrame >= kfs[i].frame && currentFrame <= kfs[i + 1].frame) {
+                idx = i;
+                break;
+              }
+            }
+            const kfA = kfs[idx];
+            const kfB = kfs[idx + 1];
+            const frameDiff = kfB.frame - kfA.frame;
+            if (frameDiff <= 0) {
+              val = kfB.value;
+            } else {
+              const t = (currentFrame - kfA.frame) / frameDiff;
+              val = kfA.value + (kfB.value - kfA.value) * t;
+            }
+          }
+        }
+      } else {
+        if (!mod.enabled) continue;
 
-      let factor = 0.0;
+        const cycleDuration = duration * (mod.timePct / 100);
+        if (cycleDuration <= 0) continue;
 
-      if (mod.behavior === 'one') {
-        factor = Math.min(1.0, tSec / cycleDuration);
-      } else if (mod.behavior === 'repeat') {
-        factor = (tSec % cycleDuration) / cycleDuration;
-      } else if (mod.behavior === 'return') {
-        const phase = (tSec % (cycleDuration * 2)) / cycleDuration;
-        factor = phase <= 1.0 ? phase : 2.0 - phase;
+        let factor = 0.0;
+
+        if (mod.behavior === 'one') {
+          factor = Math.min(1.0, tSec / cycleDuration);
+        } else if (mod.behavior === 'repeat') {
+          factor = (tSec % cycleDuration) / cycleDuration;
+        } else if (mod.behavior === 'return') {
+          const phase = (tSec % (cycleDuration * 2)) / cycleDuration;
+          factor = phase <= 1.0 ? phase : 2.0 - phase;
+        }
+
+        // Linear interpolation between custom min and max bounds
+        val = mod.min + (mod.max - mod.min) * factor;
       }
-
-      // Linear interpolation between custom min and max bounds
-      const val = mod.min + (mod.max - mod.min) * factor;
 
       // Assign calculated value into the appropriate parameter slot
       if (key in this.generator.params) {
