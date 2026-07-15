@@ -1624,6 +1624,7 @@ export class Controls {
     const hasTooSimple = badEvaluations.some(e => e.reasons && e.reasons.includes('too_simple'));
     const hasTooChaotic = badEvaluations.some(e => e.reasons && e.reasons.includes('too_chaotic'));
     const hasNoiseWarpExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('noise_warp_excess'));
+    const hasNothingVisible = badEvaluations.some(e => e.reasons && e.reasons.includes('nothing_visible'));
 
     let attempt = 0;
     let bestCandidate = null;
@@ -1644,6 +1645,7 @@ export class Controls {
 
           const isCount = config.name === 'count' || config.name === 'particleCount' || config.name === 'lineCount';
           const isFreq = config.name === 'frequency' || config.name === 'density' || config.name === 'speed';
+          const isSizeOrWidth = config.name === 'strokeWidth' || config.name === 'minSize' || config.name === 'maxSize';
 
           // scale_too_small / scale_too_large constraint
           if (hasScaleIssue && isCount) {
@@ -1652,6 +1654,18 @@ export class Controls {
           // too_simple constraint
           if (hasTooSimple && (isCount || isFreq)) {
             localMin = config.min + (config.max - config.min) * 0.25;
+          }
+          // nothing_visible constraint (Generator values)
+          if (hasNothingVisible) {
+            if (isCount) {
+              localMin = config.min + (config.max - config.min) * 0.3; // force more objects
+            }
+            if (isSizeOrWidth) {
+              localMin = config.min + (config.max - config.min) * 0.3; // force visible width/size
+            }
+            if (config.name === 'colorLightness') {
+              localMin = Math.max(40, localMin); // avoid too dark color
+            }
           }
 
           const absoluteRange = localMax - localMin;
@@ -1724,7 +1738,7 @@ export class Controls {
 
         // scale constraints
         if (fxName === 'scale') {
-          if (hasScaleIssue) {
+          if (hasScaleIssue || hasNothingVisible) {
             localMin = Math.max(0.8, config.min);
           }
           if (hasAspectBreak && Math.abs(tempRotation) > 5) {
@@ -1732,12 +1746,16 @@ export class Controls {
           }
         }
 
-        // too_simple constraints
-        if (hasTooSimple) {
-          if (fxName === 'glowIntensity') {
+        // too_simple / nothing_visible constraints (Glow/Decay min values)
+        if (fxName === 'glowIntensity') {
+          if (hasNothingVisible) {
+            localMin = Math.max(15.0, config.min); // force strong glow visibility
+          } else if (hasTooSimple) {
             localMin = Math.max(5.0, config.min);
           }
-          if (fxName === 'feedbackDecay') {
+        }
+        if (fxName === 'feedbackDecay') {
+          if (hasTooSimple) {
             localMin = Math.max(0.30, config.min);
           }
         }
@@ -2432,7 +2450,8 @@ export class Controls {
         { id: 'aspect_break', text: 'aspect_break : 回転によるアスペクト破綻 (画面端の黒い隙間)' },
         { id: 'too_simple', text: 'too_simple : シンプルすぎる (スカスカ・地味)' },
         { id: 'too_chaotic', text: 'too_chaotic : 過剰演出すぎる (光すぎ・残像過多・白飛び)' },
-        { id: 'noise_warp_excess', text: 'noise_warp_excess : ノイズワープ過多 (歪みすぎ)' }
+        { id: 'noise_warp_excess', text: 'noise_warp_excess : ノイズワープ過多 (歪みすぎ)' },
+        { id: 'nothing_visible', text: 'nothing_visible : 何も映っていない (真っ暗・見えない)' }
       ];
 
       const checkboxesHtml = reasons.map(r => `

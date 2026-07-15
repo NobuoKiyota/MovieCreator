@@ -7,21 +7,22 @@
 ---
 
 ## 最終更新
-2026-07-15（コーディングAI — NoiseWarp抑制 ＆ ノイズワープ過多(Option F拡張) 完了）
+2026-07-15（コーディングAI — 「何も映っていない」アノテーション ＆ 視認性確保制約(Option F拡張) 完了）
 
 ---
 
 ## 現在の状態（動作状況）
 
-MovieCreator は Vite + vanilla JS で構築されたブラウザベースの生成映像エディタ。
+MovieCreator は Vite + vanilla JS で構築されたブラウザベース of 生成映像エディタ。
 http://localhost:5173/ で動作確認済み。
 
 ### ✅ 正常動作中の主要機能
 - **ネガティブ理由付き評価 ＆ パラメータ動的制約システム (Option F拡張)**:
   - 👎 ボタンクリック時に、複数選択チェックボックスのネオン風モーダルを表示してアノテーションを可能に。
-  - **ネガティブ理由の一覧**: `strobe_excess`（ストロボ過多）, `scale_too_small`（スケール小）, `scale_too_large`（全体カバー不足）, `aspect_break`（アスペクト破綻）, `too_simple`（シンプルすぎ）, `too_chaotic`（演出過剰）, **`noise_warp_excess`（ノイズワープ過多・歪みすぎ）[NEW]**
+  - **ネガティブ理由の一覧**: `strobe_excess`（ストロボ過多）, `scale_too_small`（スケール小）, `scale_too_large`（全体カバー不足）, `aspect_break`（アスペクト破綻）, `too_simple`（シンプルすぎ）, `too_chaotic`（演出過剰）, `noise_warp_excess`（ノイズワープ過多）, **`nothing_visible`（何も映っていない・真っ暗・見えない）[NEW]**
   - **動的パラメータ制約アルゴリズム**:
-    - **NoiseWarp (distortionIntensity) [NEW]**: 通常ランダマイズ時に上限を `12.0`（本来は40）に抑え、画面が歪みすぎるのをデフォルトで防止。さらに、過去に `noise_warp_excess` が報告されている場合は **80% の確率で Noise Warp を完全に無効化（0）**とし、有効化された場合も上限を **`4.0` 以下** に厳しく制限。
+    - **nothing_visible (真っ暗・見えない) [NEW]**: 過去に `nothing_visible` が報告されている場合、画面から線やパーティクルが消えるのを防ぐため、Generatorの数量パラメータ（`count` 等）およびサイズパラメータ（`strokeWidth`, `minSize`, `maxSize` 等）のランダム下限値を `config.min + absoluteRange * 0.3` に引き上げ。また、カラー輝度（`colorLightness`）の下限を `40` 以上に、共通FXの `scale` 下限を `0.8` 以上に、`glowIntensity` 下限を **`15.0` 以上** に強制引き上げして視認性を確実に担保。
+    - **NoiseWarp (distortionIntensity)**: 通常ランダマイズ時に上限を `12.0`（本来は40）に抑え、画面が歪みすぎるのをデフォルトで防止。さらに、過去に `noise_warp_excess` が報告されている場合は **80% の確率で Noise Warp を完全に無効化（0）**とし、有効化された場合も上限を **`4.0` 以下** に厳しく制限。
     - `strobe_excess` 報告時：ストロボ有効化確率を 5% に抑え、有効時も最大 1.5 にクランプ。
     - `scale_too_small` / `scale_too_large` 報告時：`scale` 下限を 0.8 に、各Generator数量パラメータの下限を引き上げ。
     - `aspect_break` 報告時：回転（`rotation`）有効時、`scale` の下限を対角線カバー率である `1.42`（$\sqrt{2}$ 倍）以上に強制クランプして黒い隙間の発生を防止。
@@ -30,7 +31,7 @@ http://localhost:5173/ で動作確認済み。
     - 上記の動的制約の上で、過去の Bad パラメータとの正規化類似度を比較して90%以上ならリロール（最大10回）を実行。
 - **エクスポート品質改善と解像度・透過アルファ本格強化 (Option C)**:
   - 解像度選択（720p, 1080p, 4K）および FPS 選択（30, 60）をエクスポート設定 UI に追加。
-  - レンダリング実行時に、一時的に指定解像度へキャンバスおよび `layerManager` をリサイズし、完了後に `finally` ブロックで元の表示解解像度へ自動復元する機能を実装。
+  - レンダリング実行時に、一時的に指定解像度へキャンバスおよび `layerManager` をリサイズし、完了後に `finally` ブロックで元の表示解像度へ自動復元する機能を実装。
   - 従来の MediaRecorder キャプチャによる透過 WebM エクスポート実時間シミュレーションを廃止。`webm-muxer` と WebCodecs (VP9 `'vp09.00.10.08'`) を用いた、コマ落ちのない高品位な非同期オフライン透過エクスポート処理を新設。
   - 独立インスペクター (Float) がポップアップブロックされた際の警告 `alert` を、アプリ共通ネオンテーマのトースト通知 `this.showToast` へ統合。
 - **スペースキーでの再生/停止トグル**:
@@ -57,25 +58,21 @@ http://localhost:5173/ で動作確認済み。
 
 ## 直近の完了タスク
 
+### 「何も映っていない（真っ暗・見えない）」アノテーションと視認性確保制約の追加（2026-07-15 実施）
+1. **Controls.js — アノテーション理由に `nothing_visible` を追加**:
+   - 👎 クリック時のモーダルに `nothing_visible : 何も映っていない (真っ暗・見えない)` の選択肢を追加。
+2. **Controls.js — `nothing_visible` に基づく視認性強制確保**:
+   - 過去に `nothing_visible` が報告されている場合、Generatorの数量パラメータ（`count` 等）およびサイズパラメータ（`strokeWidth`, `minSize` 等）の下限値を `30%` 引き上げ。
+   - 輝度 `colorLightness` の下限を `40` 以上、共通FX `scale` の下限を `0.8` 以上にクランプ。
+   - `glowIntensity`（グロウ）のランダム下限値を **`15.0` 以上** に強制引き上げし、確実に何かしらの光が映るように補正。
+
 ### NoiseWarp の通常時抑制 ＆ noise_warp_excess 理由によるパラメータ制約の追加（2026-07-15 実施）
 1. **Controls.js — アノテーション選択肢の追加**:
-   - `showBadScoreDialog()` の選択肢に `noise_warp_excess : ノイズワープ過多 (歪みすぎ)` を追加。
+   - 👎 モーダルに `noise_warp_excess : ノイズワープ過多 (歪みすぎ)` の選択肢を追加。
 2. **Controls.js — 通常ランダマイズ時の NoiseWarp 上限クランプ**:
-   - 理由報告の有無に関わらず、通常ランダマイズ時の `distortionIntensity`（Noise Warp）の上限値を `12.0`（本来は40）以下に強制制限（通常生成時に歪みすぎるのを防止）。
+   - 通常ランダマイズ時の `distortionIntensity`（Noise Warp）の上限値を `12.0`（本来は40）以下に強制制限。
 3. **Controls.js — 過去の理由に基づく NoiseWarp の動的クランプ・無効化**:
-   - 過去に `noise_warp_excess` が報告されている場合、80% の確率で Noise Warp パラメータを完全に無効化（0）とし、有効化された場合も上限を `4.0` 以下に厳しく制限。
-
-### ネガティブ理由付き評価 ＆ パラメータ動的制約システムの構築（Option F拡張 — 2026-07-15 実施）
-1. **Controls.js — アノテーションモーダルの新設 ＆ UI拡張**:
-   - 👎 クリック時に動作する複数選択チェックボックスのネオン風モーダル `showBadScoreDialog()` を新設。
-   - 👎 ボタンのイベントリスナーを `async` 化し、理由選択配列を `rateLayer` へ引き渡すように変更。
-   - `rateLayer` のシグネチャを拡張し、`reasons = []` 配列を `/api/score` へPOST送信するペイロードに含める。
-2. **apiHandler.js — reasonsデータ構造の保存**:
-   - `POST /api/score` エンドポイントを改修し、リクエストの `reasons` を履歴レコードに `reasons: reasons || []` として格納して保存するように変更。
-3. **Controls.js — 動的パラメータ制約アルゴリズムの実装**:
-   - `randomizeLayer()` の開始時に、過去の `bad` 履歴の `reasons` フラグ（strobe_excess, scale_too_small, aspect_break, too_simple, too_chaotic）を事前に分析。
-   - 理由フラグに基づいて、ストロボのトグル確率制限（5%）、scaleの安全クランプ、aspect_break発生時の1.42への強制引き上げ、数量や周波数の下限引き上げ、glow/decay上限・下限カットなどの動的パラメータ制約をランダマイザへ適用。
-   - 制限された安全領域でランダム抽出を行った上で、さらに過去のBadデータとの類似度チェック（90%以上ならリロール）を実行。
+   - `noise_warp_excess` 報告時、80% の確率で Noise Warp パラメータを完全に無効化（0）とし、有効時も上限を `4.0` 以下に制限。
 
 ---
 
@@ -90,7 +87,7 @@ http://localhost:5173/ で動作確認済み。
 ## 次にやるべきこと（司令塔向け提案）
 
 - [ ] ポップアップブロッカー対応UI改善（Float時のユーザー体験向上）
-- [ ] タイムコード表示のフォントカスタム、表示位置オプションの追加
+- [ ] タイムコード表示 of フォントカスタム、表示位置オプションの追加
 
 ---
 
