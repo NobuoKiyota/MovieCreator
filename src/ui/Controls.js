@@ -1203,6 +1203,7 @@ export class Controls {
       </div>
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
       <div style="display: flex; gap: 0.25rem;">
+        <button class="btn btn-secondary btn-small btn-score-stats" title="View Learning Progress & Stats" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📊</button>
         <button class="btn btn-secondary btn-small btn-score-good" title="Rate: Good! (Prioritize similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👍</button>
         <button class="btn btn-secondary btn-small btn-score-bad" title="Rate: Bad! (Avoid similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👎</button>
       </div>
@@ -1213,6 +1214,7 @@ export class Controls {
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
     const btnGood = randomizerHeader.querySelector('.btn-score-good');
     const btnBad = randomizerHeader.querySelector('.btn-score-bad');
+    const btnStats = randomizerHeader.querySelector('.btn-score-stats');
 
     spreadSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
@@ -1235,6 +1237,10 @@ export class Controls {
       if (selectedReasons !== null) {
         this.rateLayer(layer, 'bad', btnBad, selectedReasons);
       }
+    });
+
+    btnStats.addEventListener('click', () => {
+      this.showLearningStatsDialog(layer.type);
     });
 
     this.inspectorContentEl.appendChild(randomizerHeader);
@@ -2516,6 +2522,159 @@ export class Controls {
       };
       window.addEventListener('keydown', handleKeyDown);
     });
+  }
+
+  showLearningStatsDialog(layerType) {
+    const data = this.scoreData || [];
+    
+    // 全レイヤーの集計
+    const totalAll = data.length;
+    const goodAll = data.filter(e => e.score === 'good').length;
+    const badAll = data.filter(e => e.score === 'bad').length;
+
+    // 現在のレイヤーの集計
+    const layerData = data.filter(e => e.layerType === layerType);
+    const totalLayer = layerData.length;
+    const goodLayer = layerData.filter(e => e.score === 'good').length;
+    const badLayer = layerData.filter(e => e.score === 'bad').length;
+
+    // 理由別カウント（現在のレイヤー）
+    const reasonCounts = {
+      strobe_excess: 0,
+      scale_too_small: 0,
+      scale_too_large: 0,
+      aspect_break: 0,
+      too_simple: 0,
+      too_chaotic: 0,
+      noise_warp_excess: 0,
+      nothing_visible: 0
+    };
+
+    layerData.forEach(e => {
+      if (e.score === 'bad' && e.reasons) {
+        e.reasons.forEach(r => {
+          if (reasonCounts[r] !== undefined) {
+            reasonCounts[r]++;
+          }
+        });
+      }
+    });
+
+    const reasonsMeta = [
+      { id: 'strobe_excess', name: 'ストロボ過多 (strobe_excess)', desc: 'ストロボ確率を 5% に低下、強さを 1.5 にクランプ' },
+      { id: 'scale_too_small', name: 'スケールが小さすぎる (scale_too_small)', desc: 'スケール下限 0.8、Generator数量の下限引き上げ' },
+      { id: 'scale_too_large', name: '全体カバー不足 (scale_too_large)', desc: 'スケール下限 0.8、Generator数量の下限引き上げ' },
+      { id: 'aspect_break', name: 'アスペクト破綻 (aspect_break)', desc: '回転時にスケール下限を 1.42 に強制クランプ' },
+      { id: 'too_simple', name: 'シンプルすぎる (too_simple)', desc: '数量下限、Glow下限 5.0、Decay下限 0.30' },
+      { id: 'too_chaotic', name: '過剰演出すぎる (too_chaotic)', desc: 'Glow上限 20.0、Decay上限 0.80' },
+      { id: 'noise_warp_excess', name: 'ノイズワープ過多 (noise_warp_excess)', desc: '80%確率でノイズ無効化、有効時上限 4.0' },
+      { id: 'nothing_visible', name: '何も映っていない (nothing_visible)', desc: '数量・サイズ・輝度下限引き上げ、Glow下限 15.0、Scale下限 0.8' }
+    ];
+
+    const reasonsHtml = reasonsMeta.map(meta => {
+      const count = reasonCounts[meta.id] || 0;
+      const isActive = count > 0;
+      const statusIcon = isActive ? '🔴 Active' : '⚪ Inactive';
+      const statusColor = isActive ? '#ef4444' : '#6b7280';
+      const barWidthPct = totalLayer > 0 ? Math.min(100, (count / totalLayer) * 100) : 0;
+
+      return `
+        <div style="margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+            <span style="color: #e2e8f0; font-weight: 600;">${meta.name}</span>
+            <span style="color: ${statusColor}; font-weight: 700; font-size: 0.75rem;">${statusIcon} (${count}回)</span>
+          </div>
+          <div style="height: 6px; background: #2e2e4f; border-radius: 3px; overflow: hidden; margin-bottom: 0.3rem;">
+            <div style="height: 100%; width: ${barWidthPct}%; background: ${isActive ? '#ef4444' : '#3b82f6'}; border-radius: 3px; box-shadow: 0 0 8px ${isActive ? '#ef4444' : '#3b82f6'};"></div>
+          </div>
+          <div style="font-size: 0.75rem; color: #9ca3af; line-height: 1.3;">
+            <span style="color: #a855f7; font-weight: 600;">制約:</span> ${meta.desc}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const overlay = this.createElement('div');
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+    `;
+
+    overlay.innerHTML = `
+      <div style="
+        background: #1a1a2e; border: 1px solid #7c3aed;
+        border-radius: 12px; padding: 1.5rem 2rem; width: 500px; max-height: 80vh; overflow-y: auto;
+        box-shadow: 0 0 35px rgba(124,58,237,0.4);
+        display: flex; flex-direction: column; gap: 1.2rem;
+      ">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+          <h3 style="margin: 0; font-size: 1.1rem; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📊</span> Learning Progress & Parameters Stats
+          </h3>
+          <button id="stats-dialog-close-top" style="background: transparent; border: none; color: #9ca3af; font-size: 1.2rem; cursor: pointer; padding: 0;">&times;</button>
+        </div>
+
+        <!-- 全体統計 -->
+        <div style="background: #111122; border-radius: 8px; padding: 0.75rem 1rem; border: 1px solid rgba(124,58,237,0.2); display: flex; justify-content: space-around; text-align: center;">
+          <div>
+            <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Total Rated</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: #7c3aed;">${totalAll}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Good 👍</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">${goodAll}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.7rem; color: #9ca3af; text-transform: uppercase;">Bad 👎</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: #ef4444;">${badAll}</div>
+          </div>
+        </div>
+
+        <!-- 現在のレイヤーの統計 -->
+        <div style="text-align: left;">
+          <h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #e2e8f0; font-weight: 600;">
+            Layer Type: <span style="color: var(--color-accent); font-family: var(--font-mono);">${layerType}</span>
+          </h4>
+          <p style="margin: 0 0 0.8rem 0; font-size: 0.8rem; color: #9ca3af; line-height: 1.4;">
+            このレイヤータイプの評価数: <strong>${totalLayer}回</strong> (👍 ${goodLayer} / 👎 ${badLayer})
+          </p>
+
+          <!-- 各理由と制約のリスト -->
+          <div style="max-height: 320px; overflow-y: auto; padding-right: 0.5rem;">
+            ${reasonsHtml}
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 0.5rem;">
+          <button id="stats-dialog-close" style="
+            padding: 0.4rem 1.5rem; border-radius: 6px; border: none;
+            background: #7c3aed; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+            box-shadow: 0 0 10px rgba(124,58,237,0.4);
+          ">Close</button>
+        </div>
+      </div>
+    `;
+
+    (this.activeDocument || document).body.appendChild(overlay);
+
+    const btnClose = overlay.querySelector('#stats-dialog-close');
+    const btnCloseTop = overlay.querySelector('#stats-dialog-close-top');
+
+    const finish = () => {
+      (this.activeDocument || document).body.removeChild(overlay);
+    };
+
+    btnClose.addEventListener('click', finish);
+    btnCloseTop.addEventListener('click', finish);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        window.removeEventListener('keydown', handleKeyDown);
+        finish();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
   }
 
   /**

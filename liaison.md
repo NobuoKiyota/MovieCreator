@@ -7,22 +7,23 @@
 ---
 
 ## 最終更新
-2026-07-15（コーディングAI — 「何も映っていない」アノテーション ＆ 視認性確保制約(Option F拡張) 完了）
+2026-07-15（コーディングAI — アノテーション学習進行度(📊) 可視化ダイアログ追加 完了）
 
 ---
 
 ## 現在の状態（動作状況）
 
-MovieCreator は Vite + vanilla JS で構築されたブラウザベース of 生成映像エディタ。
+MovieCreator は Vite + vanilla JS で構築されたブラウザベースの生成映像エディタ。
 http://localhost:5173/ で動作確認済み。
 
 ### ✅ 正常動作中の主要機能
 - **ネガティブ理由付き評価 ＆ パラメータ動的制約システム (Option F拡張)**:
+  - **学習進捗・パラメータ統計ダイアログ (📊) [NEW]**: インスペクター内LFO Spread行に 📊 ボタンを新設。クリック時にこれまでの全評価件数（👍 / 👎）、選択中のレイヤータイプの評価内訳、およびネガティブ理由ごとのアノテーション適用件数を可視化。各理由に対して **「🔴 Active」** / **「⚪ Inactive」** ステータスを表示し、現在どのパラメータ動的制約（上限・下限クランプ制御）が作動中であるかをリアルタイムで確認できる UI を構築。
   - 👎 ボタンクリック時に、複数選択チェックボックスのネオン風モーダルを表示してアノテーションを可能に。
-  - **ネガティブ理由の一覧**: `strobe_excess`（ストロボ過多）, `scale_too_small`（スケール小）, `scale_too_large`（全体カバー不足）, `aspect_break`（アスペクト破綻）, `too_simple`（シンプルすぎ）, `too_chaotic`（演出過剰）, `noise_warp_excess`（ノイズワープ過多）, **`nothing_visible`（何も映っていない・真っ暗・見えない）[NEW]**
+  - **ネガティブ理由の一覧**: `strobe_excess`（ストロボ過多）, `scale_too_small`（スケール小）, `scale_too_large`（全体カバー不足）, `aspect_break`（アスペクト破綻）, `too_simple`（シンプルすぎ）, `too_chaotic`（演出過剰）, `noise_warp_excess`（ノイズワープ過多）, `nothing_visible`（何も映っていない・真っ暗・見えない）
   - **動的パラメータ制約アルゴリズム**:
-    - **nothing_visible (真っ暗・見えない) [NEW]**: 過去に `nothing_visible` が報告されている場合、画面から線やパーティクルが消えるのを防ぐため、Generatorの数量パラメータ（`count` 等）およびサイズパラメータ（`strokeWidth`, `minSize`, `maxSize` 等）のランダム下限値を `config.min + absoluteRange * 0.3` に引き上げ。また、カラー輝度（`colorLightness`）の下限を `40` 以上に、共通FXの `scale` 下限を `0.8` 以上に、`glowIntensity` 下限を **`15.0` 以上** に強制引き上げして視認性を確実に担保。
-    - **NoiseWarp (distortionIntensity)**: 通常ランダマイズ時に上限を `12.0`（本来は40）に抑え、画面が歪みすぎるのをデフォルトで防止。さらに、過去に `noise_warp_excess` が報告されている場合は **80% の確率で Noise Warp を完全に無効化（0）**とし、有効化された場合も上限を **`4.0` 以下** に厳しく制限。
+    - `nothing_visible` (真っ暗・見えない)：過去に `nothing_visible` が報告されている場合、Generatorの数量およびサイズパラメータの下限値を `30%` 引き上げ。また、カラー輝度（`colorLightness`）の下限を `40` 以上、共通FXの `scale` 下限を `0.8` 以上に、`glowIntensity` 下限を **`15.0` 以上** に強制引き上げして視認性を確実に担保。
+    - `noise_warp_excess` (ノイズワープ過多)：通常ランダマイズ時に Noise Warp の上限を `12.0` 以下に抑え、画面が歪みすぎるのをデフォルトで防止。さらに、過去に報告されている場合は **80% の確率で Noise Warp を完全に無効化（0）**とし、有効時も上限を **`4.0` 以下** に厳しく制限。
     - `strobe_excess` 報告時：ストロボ有効化確率を 5% に抑え、有効時も最大 1.5 にクランプ。
     - `scale_too_small` / `scale_too_large` 報告時：`scale` 下限を 0.8 に、各Generator数量パラメータの下限を引き上げ。
     - `aspect_break` 報告時：回転（`rotation`）有効時、`scale` の下限を対角線カバー率である `1.42`（$\sqrt{2}$ 倍）以上に強制クランプして黒い隙間の発生を防止。
@@ -46,7 +47,7 @@ http://localhost:5173/ で動作確認済み。
   - ドット選択中に `Ctrl+C` ＆ シーク後に `Ctrl+V` で、再生ヘッド位置へのキーフレーム単一値の複製が可能。
 - **タイムコードオーバーレイとループ再生 (Option D)**:
   - ヘッダーの `T.C` トグルボタンでプレビュー右上に秒.ミリ秒 & Frameオーバーレイを表示。
-  - 映像エクスポート時はこのオーバーレイは含めないように制御。
+  - 映像エクスポート時はこのオーバーレイは含めないように制御.
   - Duration終端に来たら、先頭へ自動ループして再生。
 - **一括プロジェクト保存・読み込み**: サーバー通信による上書き保存 (Save), 別名保存 (Save As...), 新規プロジェクト (New) に加え、PC上の `.mvproj` への書き出し (Export)・読み込み (Import) をフルサポート。
 - **インスペクター (フローティング)**: ↗️ Float ボタンで別ウィンドウ化、プレビューとリアルタイム完全連動。
@@ -58,21 +59,22 @@ http://localhost:5173/ で動作確認済み。
 
 ## 直近の完了タスク
 
+### アノテーション学習進行度(📊) 可視化ダイアログの追加（2026-07-15 実施）
+1. **Controls.js — 📊 統計ボタン UI の追加 ＆ イベントバインド**:
+   - rebuildInspectorのLFO Spread行に 📊（学習統計）ボタンを追加。
+   - クリックイベントで `showLearningStatsDialog(layer.type)` を呼び出すようバインド。
+2. **Controls.js — 統計モーダルの実装**:
+   - `this.scoreData` 配列を解析し、全レイヤーおよびアクティブなレイヤータイプの「評価件数（👍 / 👎）」を集計。
+   - 8個のネガティブ理由別のカウント（ヒストグラム）を美しく描画。
+   - アノテーションが1回以上報告された制約に対して **「🔴 Active」** 表示を行い、現在どのようなパラメータ制約が作動中であるかをテキストで明示するステータス確認画面を実装。
+
 ### 「何も映っていない（真っ暗・見えない）」アノテーションと視認性確保制約の追加（2026-07-15 実施）
 1. **Controls.js — アノテーション理由に `nothing_visible` を追加**:
-   - 👎 クリック時のモーダルに `nothing_visible : 何も映っていない (真っ暗・見えない)` の選択肢を追加。
+   - 👎 モーダルに `nothing_visible : 何も映っていない (真っ暗・見えない)` の選択肢を追加。
 2. **Controls.js — `nothing_visible` に基づく視認性強制確保**:
-   - 過去に `nothing_visible` が報告されている場合、Generatorの数量パラメータ（`count` 等）およびサイズパラメータ（`strokeWidth`, `minSize` 等）の下限値を `30%` 引き上げ。
+   - 数量およびサイズパラメータの下限値を `30%` 引き上げ。
    - 輝度 `colorLightness` の下限を `40` 以上、共通FX `scale` の下限を `0.8` 以上にクランプ。
-   - `glowIntensity`（グロウ）のランダム下限値を **`15.0` 以上** に強制引き上げし、確実に何かしらの光が映るように補正。
-
-### NoiseWarp の通常時抑制 ＆ noise_warp_excess 理由によるパラメータ制約の追加（2026-07-15 実施）
-1. **Controls.js — アノテーション選択肢の追加**:
-   - 👎 モーダルに `noise_warp_excess : ノイズワープ過多 (歪みすぎ)` の選択肢を追加。
-2. **Controls.js — 通常ランダマイズ時の NoiseWarp 上限クランプ**:
-   - 通常ランダマイズ時の `distortionIntensity`（Noise Warp）の上限値を `12.0`（本来は40）以下に強制制限。
-3. **Controls.js — 過去の理由に基づく NoiseWarp の動的クランプ・無効化**:
-   - `noise_warp_excess` 報告時、80% の確率で Noise Warp パラメータを完全に無効化（0）とし、有効時も上限を `4.0` 以下に制限。
+   - `glowIntensity` のランダム下限値を **`15.0` 以上** に強制引き上げ。
 
 ---
 
@@ -87,7 +89,7 @@ http://localhost:5173/ で動作確認済み。
 ## 次にやるべきこと（司令塔向け提案）
 
 - [ ] ポップアップブロッカー対応UI改善（Float時のユーザー体験向上）
-- [ ] タイムコード表示 of フォントカスタム、表示位置オプションの追加
+- [ ] タイムコード表示のフォントカスタム、表示位置オプションの追加
 
 ---
 
@@ -97,7 +99,7 @@ http://localhost:5173/ で動作確認済み。
 |----------|------|
 | z:\MovieCreator\package.json | 依存パッケージ定義（`mp4-muxer` に加え `webm-muxer` を新規追加） |
 | z:\MovieCreator\index.html | UIレイアウト定義（動画出力オプション：解像度、FPS等） |
-| z:\MovieCreator\src\ui\Controls.js | UIロジック（👍/👎ボタンの配置、アノテーションモーダル、発光、過去スコアの取得、動的パラメータ制約・リロールアルゴリズム） |
+| z:\MovieCreator\src\ui\Controls.js | UIロジック（👍/👎ボタンの配置、アノテーションモーダル、発光、過去スコアの取得、動的パラメータ制約・リロールアルゴリズム、📊学習統計） |
 | z:\MovieCreator\src\server\apiHandler.js | APIサーバーロジック（プロジェクト保存・読込、評価スコア /api/score (POST) と /api/scores (GET)、reasons保存） |
 | z:\MovieCreator\src\engine\VideoRecorder.js | エクスポートロジック（リサイズ一時制御、Mp4Muxer / WebmMuxer + WebCodecs による非同期エクスポート） |
 | z:\MovieCreator\src\engine\LayerManager.js | レイヤー管理・LFO・キーフレームイージング補間計算・resizeメソッド |
