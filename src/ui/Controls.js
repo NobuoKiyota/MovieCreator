@@ -1623,6 +1623,7 @@ export class Controls {
     const hasAspectBreak = badEvaluations.some(e => e.reasons && e.reasons.includes('aspect_break'));
     const hasTooSimple = badEvaluations.some(e => e.reasons && e.reasons.includes('too_simple'));
     const hasTooChaotic = badEvaluations.some(e => e.reasons && e.reasons.includes('too_chaotic'));
+    const hasNoiseWarpExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('noise_warp_excess'));
 
     let attempt = 0;
     let bestCandidate = null;
@@ -1748,6 +1749,21 @@ export class Controls {
           }
           if (fxName === 'feedbackDecay') {
             localMax = Math.min(0.80, config.max);
+          }
+        }
+
+        // Noise Warp constraints (normally kept low, drastically reduced or disabled if noise_warp_excess reported)
+        if (fxName === 'distortionIntensity') {
+          localMax = Math.min(12.0, config.max); // Normally keep it low (default config.max is 40)
+          if (hasNoiseWarpExcess) {
+            const isWarpEnabled = Math.random() < 0.20; // 80% chance of being completely disabled
+            if (!isWarpEnabled) {
+              candidateEffects['distortionIntensity'] = 0;
+              candidateModulations['distortionIntensity'] = { enabled: false, min: 0, max: 0 };
+              continue;
+            } else {
+              localMax = Math.min(4.0, localMax); // Limit max to 4.0 if enabled
+            }
           }
         }
 
@@ -2415,7 +2431,8 @@ export class Controls {
         { id: 'scale_too_large', text: 'scale_too_large : 全体カバー不足 (もっと全体に広げたい)' },
         { id: 'aspect_break', text: 'aspect_break : 回転によるアスペクト破綻 (画面端の黒い隙間)' },
         { id: 'too_simple', text: 'too_simple : シンプルすぎる (スカスカ・地味)' },
-        { id: 'too_chaotic', text: 'too_chaotic : 過剰演出すぎる (光すぎ・残像過多・白飛び)' }
+        { id: 'too_chaotic', text: 'too_chaotic : 過剰演出すぎる (光すぎ・残像過多・白飛び)' },
+        { id: 'noise_warp_excess', text: 'noise_warp_excess : ノイズワープ過多 (歪みすぎ)' }
       ];
 
       const checkboxesHtml = reasons.map(r => `
