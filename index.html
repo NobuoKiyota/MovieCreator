@@ -108,7 +108,36 @@
               <input type="number" id="key-precise-frame" min="0" step="1" disabled>
               <label for="key-precise-value">Value</label>
               <input type="number" id="key-precise-value" step="0.001" disabled>
+              
+              <label for="key-precise-easing">Easing</label>
+              <select id="key-precise-easing" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.75rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px;">
+                <option value="linear">Linear</option>
+                <option value="ease-in">Ease In</option>
+                <option value="ease-out">Ease Out</option>
+                <option value="ease-in-out">Ease In-Out</option>
+                <option value="step">Step</option>
+              </select>
+              
               <button id="btn-key-precise-delete" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Delete</button>
+              
+              <div class="controls-divider"></div>
+              
+              <button id="btn-key-clear-all" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Clear All</button>
+              <button id="btn-key-copy" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Copy</button>
+              <button id="btn-key-paste" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Paste</button>
+              
+              <div class="controls-divider"></div>
+              
+              <label for="timeline-snap-select">Snap</label>
+              <select id="timeline-snap-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.75rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px;">
+                <option value="off">Off</option>
+                <option value="1">1f</option>
+                <option value="5">5f</option>
+                <option value="10">10f</option>
+                <option value="15">15f</option>
+                <option value="30">30f</option>
+                <option value="60">60f</option>
+              </select>
             </div>
           </div>
           <div class="timeline-body">

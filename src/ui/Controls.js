@@ -41,11 +41,20 @@ export class Controls {
     this.keyPreciseFrameEl = document.getElementById('key-precise-frame');
     this.keyPreciseValueEl = document.getElementById('key-precise-value');
     this.btnKeyPreciseDeleteEl = document.getElementById('btn-key-precise-delete');
+    this.keyPreciseEasingEl = document.getElementById('key-precise-easing');
+    this.btnKeyClearAllEl = document.getElementById('btn-key-clear-all');
+    this.btnKeyCopyEl = document.getElementById('btn-key-copy');
+    this.btnKeyPasteEl = document.getElementById('btn-key-paste');
+    this.timelineSnapSelectEl = document.getElementById('timeline-snap-select');
     this.timelineCanvas = document.getElementById('timeline-canvas');
     this.activeTimelineParam = null;
     this.selectedKeyframeIndex = -1;
     this.isDraggingKeyframe = false;
     this.isTimelineSeeking = false;
+
+    // Keyframe copy buffers
+    this.copiedKeyframes = null;
+    this.copiedSingleValue = null;
 
     // Local Import/Export elements
     this.btnLocalExportProjectEl = document.getElementById('btn-local-export-project');
@@ -235,6 +244,8 @@ export class Controls {
   initTimeline() {
     if (!this.timelineCanvas) return;
 
+    this.boundGlobalKeyDown = this.handleGlobalKeyDown.bind(this);
+
     // Window resize binding
     window.addEventListener('resize', () => {
       this.drawTimeline();
@@ -270,6 +281,18 @@ export class Controls {
       }
     });
 
+    this.keyPreciseEasingEl.addEventListener('change', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      if (mod && this.selectedKeyframeIndex !== -1) {
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        kf.easing = this.keyPreciseEasingEl.value;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
     // Delete keyframe event
     this.btnKeyPreciseDeleteEl.addEventListener('click', () => {
       const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
@@ -282,7 +305,76 @@ export class Controls {
         this.keyPreciseFrameEl.disabled = true;
         this.keyPreciseValueEl.value = '';
         this.keyPreciseValueEl.disabled = true;
+        this.keyPreciseEasingEl.value = 'linear';
+        this.keyPreciseEasingEl.disabled = true;
         this.btnKeyPreciseDeleteEl.disabled = true;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    // Clear All keyframes event
+    this.btnKeyClearAllEl.addEventListener('click', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      if (mod) {
+        mod.keyframes = [];
+        this.selectedKeyframeIndex = -1;
+        this.keyPreciseFrameEl.value = '';
+        this.keyPreciseFrameEl.disabled = true;
+        this.keyPreciseValueEl.value = '';
+        this.keyPreciseValueEl.disabled = true;
+        this.keyPreciseEasingEl.value = 'linear';
+        this.keyPreciseEasingEl.disabled = true;
+        this.btnKeyPreciseDeleteEl.disabled = true;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    });
+
+    // Copy keyframes event
+    this.btnKeyCopyEl.addEventListener('click', () => {
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      if (mod && mod.keyframes) {
+        // Deep copy keyframes
+        this.copiedKeyframes = mod.keyframes.map(kf => ({
+          frame: kf.frame,
+          value: kf.value,
+          easing: kf.easing || 'linear'
+        }));
+        this.btnKeyPasteEl.disabled = false;
+      }
+    });
+
+    // Paste keyframes event
+    this.btnKeyPasteEl.addEventListener('click', () => {
+      if (!this.copiedKeyframes) return;
+      const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+      if (!activeLayer || !this.activeTimelineParam) return;
+      const mod = activeLayer.modulations[this.activeTimelineParam];
+      const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+      if (mod && config) {
+        // Overwrite and clamp values to new parameter range
+        mod.keyframes = this.copiedKeyframes.map(kf => ({
+          frame: kf.frame,
+          value: Math.max(config.min, Math.min(config.max, kf.value)),
+          easing: kf.easing || 'linear'
+        }));
+        mod.keyframes.sort((a, b) => a.frame - b.frame);
+        
+        // Reset selection
+        this.selectedKeyframeIndex = -1;
+        this.keyPreciseFrameEl.value = '';
+        this.keyPreciseFrameEl.disabled = true;
+        this.keyPreciseValueEl.value = '';
+        this.keyPreciseValueEl.disabled = true;
+        this.keyPreciseEasingEl.value = 'linear';
+        this.keyPreciseEasingEl.disabled = true;
+        this.btnKeyPreciseDeleteEl.disabled = true;
+        
         this.mainApp.renderSingleFrame();
         this.drawTimeline();
       }
@@ -338,6 +430,8 @@ export class Controls {
         this.keyPreciseFrameEl.disabled = false;
         this.keyPreciseValueEl.value = kf.value.toFixed(4);
         this.keyPreciseValueEl.disabled = false;
+        this.keyPreciseEasingEl.value = kf.easing || 'linear';
+        this.keyPreciseEasingEl.disabled = false;
         this.btnKeyPreciseDeleteEl.disabled = false;
       } else {
         // Clear selection
@@ -346,6 +440,8 @@ export class Controls {
         this.keyPreciseFrameEl.disabled = true;
         this.keyPreciseValueEl.value = '';
         this.keyPreciseValueEl.disabled = true;
+        this.keyPreciseEasingEl.value = 'linear';
+        this.keyPreciseEasingEl.disabled = true;
         this.btnKeyPreciseDeleteEl.disabled = true;
       }
 
@@ -380,7 +476,16 @@ export class Controls {
         const kf = mod.keyframes[this.selectedKeyframeIndex];
         
         // Calculate new values based on mouse position
-        const newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        let newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        
+        // Snap feature
+        const snapVal = this.timelineSnapSelectEl ? this.timelineSnapSelectEl.value : 'off';
+        if (snapVal !== 'off') {
+          const snap = parseInt(snapVal, 10);
+          newFrame = Math.round(newFrame / snap) * snap;
+          newFrame = Math.max(0, Math.min(maxFrames, newFrame));
+        }
+
         const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
         
         kf.frame = newFrame;
@@ -389,6 +494,7 @@ export class Controls {
         // Update precise edit inputs in real time
         this.keyPreciseFrameEl.value = newFrame;
         this.keyPreciseValueEl.value = newVal.toFixed(4);
+        this.keyPreciseEasingEl.value = kf.easing || 'linear';
 
         this.mainApp.renderSingleFrame();
         this.drawTimeline();
@@ -434,11 +540,20 @@ export class Controls {
       const duration = parseFloat(this.exportDurationEl.value) || 10;
       const maxFrames = duration * 60;
 
-      const newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+      let newFrame = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+      
+      // Snap feature
+      const snapVal = this.timelineSnapSelectEl ? this.timelineSnapSelectEl.value : 'off';
+      if (snapVal !== 'off') {
+        const snap = parseInt(snapVal, 10);
+        newFrame = Math.round(newFrame / snap) * snap;
+        newFrame = Math.max(0, Math.min(maxFrames, newFrame));
+      }
+
       const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
 
       // Add and sort
-      const newKf = { frame: newFrame, value: newVal };
+      const newKf = { frame: newFrame, value: newVal, easing: 'linear' };
       mod.keyframes.push(newKf);
       mod.keyframes.sort((a, b) => a.frame - b.frame);
       
@@ -449,34 +564,111 @@ export class Controls {
       this.keyPreciseFrameEl.disabled = false;
       this.keyPreciseValueEl.value = newVal.toFixed(4);
       this.keyPreciseValueEl.disabled = false;
+      this.keyPreciseEasingEl.value = 'linear';
+      this.keyPreciseEasingEl.disabled = false;
       this.btnKeyPreciseDeleteEl.disabled = false;
 
       this.mainApp.renderSingleFrame();
       this.drawTimeline();
     });
 
-    // Keydown delete keyframe listener (only when canvas is active/focused)
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Verify target is not an input field to avoid deleting while typing
-        if (document.activeElement.tagName === 'INPUT') return;
+    // Keydown listener for delete and copy/paste shortcuts
+    window.addEventListener('keydown', this.boundGlobalKeyDown);
+  }
 
-        const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
-        if (!activeLayer || !this.activeTimelineParam) return;
-        const mod = activeLayer.modulations[this.activeTimelineParam];
-        if (mod && this.selectedKeyframeIndex !== -1) {
-          mod.keyframes.splice(this.selectedKeyframeIndex, 1);
-          this.selectedKeyframeIndex = -1;
-          this.keyPreciseFrameEl.value = '';
-          this.keyPreciseFrameEl.disabled = true;
-          this.keyPreciseValueEl.value = '';
-          this.keyPreciseValueEl.disabled = true;
-          this.btnKeyPreciseDeleteEl.disabled = true;
-          this.mainApp.renderSingleFrame();
-          this.drawTimeline();
-        }
+  handleGlobalKeyDown(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
+
+    // Space key: play/pause toggle
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      if (this.mainApp.isPlaying) {
+        this.mainApp.pause();
+      } else {
+        this.mainApp.play();
       }
-    });
+      return;
+    }
+
+    const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+    if (!activeLayer || !this.activeTimelineParam) return;
+    const mod = activeLayer.modulations[this.activeTimelineParam];
+    if (!mod) return;
+
+    if (!mod.keyframes) {
+      mod.keyframes = [];
+    }
+
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (this.selectedKeyframeIndex !== -1) {
+        mod.keyframes.splice(this.selectedKeyframeIndex, 1);
+        this.selectedKeyframeIndex = -1;
+        this.keyPreciseFrameEl.value = '';
+        this.keyPreciseFrameEl.disabled = true;
+        this.keyPreciseValueEl.value = '';
+        this.keyPreciseValueEl.disabled = true;
+        this.keyPreciseEasingEl.value = 'linear';
+        this.keyPreciseEasingEl.disabled = true;
+        this.btnKeyPreciseDeleteEl.disabled = true;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    } else if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+      if (this.selectedKeyframeIndex !== -1) {
+        e.preventDefault(); // Prevent default copy behavior if necessary
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        this.copiedSingleValue = {
+          value: kf.value,
+          easing: kf.easing || 'linear'
+        };
+      }
+    } else if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) {
+      if (this.copiedSingleValue !== null) {
+        e.preventDefault();
+        const duration = parseFloat(this.exportDurationEl.value) || 10;
+        const maxFrames = duration * 60;
+        const currentFrame = (this.mainApp.accumulatedTime / 1000) * 60;
+        let targetFrame = Math.max(0, Math.min(maxFrames, Math.round(currentFrame)));
+
+        // Snap feature
+        const snapVal = this.timelineSnapSelectEl ? this.timelineSnapSelectEl.value : 'off';
+        if (snapVal !== 'off') {
+          const snap = parseInt(snapVal, 10);
+          targetFrame = Math.round(targetFrame / snap) * snap;
+          targetFrame = Math.max(0, Math.min(maxFrames, targetFrame));
+        }
+
+        // Check if there is an existing keyframe at this frame
+        const existingKf = mod.keyframes.find(kf => kf.frame === targetFrame);
+        if (existingKf) {
+          existingKf.value = this.copiedSingleValue.value;
+          existingKf.easing = this.copiedSingleValue.easing;
+          this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k === existingKf);
+        } else {
+          const newKf = {
+            frame: targetFrame,
+            value: this.copiedSingleValue.value,
+            easing: this.copiedSingleValue.easing
+          };
+          mod.keyframes.push(newKf);
+          mod.keyframes.sort((a, b) => a.frame - b.frame);
+          this.selectedKeyframeIndex = mod.keyframes.findIndex(k => k === newKf);
+        }
+
+        // Populate precise edit UI
+        const kf = mod.keyframes[this.selectedKeyframeIndex];
+        this.keyPreciseFrameEl.value = kf.frame;
+        this.keyPreciseFrameEl.disabled = false;
+        this.keyPreciseValueEl.value = kf.value.toFixed(4);
+        this.keyPreciseValueEl.disabled = false;
+        this.keyPreciseEasingEl.value = kf.easing || 'linear';
+        this.keyPreciseEasingEl.disabled = false;
+        this.btnKeyPreciseDeleteEl.disabled = false;
+
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+      }
+    }
   }
 
   drawTimeline() {
@@ -493,6 +685,16 @@ export class Controls {
 
     const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
     if (!activeLayer || !this.activeTimelineParam) {
+      // Disable keyframe editor tools
+      this.keyPreciseFrameEl.disabled = true;
+      this.keyPreciseValueEl.disabled = true;
+      this.keyPreciseEasingEl.disabled = true;
+      this.btnKeyPreciseDeleteEl.disabled = true;
+      this.btnKeyClearAllEl.disabled = true;
+      this.btnKeyCopyEl.disabled = true;
+      this.btnKeyPasteEl.disabled = true;
+      this.timelineSnapSelectEl.disabled = true;
+
       // Draw placeholder with seek ruler showing current position
       const duration = parseFloat(this.exportDurationEl.value) || 10;
       const maxFrames = duration * 60;
@@ -567,6 +769,31 @@ export class Controls {
     const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
     if (!mod || !config) return;
 
+    if (!mod.keyframes) {
+      mod.keyframes = [];
+    }
+
+    // Enable keyframe tools
+    this.btnKeyClearAllEl.disabled = false;
+    this.btnKeyCopyEl.disabled = false;
+    this.btnKeyPasteEl.disabled = !this.copiedKeyframes;
+    this.timelineSnapSelectEl.disabled = false;
+
+    // Sync precise input disabled states based on keyframe selection
+    if (this.selectedKeyframeIndex !== -1 && mod.keyframes[this.selectedKeyframeIndex]) {
+      const kf = mod.keyframes[this.selectedKeyframeIndex];
+      this.keyPreciseFrameEl.disabled = false;
+      this.keyPreciseValueEl.disabled = false;
+      this.keyPreciseEasingEl.disabled = false;
+      this.keyPreciseEasingEl.value = kf.easing || 'linear';
+      this.btnKeyPreciseDeleteEl.disabled = false;
+    } else {
+      this.keyPreciseFrameEl.disabled = true;
+      this.keyPreciseValueEl.disabled = true;
+      this.keyPreciseEasingEl.disabled = true;
+      this.btnKeyPreciseDeleteEl.disabled = true;
+    }
+
     this.timelineActiveParamEl.textContent = `${activeLayer.name} : ${config.label} (Min: ${config.min}, Max: ${config.max})`;
 
     const leftMargin = 50, rightMargin = 20, topMargin = 20, bottomMargin = 20;
@@ -638,20 +865,66 @@ export class Controls {
       ctx.stroke();
     }
 
-    // 3. Draw Interpolation Line / Path
+    // 3. Draw Interpolation Line / Path (with easing curve support)
     if (mod.keyframes.length > 0) {
       ctx.beginPath();
-      for (let i = 0; i < mod.keyframes.length; i++) {
-        const kf = mod.keyframes[i];
-        const x = leftMargin + (kf.frame / maxFrames) * graphWidth;
-        const y = topMargin + (1 - (kf.value - config.min) / (config.max - config.min)) * graphHeight;
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
+      
+      // Draw first flat line from 0 to first keyframe frame
+      if (mod.keyframes[0].frame > 0) {
+        const firstKf = mod.keyframes[0];
+        const y = topMargin + (1 - (firstKf.value - config.min) / (config.max - config.min)) * graphHeight;
+        ctx.moveTo(leftMargin, y);
+        ctx.lineTo(leftMargin + (firstKf.frame / maxFrames) * graphWidth, y);
+      } else {
+        const firstKf = mod.keyframes[0];
+        const y = topMargin + (1 - (firstKf.value - config.min) / (config.max - config.min)) * graphHeight;
+        ctx.moveTo(leftMargin, y);
+      }
+
+      for (let i = 0; i < mod.keyframes.length - 1; i++) {
+        const kfA = mod.keyframes[i];
+        const kfB = mod.keyframes[i + 1];
+        const xA = leftMargin + (kfA.frame / maxFrames) * graphWidth;
+        const yA = topMargin + (1 - (kfA.value - config.min) / (config.max - config.min)) * graphHeight;
+        const xB = leftMargin + (kfB.frame / maxFrames) * graphWidth;
+        const yB = topMargin + (1 - (kfB.value - config.min) / (config.max - config.min)) * graphHeight;
+
+        const easing = kfA.easing || 'linear';
+        const frameDiff = kfB.frame - kfA.frame;
+
+        if (frameDiff <= 0) {
+          ctx.lineTo(xB, yB);
         } else {
-          ctx.lineTo(x, y);
+          // Subdivide to render smooth curves
+          const stepSize = Math.max(1, Math.floor(frameDiff / 30));
+          for (let f = kfA.frame; f <= kfB.frame; f += stepSize) {
+            const t = (f - kfA.frame) / frameDiff;
+            let tPrime = t;
+            if (easing === 'step') {
+              tPrime = t < 1.0 ? 0.0 : 1.0;
+            } else if (easing === 'ease-in') {
+              tPrime = t * t;
+            } else if (easing === 'ease-out') {
+              tPrime = t * (2.0 - t);
+            } else if (easing === 'ease-in-out') {
+              tPrime = t < 0.5 ? 2.0 * t * t : -1.0 + (4.0 - 2.0 * t) * t;
+            }
+            const val = kfA.value + (kfB.value - kfA.value) * tPrime;
+            const x = leftMargin + (f / maxFrames) * graphWidth;
+            const y = topMargin + (1 - (val - config.min) / (config.max - config.min)) * graphHeight;
+            ctx.lineTo(x, y);
+          }
+          ctx.lineTo(xB, yB);
         }
       }
+
+      // Draw last flat line from last keyframe frame to end of duration
+      const lastKf = mod.keyframes[mod.keyframes.length - 1];
+      if (lastKf.frame < maxFrames) {
+        const y = topMargin + (1 - (lastKf.value - config.min) / (config.max - config.min)) * graphHeight;
+        ctx.lineTo(leftMargin + graphWidth, y);
+      }
+
       ctx.strokeStyle = '#c084fc';
       ctx.lineWidth = 2;
       ctx.shadowBlur = 4;
@@ -854,6 +1127,11 @@ export class Controls {
    * Rebuilds the Inspector details panel for the active layer.
    */
   rebuildInspector() {
+    // Auto-restore dock if popup window was closed externally
+    if (this.isDetached && (!this.popupWindow || this.popupWindow.closed)) {
+      this.attachInspector();
+    }
+
     this.inspectorContentEl.innerHTML = '';
 
     if (!this.activeLayerId) {
@@ -1125,14 +1403,23 @@ export class Controls {
         e.stopPropagation();
         const duration = parseFloat(this.exportDurationEl.value) || 10;
         const maxFrames = duration * 60;
-        const currentFrame = Math.max(0, Math.min(maxFrames, Math.round((this.mainApp.accumulatedTime / 1000) * 60)));
+        let currentFrame = Math.max(0, Math.min(maxFrames, Math.round((this.mainApp.accumulatedTime / 1000) * 60)));
+
+        // Snap feature
+        const snapVal = this.timelineSnapSelectEl ? this.timelineSnapSelectEl.value : 'off';
+        if (snapVal !== 'off') {
+          const snap = parseInt(snapVal, 10);
+          currentFrame = Math.round(currentFrame / snap) * snap;
+          currentFrame = Math.max(0, Math.min(maxFrames, currentFrame));
+        }
+
         const currentVal = isFx ? layer.effects[config.name] : layer.generator.params[config.name];
 
         const existingKf = mod.keyframes.find(k => k.frame === currentFrame);
         if (existingKf) {
           existingKf.value = currentVal;
         } else {
-          mod.keyframes.push({ frame: currentFrame, value: currentVal });
+          mod.keyframes.push({ frame: currentFrame, value: currentVal, easing: 'linear' });
         }
         mod.keyframes.sort((a, b) => a.frame - b.frame);
 
@@ -1144,6 +1431,8 @@ export class Controls {
         this.keyPreciseFrameEl.disabled = false;
         this.keyPreciseValueEl.value = kf.value.toFixed(4);
         this.keyPreciseValueEl.disabled = false;
+        this.keyPreciseEasingEl.value = kf.easing || 'linear';
+        this.keyPreciseEasingEl.disabled = false;
         this.btnKeyPreciseDeleteEl.disabled = false;
 
         this.mainApp.renderSingleFrame();
@@ -2024,7 +2313,18 @@ export class Controls {
         newLayer.effects = { ...newLayer.effects, ...lData.effects };
       }
       if (lData.modulations) {
-        newLayer.modulations = { ...newLayer.modulations, ...lData.modulations };
+        for (let paramName in lData.modulations) {
+          if (newLayer.modulations[paramName]) {
+            const srcMod = lData.modulations[paramName];
+            newLayer.modulations[paramName].enabled = srcMod.enabled;
+            newLayer.modulations[paramName].min = srcMod.min;
+            newLayer.modulations[paramName].max = srcMod.max;
+            newLayer.modulations[paramName].timePct = srcMod.timePct !== undefined ? srcMod.timePct : 50;
+            newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
+            newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
+            newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+          }
+        }
       }
 
       // Set focus to the newly imported layer
@@ -2119,6 +2419,9 @@ export class Controls {
       }, 50);
     });
 
+    // Bind keydown shortcut listener to popup window
+    this.popupWindow.addEventListener('keydown', this.boundGlobalKeyDown);
+
     // 5. Replace main window inspector body with floating placeholder
     this.originalInspectorContentEl.innerHTML = `
       <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; color: var(--color-text-muted); padding: 2rem; gap: 1rem;">
@@ -2145,8 +2448,11 @@ export class Controls {
     this.activeDocument = document;
 
     // Close the popup if it's still open
-    if (this.popupWindow && !this.popupWindow.closed) {
-      this.popupWindow.close();
+    if (this.popupWindow) {
+      if (!this.popupWindow.closed) {
+        this.popupWindow.removeEventListener('keydown', this.boundGlobalKeyDown);
+        this.popupWindow.close();
+      }
     }
     this.popupWindow = null;
 

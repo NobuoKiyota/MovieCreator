@@ -308,6 +308,9 @@ export class Layer {
 
     for (let key in this.modulations) {
       const mod = this.modulations[key];
+      if (!mod.keyframes) {
+        mod.keyframes = [];
+      }
       let val;
 
       if (mod.keyframeEnabled) {
@@ -339,7 +342,18 @@ export class Layer {
               val = kfB.value;
             } else {
               const t = (currentFrame - kfA.frame) / frameDiff;
-              val = kfA.value + (kfB.value - kfA.value) * t;
+              const easing = kfA.easing || 'linear';
+              let tPrime = t;
+              if (easing === 'step') {
+                tPrime = t < 1.0 ? 0.0 : 1.0;
+              } else if (easing === 'ease-in') {
+                tPrime = t * t;
+              } else if (easing === 'ease-out') {
+                tPrime = t * (2.0 - t);
+              } else if (easing === 'ease-in-out') {
+                tPrime = t < 0.5 ? 2.0 * t * t : -1.0 + (4.0 - 2.0 * t) * t;
+              }
+              val = kfA.value + (kfB.value - kfA.value) * tPrime;
             }
           }
         }
