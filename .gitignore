@@ -4,3 +4,4 @@ dist/
 *.mp4
 ai_archives/
 .DS_Store
+data/

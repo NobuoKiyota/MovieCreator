@@ -51,6 +51,8 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
 
   const projectsDir = path.resolve(workspaceRoot, 'projects');
   const presetsDir = path.resolve(workspaceRoot, 'presets');
+  const dataDir = path.resolve(workspaceRoot, 'data');
+  const scoresPath = path.join(dataDir, 'scores.json');
 
   // ディレクトリがなければ自動作成する
   try {
@@ -59,6 +61,12 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     }
     if (!fs.existsSync(presetsDir)) {
       fs.mkdirSync(presetsDir, { recursive: true });
+    }
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    if (!fs.existsSync(scoresPath)) {
+      fs.writeFileSync(scoresPath, '[]', 'utf-8');
     }
   } catch (err) {
     console.error('[API Server] Storage directories creation failed:', err);
@@ -167,6 +175,75 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     } catch (err) {
       console.error('[API Server] /api/load execution error:', err);
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // 4. POST /api/score - Save layer parameters and user score evaluation
+  if (req.method === 'POST' && pathname === '/api/score') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        if (!body) {
+          throw new Error('Request body is empty');
+        }
+        const parsed = JSON.parse(body);
+        const { layerType, params, effects, modulations, score, reasons } = parsed;
+
+        if (!layerType || !score) {
+          throw new Error('layerType and score parameters are required');
+        }
+
+        // Load current scores.json
+        let scores = [];
+        if (fs.existsSync(scoresPath)) {
+          const fileContent = fs.readFileSync(scoresPath, 'utf-8');
+          scores = JSON.parse(fileContent);
+        }
+
+        // Append new score evaluation record
+        const record = {
+          id: Date.now() + Math.random().toString(36).substr(2, 5),
+          timestamp: new Date().toISOString(),
+          layerType,
+          params: params || {},
+          effects: effects || {},
+          modulations: modulations || {},
+          score,
+          reasons: reasons || []
+        };
+
+        scores.push(record);
+
+        // Write back to scores.json
+        fs.writeFileSync(scoresPath, JSON.stringify(scores, null, 2), 'utf-8');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, record }));
+      } catch (err) {
+        console.error('[API Server] /api/score execution error:', err);
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 5. GET /api/scores - Retrieve all score histories
+  if (req.method === 'GET' && pathname === '/api/scores') {
+    try {
+      let scores = [];
+      if (fs.existsSync(scoresPath)) {
+        const fileContent = fs.readFileSync(scoresPath, 'utf-8');
+        scores = JSON.parse(fileContent);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(scores));
+    } catch (err) {
+      console.error('[API Server] /api/scores execution error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
     }
     return;

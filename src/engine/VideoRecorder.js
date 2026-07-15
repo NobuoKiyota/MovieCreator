@@ -1,8 +1,9 @@
-import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from 'mp4-muxer';
+import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from 'webm-muxer';
 
 /**
  * Handles frame-by-frame offline rendering and exporting to MP4 (via WebCodecs & mp4-muxer)
- * or Transparent WebM (via MediaRecorder).
+ * or Transparent WebM (via WebCodecs & webm-muxer).
  */
 export class VideoRecorder {
   constructor(canvas, layerManager) {
@@ -25,18 +26,40 @@ export class VideoRecorder {
       duration = 10,       // Duration in seconds
       fps = 60,            // Export Frame Rate
       bgMode = 'black',    // Background Mode
-      fadeOutDuration = 2.0 // Master fade out duration in seconds
+      fadeOutDuration = 2.0, // Master fade out duration in seconds
+      width = 1920,
+      height = 1080
     } = options;
 
     const totalFrames = duration * fps;
-    const width = this.canvas.width;
-    const height = this.canvas.height;
+    const originalWidth = this.canvas.width;
+    const originalHeight = this.canvas.height;
 
-    // Use MediaRecorder for transparent WebM export (since MP4/H.264 doesn't support alpha)
-    if (bgMode === 'transparent') {
-      await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete);
-    } else {
-      await this.exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete);
+    // Temporarily resize canvas and layerManager for export resolution
+    this.canvas.width = width;
+    this.canvas.height = height;
+    if (this.layerManager && this.layerManager.resize) {
+      this.layerManager.resize(width, height);
+    }
+
+    try {
+      // Use webm-muxer + WebCodecs VP9 for transparent WebM export
+      if (bgMode === 'transparent') {
+        await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
+      } else {
+        await this.exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
+      }
+    } catch (err) {
+      console.error('Export process encountered error:', err);
+    } finally {
+      // Safely restore original screen resolution
+      this.canvas.width = originalWidth;
+      this.canvas.height = originalHeight;
+      if (this.layerManager && this.layerManager.resize) {
+        this.layerManager.resize(originalWidth, originalHeight);
+      }
+      this.isRecording = false;
+      if (onComplete) onComplete();
     }
   }
 
@@ -44,7 +67,7 @@ export class VideoRecorder {
    * Off-line high-quality MP4 export using WebCodecs (No frame drops, frame-accurate)
    * Falls back through codec profiles automatically if a codec is unsupported.
    */
-  async exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete) {
+  async exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
@@ -57,7 +80,7 @@ export class VideoRecorder {
     }
 
     // --- Codec auto-detection with isConfigSupported() ---
-    // Try H.264 profiles in descending quality order, then VP8 (WebM)
+    // Try H.264 profiles in descending quality order
     const codecCandidates = [
       { codec: 'avc1.640028', muxerCodec: 'avc', ext: 'mp4', mime: 'video/mp4' },  // H.264 High
       { codec: 'avc1.4d0028', muxerCodec: 'avc', ext: 'mp4', mime: 'video/mp4' },  // H.264 Main
@@ -88,13 +111,13 @@ export class VideoRecorder {
     if (!chosenCodec) {
       // H.264 not available at all — fall back to real-time WebM export
       console.warn('H.264 not supported. Falling back to WebM (MediaRecorder) export.');
-      await this.exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete);
+      await this.exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
       return;
     }
 
     // 1. Initialize MP4 Muxer with chosen codec (Standard MP4 with moov at front for Windows compatibility)
-    const muxer = new Muxer({
-      target: new ArrayBufferTarget(),
+    const muxer = new Mp4Muxer({
+      target: new Mp4ArrayBufferTarget(),
       video: {
         codec: chosenCodec.muxerCodec,
         width, height
@@ -178,15 +201,13 @@ export class VideoRecorder {
       alert(`Export failed: ${err.message}`);
     } finally {
       try { if (encoder && encoder.state !== 'closed') encoder.close(); } catch (_) {}
-      this.isRecording = false;
-      if (onComplete) onComplete();
     }
   }
 
   /**
    * Fallback WebM export using MediaRecorder (used when WebCodecs H.264 is unsupported)
    */
-  async exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete) {
+  async exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
     console.log('Using MediaRecorder fallback for WebM export...');
 
     const stream = this.canvas.captureStream(fps);
@@ -241,44 +262,15 @@ export class VideoRecorder {
     } catch (err) {
       console.error('WebM fallback export failed:', err);
       alert('Export failed: ' + err.message);
-    } finally {
-      this.isRecording = false;
-      if (onComplete) onComplete();
     }
   }
 
   /**
-   * Capture-stream based transparent WebM export using MediaRecorder
+   * Off-line high-quality transparent WebM export using WebCodecs (VP9) and webm-muxer
    */
-  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, onComplete) {
-    const stream = this.canvas.captureStream(fps);
-    
-    // Choose VP9 as it supports alpha transparency
-    let options = { mimeType: 'video/webm; codecs=vp9' };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-      options = { mimeType: 'video/webm; codecs=vp8' }; // Fallback
-    }
-
-    const mediaRecorder = new MediaRecorder(stream, options);
-    const chunks = [];
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-      }
-    };
-
-    // Save final creation promise
-    const recorderPromise = new Promise((resolve) => {
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
-        resolve();
-      };
-    });
-
-    mediaRecorder.start();
-
+  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
+    const width = this.canvas.width;
+    const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
     const fadeStartFrame = totalFrames - (fadeOutDuration * fps);
 
@@ -288,14 +280,44 @@ export class VideoRecorder {
       if (layer.feedbackHandler) layer.feedbackHandler.clear();
     }
 
-    // Since MediaRecorder records in real-time, we must throttle/sync the loop
-    // to match real timing as close as possible
-    const frameInterval = 1000 / fps;
-    
+    // 1. Initialize WebM Muxer with VP9 Alpha config
+    const muxer = new WebmMuxer({
+      target: new WebmArrayBufferTarget(),
+      video: {
+        codec: 'V_VP9',
+        width, height,
+        alpha: true // Muxer configuration to output transparent WebM
+      }
+    });
+
+    let encoder = null;
     try {
+      let hasEncoderError = false;
+
+      encoder = new VideoEncoder({
+        output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+        error: (e) => {
+          console.error('VideoEncoder error:', e);
+          hasEncoderError = true;
+        }
+      });
+
+      // Configure VP9 codec for alpha transparency support
+      encoder.configure({
+        codec: 'vp09.00.10.08',
+        width, height,
+        bitrate: 12_000_000,
+        framerate: fps,
+        alpha: 'keep' // Retain alpha channel in encoded frames
+      });
+
+      // 2. Frame-by-frame rendering loop
       for (let frame = 0; frame < totalFrames; frame++) {
+        if (hasEncoderError) break;
+
         const time = (frame / fps) * 1000;
-        
+        const frameTimeUs = Math.round((frame / fps) * 1_000_000);
+
         this.layerManager.update(time, frame);
 
         let fadeFactor = 1.0;
@@ -303,23 +325,45 @@ export class VideoRecorder {
           fadeFactor = 1.0 - ((frame - fadeStartFrame) / (totalFrames - fadeStartFrame));
         }
 
+        // Draw with transparent background setting
         this.layerManager.draw(ctx, time, frame, bgMode, fadeFactor);
 
-        // Sleep to throttle frame rate matching MediaRecorder stream ingestion rate
-        await new Promise(resolve => setTimeout(resolve, frameInterval));
+        const frameDurationUs = Math.round(1_000_000 / fps);
+        const videoFrame = new VideoFrame(this.canvas, {
+          timestamp: frameTimeUs,
+          duration: frameDurationUs,
+          alpha: 'keep' // Preserves transparency at Frame level
+        });
+        const keyFrame = frame % (fps * 2) === 0;
+        encoder.encode(videoFrame, { keyFrame });
+        videoFrame.close();
+
+        // Prevent queue lockups
+        if (frame % 2 === 0 || encoder.encodeQueueSize > 10) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
 
         if (onProgress) {
           onProgress(Math.round((frame / totalFrames) * 100));
         }
       }
 
-      mediaRecorder.stop();
-      await recorderPromise;
+      if (!hasEncoderError) {
+        await encoder.flush();
+        muxer.finalize();
+
+        const buffer = muxer.target.buffer;
+        const blob = new Blob([buffer], { type: 'video/webm' });
+        this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
+      } else {
+        alert('WebM alpha encoding failed.');
+      }
+
     } catch (err) {
-      console.error('WebM Export failed:', err);
+      console.error('WebM alpha export failed:', err);
+      alert(`WebM alpha export failed: ${err.message}`);
     } finally {
-      this.isRecording = false;
-      if (onComplete) onComplete();
+      try { if (encoder && encoder.state !== 'closed') encoder.close(); } catch (_) {}
     }
   }
 

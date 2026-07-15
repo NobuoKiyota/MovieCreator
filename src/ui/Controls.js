@@ -25,6 +25,8 @@ export class Controls {
     this.btnExportEl = document.getElementById('btn-export');
     this.exportDurationEl = document.getElementById('export-duration');
     this.exportBgEl = document.getElementById('export-bg');
+    this.exportResolutionEl = document.getElementById('export-resolution');
+    this.exportFpsEl = document.getElementById('export-fps');
     this.masterFadeOutEl = document.getElementById('master-fade-out');
 
     // Project Save/Load elements (API based)
@@ -138,9 +140,18 @@ export class Controls {
 
     // 4. Export Video
     this.btnExportEl.addEventListener('click', () => {
+      const resVal = this.exportResolutionEl ? this.exportResolutionEl.value : '1080p';
+      let w = 1920, h = 1080;
+      if (resVal === '720p') { w = 1280; h = 720; }
+      else if (resVal === '4K') { w = 3840; h = 2160; }
+
+      const fpsVal = this.exportFpsEl ? parseInt(this.exportFpsEl.value, 10) : 60;
+
       const options = {
         duration: parseFloat(this.exportDurationEl.value) || 10,
-        fps: 60,
+        fps: fpsVal,
+        width: w,
+        height: h,
         bgMode: this.exportBgEl.value,
         fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 2.0
       };
@@ -222,6 +233,17 @@ export class Controls {
     if (this.layerManager.layers.length > 0) {
       this.activeLayerId = this.layerManager.layers[0].id;
     }
+    // Load past evaluation scores history
+    this.scoreData = [];
+    fetch('/api/scores')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          this.scoreData = data;
+        }
+      })
+      .catch(err => console.error('Failed to load score history:', err));
+
     this.rebuildLayersList();
     this.rebuildInspector();
     this.initTimeline();
@@ -1180,11 +1202,17 @@ export class Controls {
         <span class="spread-val-display" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-accent); width: 35px; text-align: right;">${currentSpread}%</span>
       </div>
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
+      <div style="display: flex; gap: 0.25rem;">
+        <button class="btn btn-secondary btn-small btn-score-good" title="Rate: Good! (Prioritize similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👍</button>
+        <button class="btn btn-secondary btn-small btn-score-bad" title="Rate: Bad! (Avoid similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👎</button>
+      </div>
     `;
 
     const spreadSlider = randomizerHeader.querySelector('.random-spread-slider');
     const spreadDisplay = randomizerHeader.querySelector('.spread-val-display');
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
+    const btnGood = randomizerHeader.querySelector('.btn-score-good');
+    const btnBad = randomizerHeader.querySelector('.btn-score-bad');
 
     spreadSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
@@ -1196,6 +1224,17 @@ export class Controls {
       this.randomizeLayer(layer, layer.randomSpread);
       this.rebuildInspector(); // Redraw UI fields to reflect values
       this.mainApp.renderSingleFrame();
+    });
+
+    btnGood.addEventListener('click', () => {
+      this.rateLayer(layer, 'good', btnGood);
+    });
+
+    btnBad.addEventListener('click', async () => {
+      const selectedReasons = await this.showBadScoreDialog();
+      if (selectedReasons !== null) {
+        this.rateLayer(layer, 'bad', btnBad, selectedReasons);
+      }
     });
 
     this.inspectorContentEl.appendChild(randomizerHeader);
@@ -1576,73 +1615,353 @@ export class Controls {
    */
   randomizeLayer(layer, spreadPct) {
     const spread = spreadPct / 100;
+    const badEvaluations = (this.scoreData || []).filter(evalItem => evalItem.layerType === layer.type && evalItem.score === 'bad');
 
-    // 1. Generator Parameters
-    const genConfigs = layer.generator.getParameterConfig();
-    genConfigs.forEach(config => {
-      if (config.type === 'range') {
-        const absoluteRange = config.max - config.min;
-        const currentVal = layer.generator.params[config.name];
+    // Analyze negative reasons from past bad evaluations
+    const hasStrobeExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('strobe_excess'));
+    const hasScaleIssue = badEvaluations.some(e => e.reasons && (e.reasons.includes('scale_too_small') || e.reasons.includes('scale_too_large')));
+    const hasAspectBreak = badEvaluations.some(e => e.reasons && e.reasons.includes('aspect_break'));
+    const hasTooSimple = badEvaluations.some(e => e.reasons && e.reasons.includes('too_simple'));
+    const hasTooChaotic = badEvaluations.some(e => e.reasons && e.reasons.includes('too_chaotic'));
+
+    let attempt = 0;
+    let bestCandidate = null;
+    let bestMinMaxSimilarity = 1.0;
+
+    for (attempt = 0; attempt < 10; attempt++) {
+      const candidateParams = {};
+      const candidateEffects = {};
+      const candidateModulations = {};
+
+      const genConfigs = layer.generator.getParameterConfig();
+
+      // 1. Generator Parameters with dynamic constraints
+      genConfigs.forEach(config => {
+        if (config.type === 'range') {
+          let localMin = config.min;
+          let localMax = config.max;
+
+          const isCount = config.name === 'count' || config.name === 'particleCount' || config.name === 'lineCount';
+          const isFreq = config.name === 'frequency' || config.name === 'density' || config.name === 'speed';
+
+          // scale_too_small / scale_too_large constraint
+          if (hasScaleIssue && isCount) {
+            localMin = config.min + (config.max - config.min) * 0.2;
+          }
+          // too_simple constraint
+          if (hasTooSimple && (isCount || isFreq)) {
+            localMin = config.min + (config.max - config.min) * 0.25;
+          }
+
+          const absoluteRange = localMax - localMin;
+          const currentVal = layer.generator.params[config.name] !== undefined 
+            ? layer.generator.params[config.name] 
+            : (localMin + absoluteRange / 2);
+          
+          const maxOffset = absoluteRange * spread;
+          let center = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
+          center = Math.max(localMin, Math.min(localMax, center));
+
+          candidateParams[config.name] = center;
+
+          const mod = layer.modulations[config.name];
+          if (mod) {
+            if (mod.enabled) {
+              const lfoRange = Math.random() * maxOffset;
+              candidateModulations[config.name] = {
+                enabled: true,
+                min: Math.max(localMin, center - lfoRange / 2),
+                max: Math.min(localMax, center + lfoRange / 2)
+              };
+            } else {
+              candidateModulations[config.name] = {
+                enabled: false,
+                min: center,
+                max: center
+              };
+            }
+          }
+        } else if (config.type === 'color') {
+          const h = Math.floor(Math.random() * 360);
+          const s = 85 + Math.floor(Math.random() * 15);
+          const l = 45 + Math.floor(Math.random() * 15);
+          candidateParams[config.name] = this.hslToHex(h, s, l);
+        }
+      });
+
+      // 2. Common FX parameters with dynamic constraints
+      // Pre-calculate rotation to apply diagonal coverage (sqrt(2) = 1.42) when aspect break is reported
+      let tempRotation = 0;
+      const rotConfig = this.fxConfigs['rotation'];
+      if (rotConfig) {
+        const absoluteRange = rotConfig.max - rotConfig.min;
+        const currentVal = layer.effects['rotation'] || 0;
+        const maxOffset = absoluteRange * spread;
+        tempRotation = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
+        tempRotation = Math.max(rotConfig.min, Math.min(rotConfig.max, tempRotation));
+      }
+
+      for (let fxName in this.fxConfigs) {
+        const config = this.fxConfigs[fxName];
         
+        let localMin = config.min;
+        let localMax = config.max;
+
+        // strobe_excess constraint
+        if (fxName === 'strobe') {
+          if (hasStrobeExcess) {
+            const isStrobeEnabled = Math.random() < 0.05; // 5% probability
+            if (!isStrobeEnabled) {
+              candidateEffects['strobe'] = 0;
+              candidateModulations['strobe'] = { enabled: false, min: 0, max: 0 };
+              continue;
+            } else {
+              localMax = Math.min(1.5, config.max); // limit intensity
+            }
+          }
+        }
+
+        // scale constraints
+        if (fxName === 'scale') {
+          if (hasScaleIssue) {
+            localMin = Math.max(0.8, config.min);
+          }
+          if (hasAspectBreak && Math.abs(tempRotation) > 5) {
+            localMin = Math.max(1.42, localMin); // force diagonal cover
+          }
+        }
+
+        // too_simple constraints
+        if (hasTooSimple) {
+          if (fxName === 'glowIntensity') {
+            localMin = Math.max(5.0, config.min);
+          }
+          if (fxName === 'feedbackDecay') {
+            localMin = Math.max(0.30, config.min);
+          }
+        }
+
+        // too_chaotic constraints
+        if (hasTooChaotic) {
+          if (fxName === 'glowIntensity') {
+            localMax = Math.min(20.0, config.max);
+          }
+          if (fxName === 'feedbackDecay') {
+            localMax = Math.min(0.80, config.max);
+          }
+        }
+
+        const absoluteRange = localMax - localMin;
+        const currentVal = layer.effects[fxName] !== undefined ? layer.effects[fxName] : (localMin + absoluteRange / 2);
+
         const maxOffset = absoluteRange * spread;
         let center = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
-        center = Math.max(config.min, Math.min(config.max, center));
+        center = Math.max(localMin, Math.min(localMax, center));
 
-        const mod = layer.modulations[config.name];
+        if (fxName === 'feedbackDecay') {
+          center = Math.min(0.92, center); // Hard cap to prevent feedback loops
+        }
+
+        if (fxName === 'rotation') {
+          center = tempRotation;
+        }
+
+        candidateEffects[fxName] = center;
+
+        const mod = layer.modulations[fxName];
         if (mod) {
           if (mod.enabled) {
             const lfoRange = Math.random() * maxOffset;
-            mod.min = Math.max(config.min, center - lfoRange / 2);
-            mod.max = Math.min(config.max, center + lfoRange / 2);
+            let lfoMin = Math.max(localMin, center - lfoRange / 2);
+            let lfoMax = Math.min(localMax, center + lfoRange / 2);
+            if (fxName === 'feedbackDecay') {
+              lfoMax = Math.min(0.92, lfoMax);
+            }
+            candidateModulations[fxName] = {
+              enabled: true,
+              min: lfoMin,
+              max: lfoMax
+            };
           } else {
-            layer.generator.params[config.name] = center;
-            mod.min = center;
-            mod.max = center;
-          }
-        }
-      } else if (config.type === 'color') {
-        const h = Math.floor(Math.random() * 360);
-        const s = 85 + Math.floor(Math.random() * 15);
-        const l = 45 + Math.floor(Math.random() * 15);
-        layer.generator.params[config.name] = this.hslToHex(h, s, l);
-      }
-    });
-
-    // 2. Common FX parameters (including Motion Trails / Trail Spin / Noise Warp)
-    for (let fxName in this.fxConfigs) {
-      const config = this.fxConfigs[fxName];
-      const absoluteRange = config.max - config.min;
-      const currentVal = layer.effects[fxName];
-
-      const maxOffset = absoluteRange * spread;
-      let center = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
-      center = Math.max(config.min, Math.min(config.max, center));
-
-      // feedbackDecay のホワイトアウト防止クランプ
-      if (fxName === 'feedbackDecay') {
-        center = Math.min(0.92, center);
-      }
-
-      const mod = layer.modulations[fxName];
-      if (mod) {
-        if (mod.enabled) {
-          const lfoRange = Math.random() * maxOffset;
-          mod.min = Math.max(config.min, center - lfoRange / 2);
-          mod.max = Math.min(config.max, center + lfoRange / 2);
-          // feedbackDecay LFO max もクランプ
-          if (fxName === 'feedbackDecay') {
-            mod.max = Math.min(0.92, mod.max);
+            candidateModulations[fxName] = {
+              enabled: false,
+              min: center,
+              max: center
+            };
           }
         } else {
-          layer.effects[fxName] = center;
-          mod.min = center;
-          mod.max = center;
+          candidateModulations[fxName] = {
+            enabled: false,
+            min: center,
+            max: center
+          };
         }
+      }
+
+      const candidateState = {
+        params: candidateParams,
+        effects: candidateEffects,
+        modulations: candidateModulations
+      };
+
+      if (badEvaluations.length === 0) {
+        bestCandidate = candidateState;
+        break;
+      }
+
+      // Check similarity with past Bad evaluations
+      let maxSimilarityFound = 0.0;
+
+      for (let badEval of badEvaluations) {
+        let paramDiffSum = 0;
+        let paramCount = 0;
+
+        genConfigs.forEach(config => {
+          if (config.type === 'range') {
+            const absoluteRange = config.max - config.min;
+            if (absoluteRange <= 0) return;
+
+            const badVal = (badEval.params && badEval.params[config.name] !== undefined)
+              ? badEval.params[config.name]
+              : config.min + absoluteRange / 2;
+
+            const currentVal = candidateParams[config.name];
+            
+            const normBad = (badVal - config.min) / absoluteRange;
+            const normCurrent = (currentVal - config.min) / absoluteRange;
+            
+            paramDiffSum += Math.abs(normCurrent - normBad);
+            paramCount++;
+          }
+        });
+
+        for (let fxName in this.fxConfigs) {
+          const config = this.fxConfigs[fxName];
+          const absoluteRange = config.max - config.min;
+          if (absoluteRange <= 0) continue;
+
+          const badVal = (badEval.effects && badEval.effects[fxName] !== undefined)
+            ? badEval.effects[fxName]
+            : config.min + absoluteRange / 2;
+
+          const currentVal = candidateEffects[fxName];
+
+          const normBad = (badVal - config.min) / absoluteRange;
+          const normCurrent = (currentVal - config.min) / absoluteRange;
+
+          paramDiffSum += Math.abs(normCurrent - normBad);
+          paramCount++;
+        }
+
+        if (paramCount > 0) {
+          const avgDiff = paramDiffSum / paramCount;
+          const similarity = 1.0 - avgDiff;
+          if (similarity > maxSimilarityFound) {
+            maxSimilarityFound = similarity;
+          }
+        }
+      }
+
+      if (maxSimilarityFound < 0.90) {
+        bestCandidate = candidateState;
+        break;
+      }
+
+      if (maxSimilarityFound < bestMinMaxSimilarity) {
+        bestMinMaxSimilarity = maxSimilarityFound;
+        bestCandidate = candidateState;
+      }
+      
+      console.log(`[Score Filter] Randomize attempt ${attempt + 1}: Bad similarity is ${Math.round(maxSimilarityFound * 100)}%. Rerolling...`);
+    }
+
+    if (bestCandidate) {
+      if (attempt >= 10) {
+        console.warn(`[Score Filter] Randomize reached max attempts. Using best available candidate with bad similarity of ${Math.round(bestMinMaxSimilarity * 100)}%`);
       } else {
-        // modulation未初期化の場合も値のみ更新（後方互換）
-        layer.effects[fxName] = center;
+        console.log(`[Score Filter] Randomize succeeded on attempt ${attempt + 1}.`);
+      }
+
+      for (let key in bestCandidate.params) {
+        layer.generator.params[key] = bestCandidate.params[key];
+      }
+      for (let key in bestCandidate.effects) {
+        layer.effects[key] = bestCandidate.effects[key];
+      }
+      for (let key in bestCandidate.modulations) {
+        const targetMod = layer.modulations[key];
+        const srcMod = bestCandidate.modulations[key];
+        if (targetMod && srcMod) {
+          targetMod.min = srcMod.min;
+          targetMod.max = srcMod.max;
+        }
       }
     }
+  }
+
+  rateLayer(layer, scoreType, buttonEl, reasons = []) {
+    const payload = {
+      layerType: layer.type,
+      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+      effects: JSON.parse(JSON.stringify(layer.effects || {})),
+      modulations: {},
+      reasons: reasons
+    };
+
+    for (let pName in layer.modulations) {
+      const mod = layer.modulations[pName];
+      payload.modulations[pName] = {
+        keyframeEnabled: mod.keyframeEnabled,
+        keyframes: JSON.parse(JSON.stringify(mod.keyframes || [])),
+        lfoEnabled: mod.lfoEnabled,
+        lfoType: mod.lfoType,
+        lfoRate: mod.lfoRate,
+        lfoAmount: mod.lfoAmount
+      };
+    }
+    payload.score = scoreType;
+
+    fetch('/api/score', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        if (!this.scoreData) {
+          this.scoreData = [];
+        }
+        this.scoreData.push(data.record);
+
+        const scoreLabel = scoreType === 'good' ? 'Good! 👍' : 'Bad! 👎';
+        this.showToast(`Saved score: ${scoreLabel}`, 'success');
+
+        if (scoreType === 'good') {
+          buttonEl.style.background = '#065f46';
+          buttonEl.style.borderColor = '#10b981';
+          buttonEl.style.boxShadow = '0 0 12px #10b981';
+        } else {
+          buttonEl.style.background = '#7f1d1d';
+          buttonEl.style.borderColor = '#ef4444';
+          buttonEl.style.boxShadow = '0 0 12px #ef4444';
+        }
+
+        setTimeout(() => {
+          buttonEl.style.background = '';
+          buttonEl.style.borderColor = '';
+          buttonEl.style.boxShadow = '';
+        }, 1000);
+      } else {
+        this.showToast('Failed to save score: ' + (data.error || 'Unknown error'), 'error');
+      }
+    })
+    .catch(err => {
+      console.error('Failed to submit score:', err);
+      this.showToast('Failed to submit score to server', 'error');
+    });
   }
 
   hslToHex(h, s, l) {
@@ -2081,6 +2400,88 @@ export class Controls {
     });
   }
 
+  showBadScoreDialog() {
+    return new Promise((resolve) => {
+      const overlay = this.createElement('div');
+      overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 9999;
+        background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      const reasons = [
+        { id: 'strobe_excess', text: 'strobe_excess : ストロボ過多 (チカチカしすぎる)' },
+        { id: 'scale_too_small', text: 'scale_too_small : スケールが小さすぎる (こじんまり)' },
+        { id: 'scale_too_large', text: 'scale_too_large : 全体カバー不足 (もっと全体に広げたい)' },
+        { id: 'aspect_break', text: 'aspect_break : 回転によるアスペクト破綻 (画面端の黒い隙間)' },
+        { id: 'too_simple', text: 'too_simple : シンプルすぎる (スカスカ・地味)' },
+        { id: 'too_chaotic', text: 'too_chaotic : 過剰演出すぎる (光すぎ・残像過多・白飛び)' }
+      ];
+
+      const checkboxesHtml = reasons.map(r => `
+        <label style="display: flex; align-items: center; gap: 0.5rem; color: #9ca3af; font-size: 0.85rem; cursor: pointer; user-select: none; margin-bottom: 0.2rem;">
+          <input type="checkbox" name="bad-reason" value="${r.id}" style="
+            accent-color: #ef4444; cursor: pointer; width: 15px; height: 15px;
+          ">
+          <span>${r.text}</span>
+        </label>
+      `).join('');
+
+      overlay.innerHTML = `
+        <div style="
+          background: #1a1a2e; border: 1px solid #ef4444;
+          border-radius: 12px; padding: 1.5rem 2rem; min-width: 420px;
+          box-shadow: 0 0 30px rgba(239,68,68,0.4);
+          display: flex; flex-direction: column; gap: 1rem;
+        ">
+          <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">Rate Bad Parameters</h3>
+          <p style="margin: 0; font-size: 0.85rem; color: #9ca3af; line-height: 1.4; white-space: normal; text-align: left;">
+            Select negative reasons for this generation:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; text-align: left; padding: 0.5rem 0;">
+            ${checkboxesHtml}
+          </div>
+          <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <button id="bad-dialog-cancel" style="
+              padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563;
+              background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;
+            ">Cancel</button>
+            <button id="bad-dialog-submit" style="
+              padding: 0.4rem 1.2rem; border-radius: 6px; border: none;
+              background: #ef4444; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+              box-shadow: 0 0 10px rgba(239,68,68,0.5);
+            ">Submit Bad Score</button>
+          </div>
+        </div>
+      `;
+
+      (this.activeDocument || document).body.appendChild(overlay);
+
+      const btnSubmit = overlay.querySelector('#bad-dialog-submit');
+      const btnCancel = overlay.querySelector('#bad-dialog-cancel');
+
+      const finish = (selectedReasons) => {
+        (this.activeDocument || document).body.removeChild(overlay);
+        resolve(selectedReasons);
+      };
+
+      btnSubmit.addEventListener('click', () => {
+        const checked = Array.from(overlay.querySelectorAll('input[name="bad-reason"]:checked')).map(el => el.value);
+        finish(checked);
+      });
+
+      btnCancel.addEventListener('click', () => finish(null));
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          window.removeEventListener('keydown', handleKeyDown);
+          finish(null);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+    });
+  }
+
   /**
    * Shows a custom inline save dialog (replaces prompt() which can be suppressed by browsers)
    * Returns a Promise that resolves to the entered name, or null if cancelled.
@@ -2359,7 +2760,7 @@ export class Controls {
     // Open a popup window with suitable width/height for inspector
     this.popupWindow = window.open('', 'MovieCreatorInspector', 'width=460,height=800,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
     if (!this.popupWindow) {
-      alert('Popup blocker prevented opening the inspector window. Please allow popups for this site.');
+      this.showToast('⚠️ Popup blocker prevented opening the inspector window. Please allow popups for this site.', 'error');
       return;
     }
 
