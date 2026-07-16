@@ -1674,33 +1674,49 @@ export class Controls {
             }
           }
 
-          const absoluteRange = localMax - localMin;
-          const currentVal = layer.generator.params[config.name] !== undefined 
+          const range = config.max - config.min;
+          const baseVal = layer.generator.params[config.name] !== undefined 
             ? layer.generator.params[config.name] 
-            : (localMin + absoluteRange / 2);
-          
-          const maxOffset = absoluteRange * spread;
-          let center = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
-          center = Math.max(localMin, Math.min(localMax, center));
+            : (localMin + (localMax - localMin) / 2);
 
-          candidateParams[config.name] = center;
+          const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+          let newVal = baseVal + offset;
+          newVal = Math.max(localMin, Math.min(localMax, newVal));
+
+          candidateParams[config.name] = newVal;
 
           const mod = layer.modulations[config.name];
           if (mod) {
-            if (mod.enabled) {
-              const lfoRange = Math.random() * maxOffset;
-              candidateModulations[config.name] = {
-                enabled: true,
-                min: Math.max(localMin, center - lfoRange / 2),
-                max: Math.min(localMax, center + lfoRange / 2)
-              };
+            const candidateMod = JSON.parse(JSON.stringify(mod));
+
+            if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
+              candidateMod.keyframes.forEach(kf => {
+                const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+                let newKfVal = kf.value + kfOffset;
+                newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
+                kf.value = newKfVal;
+              });
+            } else if (mod.enabled) {
+              const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.2);
+              const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.2);
+              
+              let newMin = mod.min + offsetMin;
+              let newMax = mod.max + offsetMax;
+              
+              newMin = Math.max(localMin, Math.min(localMax, newMin));
+              newMax = Math.max(localMin, Math.min(localMax, newMax));
+              
+              candidateMod.min = newMin;
+              candidateMod.max = newMax;
+
+              const offsetTime = (Math.random() * 2 - 1) * 15;
+              let newTimePct = mod.timePct + offsetTime;
+              candidateMod.timePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
             } else {
-              candidateModulations[config.name] = {
-                enabled: false,
-                min: center,
-                max: center
-              };
+              candidateMod.min = newVal;
+              candidateMod.max = newVal;
             }
+            candidateModulations[config.name] = candidateMod;
           }
         } else if (config.type === 'color') {
           const h = Math.floor(Math.random() * 360);
@@ -1711,14 +1727,13 @@ export class Controls {
       });
 
       // 2. Common FX parameters with dynamic constraints
-      // Pre-calculate rotation to apply diagonal coverage (sqrt(2) = 1.42) when aspect break is reported
       let tempRotation = 0;
       const rotConfig = this.fxConfigs['rotation'];
       if (rotConfig) {
-        const absoluteRange = rotConfig.max - rotConfig.min;
-        const currentVal = layer.effects['rotation'] || 0;
-        const maxOffset = absoluteRange * spread;
-        tempRotation = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
+        const range = rotConfig.max - rotConfig.min;
+        const baseVal = layer.effects['rotation'] !== undefined ? layer.effects['rotation'] : 0;
+        const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+        tempRotation = baseVal + offset;
         tempRotation = Math.max(rotConfig.min, Math.min(rotConfig.max, tempRotation));
       }
 
@@ -1734,7 +1749,15 @@ export class Controls {
             const isStrobeEnabled = Math.random() < 0.05; // 5% probability
             if (!isStrobeEnabled) {
               candidateEffects['strobe'] = 0;
-              candidateModulations['strobe'] = { enabled: false, min: 0, max: 0 };
+              candidateModulations['strobe'] = {
+                enabled: false,
+                min: 0,
+                max: 0,
+                timePct: 50,
+                behavior: 'return',
+                keyframeEnabled: false,
+                keyframes: []
+              };
               continue;
             } else {
               localMax = Math.min(1.5, config.max); // limit intensity
@@ -1778,12 +1801,20 @@ export class Controls {
 
         // Noise Warp constraints (normally kept low, drastically reduced or disabled if noise_warp_excess reported)
         if (fxName === 'distortionIntensity') {
-          localMax = Math.min(12.0, config.max); // Normally keep it low (default config.max is 40)
+          localMax = Math.min(12.0, config.max); // Normally keep it low
           if (hasNoiseWarpExcess) {
             const isWarpEnabled = Math.random() < 0.20; // 80% chance of being completely disabled
             if (!isWarpEnabled) {
               candidateEffects['distortionIntensity'] = 0;
-              candidateModulations['distortionIntensity'] = { enabled: false, min: 0, max: 0 };
+              candidateModulations['distortionIntensity'] = {
+                enabled: false,
+                min: 0,
+                max: 0,
+                timePct: 50,
+                behavior: 'return',
+                keyframeEnabled: false,
+                keyframes: []
+              };
               continue;
             } else {
               localMax = Math.min(4.0, localMax); // Limit max to 4.0 if enabled
@@ -1791,49 +1822,71 @@ export class Controls {
           }
         }
 
-        const absoluteRange = localMax - localMin;
-        const currentVal = layer.effects[fxName] !== undefined ? layer.effects[fxName] : (localMin + absoluteRange / 2);
+        const range = config.max - config.min;
+        const baseVal = layer.effects[fxName] !== undefined ? layer.effects[fxName] : (localMin + (localMax - localMin) / 2);
 
-        const maxOffset = absoluteRange * spread;
-        let center = currentVal + (Math.random() * 2 - 1) * (maxOffset / 2);
-        center = Math.max(localMin, Math.min(localMax, center));
+        const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+        let newVal = baseVal + offset;
+        newVal = Math.max(localMin, Math.min(localMax, newVal));
 
         if (fxName === 'feedbackDecay') {
-          center = Math.min(0.92, center); // Hard cap to prevent feedback loops
+          newVal = Math.min(0.92, newVal); // Hard cap to prevent feedback loops
         }
 
         if (fxName === 'rotation') {
-          center = tempRotation;
+          newVal = tempRotation;
         }
 
-        candidateEffects[fxName] = center;
+        candidateEffects[fxName] = newVal;
 
         const mod = layer.modulations[fxName];
         if (mod) {
-          if (mod.enabled) {
-            const lfoRange = Math.random() * maxOffset;
-            let lfoMin = Math.max(localMin, center - lfoRange / 2);
-            let lfoMax = Math.min(localMax, center + lfoRange / 2);
+          const candidateMod = JSON.parse(JSON.stringify(mod));
+
+          if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
+            candidateMod.keyframes.forEach(kf => {
+              const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+              let newKfVal = kf.value + kfOffset;
+              newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
+              if (fxName === 'feedbackDecay') {
+                newKfVal = Math.min(0.92, newKfVal);
+              }
+              kf.value = newKfVal;
+            });
+          } else if (mod.enabled) {
+            const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.2);
+            const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.2);
+            
+            let newMin = mod.min + offsetMin;
+            let newMax = mod.max + offsetMax;
+            
+            newMin = Math.max(localMin, Math.min(localMax, newMin));
+            newMax = Math.max(localMin, Math.min(localMax, newMax));
+            
             if (fxName === 'feedbackDecay') {
-              lfoMax = Math.min(0.92, lfoMax);
+              newMax = Math.min(0.92, newMax);
             }
-            candidateModulations[fxName] = {
-              enabled: true,
-              min: lfoMin,
-              max: lfoMax
-            };
+            
+            candidateMod.min = newMin;
+            candidateMod.max = newMax;
+
+            const offsetTime = (Math.random() * 2 - 1) * 15;
+            let newTimePct = mod.timePct + offsetTime;
+            candidateMod.timePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
           } else {
-            candidateModulations[fxName] = {
-              enabled: false,
-              min: center,
-              max: center
-            };
+            candidateMod.min = newVal;
+            candidateMod.max = newVal;
           }
+          candidateModulations[fxName] = candidateMod;
         } else {
           candidateModulations[fxName] = {
             enabled: false,
-            min: center,
-            max: center
+            min: newVal,
+            max: newVal,
+            timePct: 50,
+            behavior: 'return',
+            keyframeEnabled: false,
+            keyframes: []
           };
         }
       }
@@ -1932,8 +1985,13 @@ export class Controls {
         const targetMod = layer.modulations[key];
         const srcMod = bestCandidate.modulations[key];
         if (targetMod && srcMod) {
+          targetMod.enabled = srcMod.enabled;
           targetMod.min = srcMod.min;
           targetMod.max = srcMod.max;
+          targetMod.timePct = srcMod.timePct;
+          targetMod.behavior = srcMod.behavior;
+          targetMod.keyframeEnabled = srcMod.keyframeEnabled;
+          targetMod.keyframes = JSON.parse(JSON.stringify(srcMod.keyframes || []));
         }
       }
     }
