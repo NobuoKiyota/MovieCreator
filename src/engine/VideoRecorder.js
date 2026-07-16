@@ -1,5 +1,5 @@
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from 'mp4-muxer';
-import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from 'webm-muxer';
+import WebmMuxer from 'webm-muxer';
 
 /**
  * Handles frame-by-frame offline rendering and exporting to MP4 (via WebCodecs & mp4-muxer)
@@ -282,7 +282,7 @@ export class VideoRecorder {
 
     // 1. Initialize WebM Muxer with VP9 Alpha config
     const muxer = new WebmMuxer({
-      target: new WebmArrayBufferTarget(),
+      target: 'buffer',
       video: {
         codec: 'V_VP9',
         width, height,
@@ -350,11 +350,13 @@ export class VideoRecorder {
 
       if (!hasEncoderError) {
         await encoder.flush();
-        muxer.finalize();
-
-        const buffer = muxer.target.buffer;
-        const blob = new Blob([buffer], { type: 'video/webm' });
-        this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
+        const buffer = muxer.finalize();
+        if (buffer) {
+          const blob = new Blob([buffer], { type: 'video/webm' });
+          this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
+        } else {
+          alert('WebM alpha encoding failed (empty buffer).');
+        }
       } else {
         alert('WebM alpha encoding failed.');
       }
