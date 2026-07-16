@@ -87,7 +87,9 @@ export class Controls {
       glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',     min: 0,     max: 50,   step: 1,     type: 'range' },
       feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails', min: 0.0,   max: 0.95, step: 0.01,  type: 'range' },
       feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',    min: -0.05, max: 0.05, step: 0.001, type: 'range' },
-      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',    min: 0,     max: 40,   step: 1,     type: 'range' }
+      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',    min: 0,     max: 40,   step: 1,     type: 'range' },
+      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   min: 0,     max: 12,   step: 1,     type: 'range' },
+      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr', min: 0,     max: 30,   step: 0.5,   type: 'range' }
     };
     this.activeDocument = document;
   }

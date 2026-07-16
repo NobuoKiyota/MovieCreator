@@ -2,28 +2,31 @@
   "version": "1.0",
   "type": "movie-creator-layer-preset",
   "layer": {
-    "type": "growing-sketch",
-    "name": "Sketch Growth01",
+    "type": "cube-3d",
+    "name": "Rotating Glowing Cube02",
     "opacity": 1,
     "blendMode": "lighter",
     "randomSpread": 50,
-    "currentPresetName": "growing-spiral",
+    "currentPresetName": "pulsing-heart",
     "params": {
-      "growSpeed": 10,
-      "branchCount": 11,
-      "noiseScale": 0.1,
-      "strokeWidth": 0.5,
-      "color": "#5109e1",
-      "colorLightness": 29,
-      "density": 50
+      "size": 87.0244673356847,
+      "speedX": 1.8150023347083915,
+      "speedY": 5,
+      "speedZ": 4.87858326841851,
+      "thickness": 6.657037037037024,
+      "fillOpacity": 0.23368949012002194,
+      "color": "#37e208",
+      "fillColor": "#4fd411",
+      "colorLightness": 42.575395504396596,
+      "glow": 25.212822288181684
     },
     "effects": {
-      "rotation": 360,
-      "scale": 2.25,
+      "rotation": 338.9377597364387,
+      "scale": 1.42,
       "strobe": 0,
-      "glowIntensity": 45,
+      "glowIntensity": 20,
       "glowMix": 0.5,
-      "feedbackDecay": 0.95,
+      "feedbackDecay": 0.8,
       "feedbackScale": 1.002,
       "feedbackRotate": 0.05,
       "distortionIntensity": 0,
@@ -31,75 +34,93 @@
       "distortionSpeed": 3
     },
     "modulations": {
-      "growSpeed": {
+      "size": {
+        "enabled": true,
+        "min": 20,
+        "max": 287.42328807552167,
+        "timePct": 37,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speedX": {
         "enabled": false,
-        "min": 10,
-        "max": 10,
+        "min": 1.8150023347083915,
+        "max": 1.8150023347083915,
         "timePct": 50,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
-      "branchCount": {
+      "speedY": {
         "enabled": false,
-        "min": 11,
-        "max": 11,
+        "min": 5,
+        "max": 5,
         "timePct": 50,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
-      "noiseScale": {
+      "speedZ": {
         "enabled": false,
-        "min": 0.1,
-        "max": 0.1,
+        "min": 4.87858326841851,
+        "max": 4.87858326841851,
         "timePct": 50,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
-      "strokeWidth": {
-        "enabled": false,
-        "min": 0.5,
-        "max": 0.5,
-        "timePct": 50,
+      "thickness": {
+        "enabled": true,
+        "min": 1,
+        "max": 15,
+        "timePct": 18,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
-      "density": {
+      "fillOpacity": {
         "enabled": false,
-        "min": 50,
-        "max": 50,
+        "min": 0.23368949012002194,
+        "max": 0.23368949012002194,
         "timePct": 50,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
       "colorLightness": {
-        "enabled": false,
-        "min": 29,
-        "max": 29,
-        "timePct": 50,
+        "enabled": true,
+        "min": 31.92934940934331,
+        "max": 74.40638451182053,
+        "timePct": 37,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "enabled": true,
+        "min": 13.005559696634416,
+        "max": 54.153635847917414,
+        "timePct": 38,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
       "rotation": {
         "enabled": false,
-        "min": 360,
-        "max": 360,
-        "timePct": 59,
-        "behavior": "one",
+        "min": 338.9377597364387,
+        "max": 338.9377597364387,
+        "timePct": 50,
+        "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
       "scale": {
         "enabled": false,
-        "min": 2.25,
-        "max": 2.25,
-        "timePct": 61,
-        "behavior": "one",
+        "min": 1.42,
+        "max": 1.42,
+        "timePct": 26,
+        "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
@@ -114,17 +135,17 @@
       },
       "glowIntensity": {
         "enabled": false,
-        "min": 45,
-        "max": 45,
-        "timePct": 50,
+        "min": 20,
+        "max": 20,
+        "timePct": 36,
         "behavior": "return",
         "keyframeEnabled": false,
         "keyframes": []
       },
       "feedbackDecay": {
         "enabled": false,
-        "min": 0.95,
-        "max": 0.95,
+        "min": 0.8,
+        "max": 0.8,
         "timePct": 50,
         "behavior": "return",
         "keyframeEnabled": false,

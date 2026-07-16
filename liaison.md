@@ -7,7 +7,7 @@
 ---
 
 ## 最終更新
-2026-07-16（コーディングAI — 教師モデル・変異（Mutation）ランダマイザー（Option F拡張）実装 完了）
+2026-07-16（コーディングAI — 新規ジェネレーター6種 ＆ ポストプロセスFX2種 追加 完了）
 
 ---
 
@@ -17,6 +17,17 @@ MovieCreator は Vite + vanilla JS で構築されたブラウザベースの生
 http://localhost:5173/ で動作確認済み。
 
 ### ✅ 正常動作中の主要機能
+- **新規ジェネレーター6種 (炎、雪の結晶、スピログラフ、オーロラ、ドライアイスの煙、3D形状パーティクル) [NEW]**:
+  - `FlameGenerator`: X軸方向はノイズでゆらぎ、底部から-Y方向（上）へ上昇する炎の粒子シミュレーション。
+  - `SnowflakeGenerator`: 設定された symmetry (対称数) に基づき、中心から回転させ描画して美しい対称形の結晶を構築。
+  - `SpirographGenerator`: 内トロコイド数式を用いて、折り重なる精緻な幾何学線画模様を位相アニメーション付きで描画。
+  - `AuroraGenerator`: パーリンノイズでゆっくり波打つグラデーションカーテンリボンと、縦縞スリット（繊維感）を合成。
+  - `DryIceGenerator`: 画面上部からゆっくり落下しつつ、ノイズ風で横方向にもくもくと拡散しながら消える煙のシミュレーション。
+  - `Shape3DParticlesGenerator`: 円、四角、六角形、星型を描画し、X/Y/Z軸の回転角度を更新して `ctx.rotate` および `ctx.scale` による 2.5D 立体回転を表現。
+- **新規ポストプロセスFX2種 (万華鏡、色収差) [NEW]**:
+  - **万華鏡ミラー (Kaleidoscope)**: segments (3〜12分割) で回転＆反転（`scale(-1, 1)`）コピーして円形対称鏡像を描画。
+  - **色収差 (Chromatic Aberration)**: 赤チャンネルを左、青チャンネルを右へずらして `globalCompositeOperation = 'lighter'` で加算合成するプリズム色ずれ効果。
+  - いずれの新FXも、LFO (🧬) およびキーフレームタイムライン (🔑) に自動バインド・動作可能。
 - **教師モデル・変異（Mutation）ランダマイザー (Option F拡張) [NEW]**:
   - `randomizeLayer(layer, spreadPct)` のロジックを、現在の手元調整値（スライダー設定）を教師ベース値とし、LFO Spread（％値）の範囲内で微小変異（数値パラメータに `range * spread * 0.2` スケールの揺らぎを付加）させるアルゴリズムへアップグレード。
   - LFOが有効なパラメータに対して、LFOの `mod.min`, `mod.max` の変異と、LFO周期（`mod.timePct`）の $\pm 15\%$ のランダムな揺らぎ（周期変異）を適用。
@@ -60,9 +71,18 @@ http://localhost:5173/ で動作確認済み。
 - **2列グリッドUI**: インスペクターの各種プロパティ・LFOが2列グリッドで整理され、値の桁数増大時も幅60pxで固定。
 - **カスタム警告ダイアログ**: ネオンカラーに合わせた統一デザインのProceed / Cancel確認モーダル。
 
----
-
 ## 直近の完了タスク
+
+### 新規ジェネレーター6種 ＆ ポストプロセスFX2種の追加（2026-07-16 実施）
+1. **新規ジェネレーター6種の実装 (Generators.js)**:
+   - `FlameGenerator`（炎）、`SnowflakeGenerator`（雪の結晶）、`SpirographGenerator`（スピログラフ）、`AuroraGenerator`（オーロラ）、`DryIceGenerator`（ドライアイスの煙）、`Shape3DParticlesGenerator`（3D形状パーティクル: 2.5D回転・ベクタープロシージャル）を追加。
+2. **新規ポストプロセスFX2種の実装 (Effects.js)**:
+   - `applyKaleidoscope`（中心対称マスク）、`applyChromaticAberration`（赤青水平ズレ加算合成）を実装。
+3. **レイヤー管理・UI・モジュレーションの統合 (LayerManager.js, Controls.js, index.html)**:
+   - `Layer` クラスコンストラクタの `this.effects` へのプロパティ初期化（`0`）を追加。
+   - `initModulations()` 内の `fxConfigs` への追加により、LFOおよびキーフレームとの完全な自動連動を確立。
+   - インスペクターに万華鏡と色収差の調節スライダーを登録。
+   - `index.html` のレイヤー選択リストへ新規6タイプの追加。
 
 ### 教師モデル・変異（Mutation）ランダマイザーの実装（2026-07-16 実施）
 1. **ランダマイザーのアルゴリズム改修（Controls.js — randomizeLayer）**:

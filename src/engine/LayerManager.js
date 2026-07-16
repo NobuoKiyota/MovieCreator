@@ -10,7 +10,13 @@ import {
   SpectrumGenerator,
   Cube3DGenerator,
   LightningGenerator,
-  FogGenerator
+  FogGenerator,
+  FlameGenerator,
+  SnowflakeGenerator,
+  SpirographGenerator,
+  AuroraGenerator,
+  DryIceGenerator,
+  Shape3DParticlesGenerator
 } from './Generators.js';
 
 import { 
@@ -18,7 +24,9 @@ import {
   FeedbackTrail, 
   applyDistortion,
   applyVignette,
-  applyFilmGrain
+  applyFilmGrain,
+  applyKaleidoscope,
+  applyChromaticAberration
 } from './Effects.js';
 
 export class Layer {
@@ -65,7 +73,9 @@ export class Layer {
       // Distortion
       distortionIntensity: 0, // 0 to 30
       distortionFrequency: 0.02,
-      distortionSpeed: 3
+      distortionSpeed: 3,
+      kaleidoscopeSegment: 0,
+      chromaticOffset: 0
     };
 
     // Keep track of opacity multiplied by strobe
@@ -97,6 +107,12 @@ export class Layer {
       case 'cube-3d': return 'Rotating Glowing Cube';
       case 'lightning': return 'Neon Lightning';
       case 'fog': return 'Neon Fog';
+      case 'flame': return 'Cyber Flame';
+      case 'snowflake': return 'Neon Snowflake';
+      case 'spirograph': return 'Neon Spirograph';
+      case 'aurora': return 'Aurora Curtain';
+      case 'dry-ice': return 'Dry Ice Smoke';
+      case 'shape-3d-particles': return '3D Shape Particles';
       default: return 'Custom Layer';
     }
   }
@@ -115,6 +131,12 @@ export class Layer {
       case 'cube-3d': return new Cube3DGenerator();
       case 'lightning': return new LightningGenerator();
       case 'fog': return new FogGenerator();
+      case 'flame': return new FlameGenerator();
+      case 'snowflake': return new SnowflakeGenerator();
+      case 'spirograph': return new SpirographGenerator();
+      case 'aurora': return new AuroraGenerator();
+      case 'dry-ice': return new DryIceGenerator();
+      case 'shape-3d-particles': return new Shape3DParticlesGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }
@@ -144,7 +166,9 @@ export class Layer {
       { name: 'glowIntensity',       min: 0,     max: 50   },
       { name: 'feedbackDecay',       min: 0.0,   max: 0.95, timePct: 50, behavior: 'return' },
       { name: 'feedbackRotate',      min: -0.05, max: 0.05, timePct: 50, behavior: 'return' },
-      { name: 'distortionIntensity', min: 0,     max: 40,   timePct: 50, behavior: 'return' }
+      { name: 'distortionIntensity', min: 0,     max: 40,   timePct: 50, behavior: 'return' },
+      { name: 'kaleidoscopeSegment', min: 0,     max: 12,   timePct: 50, behavior: 'return' },
+      { name: 'chromaticOffset',     min: 0,     max: 30,   timePct: 50, behavior: 'return' }
     ];
     fxConfigs.forEach(config => {
       this.modulations[config.name] = {
@@ -453,6 +477,16 @@ export class Layer {
     // Apply Glow
     if (this.effects.glowIntensity > 0) {
       applyGlow(this.ctx, this.canvas, this.effects.glowIntensity, this.effects.glowMix);
+    }
+
+    // Apply Kaleidoscope
+    if (this.effects.kaleidoscopeSegment >= 3) {
+      applyKaleidoscope(this.ctx, this.canvas, this.effects.kaleidoscopeSegment);
+    }
+
+    // Apply Chromatic Aberration
+    if (this.effects.chromaticOffset > 0) {
+      applyChromaticAberration(this.ctx, this.canvas, this.effects.chromaticOffset);
     }
 
     // 4. Calculate strobe opacity

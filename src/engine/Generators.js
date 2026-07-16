@@ -1271,8 +1271,518 @@ export class FogGenerator extends BaseGenerator {
       ctx.fill();
     }
 
+  }
+}
+
+// 13. Cyber Flame Generator
+export class FlameGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.particles = [];
+  }
+
+  defaultParams() {
+    return {
+      density: 80,
+      speed: 5,
+      wiggle: 1.5,
+      height: 250,
+      strokeWidth: 15,
+      color: '#ef4444',
+      colorLightness: 50
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'density', label: 'Density / Count', type: 'range', min: 10, max: 200, step: 5 },
+      { name: 'speed', label: 'Rise Speed', type: 'range', min: 1, max: 15, step: 0.5 },
+      { name: 'wiggle', label: 'Wiggle Intensity', type: 'range', min: 0.1, max: 5.0, step: 0.1 },
+      { name: 'height', label: 'Flame Height', type: 'range', min: 50, max: 500, step: 10 },
+      { name: 'strokeWidth', label: 'Particle Size', type: 'range', min: 1, max: 30, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  update(time, frameCount, width, height) {
+    const targetCount = Math.round(this.params.density);
+    const spawnRate = Math.max(1, Math.round(targetCount / 30));
+    for (let i = 0; i < spawnRate; i++) {
+      if (this.particles.length < targetCount) {
+        this.particles.push({
+          x: width / 2 + (Math.random() - 0.5) * (width * 0.2),
+          y: height + 10,
+          vx: (Math.random() - 0.5) * this.params.wiggle,
+          vy: -this.params.speed * (0.6 + Math.random() * 0.8),
+          life: 1.0,
+          decay: 0.01 + Math.random() * 0.02 * (200 / this.params.height),
+          seed: Math.random() * 100
+        });
+      }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
+      const noiseVal = noiseInst.noise2D(p.x * 0.01, (time + p.seed * 10) * 0.002);
+      p.x += p.vx + noiseVal * this.params.wiggle;
+      p.y += p.vy;
+    }
+  }
+
+  draw(ctx, width, height, time) {
+    ctx.save();
+    const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+
+    for (let p of this.particles) {
+      const size = this.params.strokeWidth * p.life;
+      const alpha = p.life * 0.8;
+
+      ctx.fillStyle = themeColor;
+      ctx.globalAlpha = alpha;
+      
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }
 
+// 14. Neon Snowflake Generator
+export class SnowflakeGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      symmetry: 6,
+      radius: 200,
+      thickness: 2,
+      speed: 1.0,
+      detail: 1.0,
+      color: '#38bdf8',
+      colorLightness: 50
+    };
+  }
 
+  getParameterConfig() {
+    return [
+      { name: 'symmetry', label: 'Symmetry (Sectors)', type: 'range', min: 3, max: 12, step: 1 },
+      { name: 'radius', label: 'Radius', type: 'range', min: 50, max: 400, step: 5 },
+      { name: 'thickness', label: 'Line Thickness', type: 'range', min: 0.5, max: 10, step: 0.5 },
+      { name: 'speed', label: 'Growth Speed', type: 'range', min: 0.1, max: 5.0, step: 0.1 },
+      { name: 'detail', label: 'Branch Detail', type: 'range', min: 0.1, max: 2.0, step: 0.1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    ctx.save();
+    ctx.strokeStyle = adjustColorLightness(this.params.color, this.params.colorLightness);
+    ctx.lineWidth = this.params.thickness;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const cx = width / 2;
+    const cy = height / 2;
+    ctx.translate(cx, cy);
+
+    const sym = Math.round(this.params.symmetry);
+    const angle = (Math.PI * 2) / sym;
+    const maxRadius = this.params.radius;
+    
+    const growth = 0.5 + Math.sin(time * 0.001 * this.params.speed) * 0.3;
+    const currentRadius = maxRadius * growth;
+
+    for (let s = 0; s < sym; s++) {
+      ctx.save();
+      ctx.rotate(s * angle);
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(currentRadius, 0);
+      ctx.stroke();
+
+      const branchCount = Math.max(2, Math.floor(6 * this.params.detail));
+      for (let i = 1; i <= branchCount; i++) {
+        const branchX = currentRadius * (i / (branchCount + 1));
+        const branchLength = (currentRadius - branchX) * 0.6 * this.params.detail;
+
+        if (branchLength <= 0) continue;
+
+        ctx.beginPath();
+        ctx.moveTo(branchX, 0);
+        ctx.lineTo(branchX + branchLength * 0.5, branchLength * 0.866);
+        ctx.moveTo(branchX, 0);
+        ctx.lineTo(branchX + branchLength * 0.5, -branchLength * 0.866);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+}
+
+// 15. Neon Spirograph Generator
+export class SpirographGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      R: 150,
+      r: 90,
+      d: 80,
+      revolutions: 10,
+      speed: 1.0,
+      strokeWidth: 1.5,
+      color: '#10b981',
+      colorLightness: 50
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'R', label: 'Outer Radius (R)', type: 'range', min: 50, max: 300, step: 2 },
+      { name: 'r', label: 'Inner Radius (r)', type: 'range', min: 10, max: 200, step: 2 },
+      { name: 'd', label: 'Pen Distance (d)', type: 'range', min: 10, max: 300, step: 2 },
+      { name: 'revolutions', label: 'Revolutions', type: 'range', min: 1, max: 30, step: 1 },
+      { name: 'speed', label: 'Animation Speed', type: 'range', min: 0.1, max: 4.0, step: 0.1 },
+      { name: 'strokeWidth', label: 'Thickness', type: 'range', min: 0.5, max: 10, step: 0.5 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    ctx.save();
+    ctx.strokeStyle = adjustColorLightness(this.params.color, this.params.colorLightness);
+    ctx.lineWidth = this.params.strokeWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const R = this.params.R;
+    const r = this.params.r;
+    const d = this.params.d;
+    const revs = this.params.revolutions;
+    
+    const phase = time * 0.001 * this.params.speed;
+    const totalPoints = revs * 150;
+
+    for (let i = 0; i <= totalPoints; i++) {
+      const theta = (i / 150) * Math.PI * 2;
+      
+      const x = (R - r) * Math.cos(theta + phase) + d * Math.cos(((R - r) / r) * theta + phase);
+      const y = (R - r) * Math.sin(theta + phase) - d * Math.sin(((R - r) / r) * theta + phase);
+
+      const px = cx + x;
+      const py = cy + y;
+
+      if (i === 0) {
+        ctx.moveTo(px, py);
+      } else {
+        ctx.lineTo(px, py);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// 16. Aurora Curtain Generator
+export class AuroraGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      bands: 3,
+      height: 350,
+      waveFreq: 0.004,
+      speed: 1.0,
+      color: '#10b981',
+      colorLightness: 50
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'bands', label: 'Aurora Bands', type: 'range', min: 1, max: 5, step: 1 },
+      { name: 'height', label: 'Curtain Height', type: 'range', min: 100, max: 600, step: 10 },
+      { name: 'waveFreq', label: 'Wave Frequency', type: 'range', min: 0.001, max: 0.01, step: 0.0005 },
+      { name: 'speed', label: 'Wave Speed', type: 'range', min: 0.1, max: 3.0, step: 0.1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    ctx.save();
+    
+    const bandsCount = Math.round(this.params.bands);
+    const speedOffset = time * this.params.speed * 0.0005;
+
+    for (let b = 0; b < bandsCount; b++) {
+      const bandOffset = b * 40;
+
+      for (let x = 0; x < width; x += 3) {
+        const n1 = noiseInst.noise2D(x * this.params.waveFreq + bandOffset, speedOffset);
+        const n2 = noiseInst.noise2D(x * this.params.waveFreq * 2 + bandOffset * 1.5, speedOffset * 0.8) * 0.5;
+        const waveY = (height * 0.25) + (n1 + n2) * (height * 0.12);
+
+        const slitIntensity = 0.4 + 0.6 * Math.abs(noiseInst.noise1D(x * 0.15 + bandOffset));
+        const curtainH = this.params.height * (0.8 + 0.4 * noiseInst.noise1D(x * 0.02 + speedOffset));
+        const gradient = ctx.createLinearGradient(x, waveY, x, waveY + curtainH);
+        
+        const rgbaBase = hexToRgba(this.params.color, 0.4 * slitIntensity);
+        const rgbaFade = hexToRgba(this.params.color, 0.0);
+        
+        gradient.addColorStop(0, rgbaBase);
+        gradient.addColorStop(0.3, hexToRgba(this.params.color, 0.2 * slitIntensity));
+        gradient.addColorStop(1, rgbaFade);
+
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x, waveY);
+        ctx.lineTo(x, waveY + curtainH);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore();
+  }
+}
+
+// 17. Dry Ice Smoke Generator
+export class DryIceGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.particles = [];
+  }
+
+  defaultParams() {
+    return {
+      density: 120,
+      fallSpeed: 2.5,
+      diffusion: 1.5,
+      maxSize: 40,
+      color: '#ffffff',
+      colorLightness: 80
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'density', label: 'Density / Count', type: 'range', min: 10, max: 250, step: 5 },
+      { name: 'fallSpeed', label: 'Fall Speed', type: 'range', min: 0.5, max: 8.0, step: 0.1 },
+      { name: 'diffusion', label: 'Horizontal Wind', type: 'range', min: 0.1, max: 4.0, step: 0.1 },
+      { name: 'maxSize', label: 'Max Smoke Size', type: 'range', min: 5, max: 80, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  update(time, frameCount, width, height) {
+    const targetCount = Math.round(this.params.density);
+    const spawnRate = Math.max(1, Math.round(targetCount / 40));
+
+    for (let i = 0; i < spawnRate; i++) {
+      if (this.particles.length < targetCount) {
+        this.particles.push({
+          x: Math.random() * width,
+          y: -20,
+          vx: (Math.random() - 0.5) * this.params.diffusion,
+          vy: this.params.fallSpeed * (0.8 + Math.random() * 0.4),
+          life: 1.0,
+          decay: 0.005 + Math.random() * 0.015,
+          size: Math.random() * (this.params.maxSize * 0.5) + this.params.maxSize * 0.5,
+          seed: Math.random() * 200
+        });
+      }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
+      const windNoise = noiseInst.noise2D(p.x * 0.005, p.y * 0.005 + time * 0.0002);
+      p.x += p.vx + windNoise * this.params.diffusion;
+      p.y += p.vy;
+    }
+  }
+
+  draw(ctx, width, height, time) {
+    ctx.save();
+    const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+
+    for (let p of this.particles) {
+      const currentSize = p.size * (1.0 + (1.0 - p.life) * 0.8);
+      const alpha = p.life * 0.3;
+
+      ctx.fillStyle = themeColor;
+      ctx.globalAlpha = alpha;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// 18. 3D Shape Particles Generator
+export class Shape3DParticlesGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.particles = [];
+  }
+
+  defaultParams() {
+    return {
+      count: 80,
+      shapeType: 0, // 0=Circle, 1=Square, 2=Hexagon, 3=Star
+      speed: 2.0,
+      rotSpeedX: 0.02,
+      rotSpeedY: 0.03,
+      rotSpeedZ: 0.05,
+      minSize: 5,
+      maxSize: 20,
+      color: '#eab308',
+      colorLightness: 50
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'count', label: 'Particle Count', type: 'range', min: 10, max: 250, step: 5 },
+      { name: 'shapeType', label: 'Shape (0-3)', type: 'range', min: 0, max: 3, step: 1 },
+      { name: 'speed', label: 'Max Speed', type: 'range', min: 0.5, max: 10.0, step: 0.1 },
+      { name: 'rotSpeedX', label: 'Rot Speed X', type: 'range', min: 0.0, max: 0.1, step: 0.005 },
+      { name: 'rotSpeedY', label: 'Rot Speed Y', type: 'range', min: 0.0, max: 0.1, step: 0.005 },
+      { name: 'rotSpeedZ', label: 'Rot Speed Z', type: 'range', min: 0.0, max: 0.2, step: 0.005 },
+      { name: 'minSize', label: 'Min Size', type: 'range', min: 2, max: 10, step: 0.5 },
+      { name: 'maxSize', label: 'Max Size', type: 'range', min: 5, max: 40, step: 0.5 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  createParticle(width, height) {
+    return {
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * this.params.speed,
+      vy: (Math.random() - 0.5) * this.params.speed,
+      size: Math.random() * (this.params.maxSize - this.params.minSize) + this.params.minSize,
+      alpha: Math.random() * 0.5 + 0.5,
+      // 3D Angles
+      angleX: Math.random() * Math.PI * 2,
+      angleY: Math.random() * Math.PI * 2,
+      angleZ: Math.random() * Math.PI * 2,
+      // Custom variations for rotation speeds
+      rx: (Math.random() - 0.5) * this.params.rotSpeedX,
+      ry: (Math.random() - 0.5) * this.params.rotSpeedY,
+      rz: (Math.random() - 0.5) * this.params.rotSpeedZ
+    };
+  }
+
+  update(time, frameCount, width, height) {
+    const targetCount = Math.round(this.params.count);
+    if (this.particles.length !== targetCount) {
+      if (this.particles.length < targetCount) {
+        while (this.particles.length < targetCount) {
+          this.particles.push(this.createParticle(width, height));
+        }
+      } else {
+        this.particles.length = targetCount;
+      }
+    }
+
+    for (let p of this.particles) {
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // Update angles
+      p.angleX += p.rx;
+      p.angleY += p.ry;
+      p.angleZ += p.rz;
+
+      if (p.x < -p.size) p.x = width + p.size;
+      if (p.x > width + p.size) p.x = -p.size;
+      if (p.y < -p.size) p.y = height + p.size;
+      if (p.y > height + p.size) p.y = -p.size;
+    }
+  }
+
+  draw(ctx, width, height, time) {
+    if (this.particles.length === 0) {
+      this.particles = [];
+      const targetCount = Math.round(this.params.count);
+      for (let i = 0; i < targetCount; i++) {
+        this.particles.push(this.createParticle(width, height));
+      }
+    }
+
+    ctx.save();
+    const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+
+    for (let p of this.particles) {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      
+      // Rotate on Z, scale on X/Y to emulate 3D rotation (2.5D)
+      ctx.rotate(p.angleZ);
+      ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
+
+      ctx.fillStyle = themeColor;
+      ctx.globalAlpha = p.alpha;
+
+      const type = Math.round(this.params.shapeType);
+      const size = p.size;
+
+      ctx.beginPath();
+      if (type === 0) {
+        // Circle
+        ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+      } else if (type === 1) {
+        // Square
+        ctx.rect(-size / 2, -size / 2, size, size);
+      } else if (type === 2) {
+        // Hexagon
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const x = Math.cos(angle) * (size / 2);
+          const y = Math.sin(angle) * (size / 2);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+      } else if (type === 3) {
+        // Star (5-pointed)
+        const outerR = size / 2;
+        const innerR = size / 4;
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const r = i % 2 === 0 ? outerR : innerR;
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+}

@@ -162,3 +162,95 @@ export function applyFilmGrain(ctx, width, height, opacity = 0.05) {
 
   ctx.restore();
 }
+
+// 6. Kaleidoscope Symmetry Mirror
+export function applyKaleidoscope(ctx, canvas, segments = 6) {
+  if (segments < 3) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(canvas, 0, 0);
+
+  ctx.clearRect(0, 0, w, h);
+
+  const angle = (Math.PI * 2) / segments;
+  const cx = w / 2;
+  const cy = h / 2;
+
+  for (let i = 0; i < segments; i++) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(i * angle);
+    
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, Math.max(w, h) * 1.5, -angle / 2 - 0.001, angle / 2 + 0.001);
+    ctx.closePath();
+    ctx.clip();
+    
+    if (i % 2 === 1) {
+      ctx.scale(-1, 1);
+    }
+    
+    ctx.drawImage(tempCanvas, -cx, -cy);
+    ctx.restore();
+  }
+}
+
+// 7. Chromatic Aberration (RGB Color Splitting)
+export function applyChromaticAberration(ctx, canvas, offset = 5) {
+  if (offset <= 0) return;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.drawImage(canvas, 0, 0);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Red Channel Canvas
+  const rCanvas = document.createElement('canvas');
+  rCanvas.width = w;
+  rCanvas.height = h;
+  const rCtx = rCanvas.getContext('2d');
+  rCtx.drawImage(tempCanvas, 0, 0);
+  rCtx.globalCompositeOperation = 'multiply';
+  rCtx.fillStyle = '#ff0000';
+  rCtx.fillRect(0, 0, w, h);
+
+  // Green Channel Canvas
+  const gCanvas = document.createElement('canvas');
+  gCanvas.width = w;
+  gCanvas.height = h;
+  const gCtx = gCanvas.getContext('2d');
+  gCtx.drawImage(tempCanvas, 0, 0);
+  gCtx.globalCompositeOperation = 'multiply';
+  gCtx.fillStyle = '#00ff00';
+  gCtx.fillRect(0, 0, w, h);
+
+  // Blue Channel Canvas
+  const bCanvas = document.createElement('canvas');
+  bCanvas.width = w;
+  bCanvas.height = h;
+  const bCtx = bCanvas.getContext('2d');
+  bCtx.drawImage(tempCanvas, 0, 0);
+  bCtx.globalCompositeOperation = 'multiply';
+  bCtx.fillStyle = '#0000ff';
+  bCtx.fillRect(0, 0, w, h);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  
+  ctx.drawImage(rCanvas, -offset, 0);
+  ctx.drawImage(gCanvas, 0, 0);
+  ctx.drawImage(bCanvas, offset, 0);
+  
+  ctx.restore();
+}
