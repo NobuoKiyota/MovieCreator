@@ -89,6 +89,14 @@ function hexToRgba(hex, opacity) {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
+function parseHexToRgb(hex) {
+  if (!hex || hex.charAt(0) !== '#') return { r: 255, g: 255, b: 255 };
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return { r, g, b };
+}
+
 // Base Generator Class
 export class BaseGenerator {
   constructor(params = {}) {
@@ -1288,6 +1296,7 @@ export class FlameGenerator extends BaseGenerator {
       wiggle: 1.5,
       height: 250,
       strokeWidth: 15,
+      shapeType: 0, // 0=Soft Circle(ぼかし円), 1=Circle(くっきり円), 2=Square, 3=Hexagon, 4=Star
       color: '#ef4444',
       colorLightness: 50
     };
@@ -1300,6 +1309,7 @@ export class FlameGenerator extends BaseGenerator {
       { name: 'wiggle', label: 'Wiggle Intensity', type: 'range', min: 0.1, max: 5.0, step: 0.1 },
       { name: 'height', label: 'Flame Height', type: 'range', min: 50, max: 500, step: 10 },
       { name: 'strokeWidth', label: 'Particle Size', type: 'range', min: 1, max: 30, step: 1 },
+      { name: 'shapeType', label: 'Shape Type (0-4)', type: 'range', min: 0, max: 4, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -1317,7 +1327,14 @@ export class FlameGenerator extends BaseGenerator {
           vy: -this.params.speed * (0.6 + Math.random() * 0.8),
           life: 1.0,
           decay: 0.01 + Math.random() * 0.02 * (200 / this.params.height),
-          seed: Math.random() * 100
+          seed: Math.random() * 100,
+          // 3D angles
+          angleX: Math.random() * Math.PI * 2,
+          angleY: Math.random() * Math.PI * 2,
+          angleZ: Math.random() * Math.PI * 2,
+          rx: (Math.random() - 0.5) * 0.05,
+          ry: (Math.random() - 0.5) * 0.05,
+          rz: (Math.random() - 0.5) * 0.05
         });
       }
     }
@@ -1333,23 +1350,81 @@ export class FlameGenerator extends BaseGenerator {
       const noiseVal = noiseInst.noise2D(p.x * 0.01, (time + p.seed * 10) * 0.002);
       p.x += p.vx + noiseVal * this.params.wiggle;
       p.y += p.vy;
+
+      // Update 3D angles
+      p.angleX += p.rx;
+      p.angleY += p.ry;
+      p.angleZ += p.rz;
     }
   }
 
   draw(ctx, width, height, time) {
     ctx.save();
     const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+    const parsedColor = parseHexToRgb(this.params.color);
 
     for (let p of this.particles) {
       const size = this.params.strokeWidth * p.life;
       const alpha = p.life * 0.8;
+      if (size <= 0.1) continue;
 
-      ctx.fillStyle = themeColor;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angleZ);
+      ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
+
       ctx.globalAlpha = alpha;
-      
+
+      const type = Math.round(this.params.shapeType);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-      ctx.fill();
+      if (type === 0) {
+        // Soft Circle (ぼかし円)
+        const grad = ctx.createRadialGradient(0, 0, size * 0.1, 0, 0, size);
+        grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 1)`);
+        grad.addColorStop(0.3, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.5)`);
+        grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.arc(0, 0, size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 1) {
+        // Circle (くっきり円)
+        ctx.fillStyle = themeColor;
+        ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 2) {
+        // Square
+        ctx.fillStyle = themeColor;
+        ctx.rect(-size / 2, -size / 2, size, size);
+        ctx.fill();
+      } else if (type === 3) {
+        // Hexagon
+        ctx.fillStyle = themeColor;
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const x = Math.cos(angle) * (size / 2);
+          const y = Math.sin(angle) * (size / 2);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === 4) {
+        // Star
+        ctx.fillStyle = themeColor;
+        const outerR = size / 2;
+        const innerR = size / 4;
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const r = i % 2 === 0 ? outerR : innerR;
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1357,13 +1432,18 @@ export class FlameGenerator extends BaseGenerator {
 
 // 14. Neon Snowflake Generator
 export class SnowflakeGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.particles = [];
+  }
+
   defaultParams() {
     return {
+      count: 50,
       symmetry: 6,
-      radius: 200,
-      thickness: 2,
-      speed: 1.0,
-      detail: 1.0,
+      radius: 30,
+      speed: 2.0,
+      thickness: 1.5,
       color: '#38bdf8',
       colorLightness: 50
     };
@@ -1371,61 +1451,133 @@ export class SnowflakeGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'symmetry', label: 'Symmetry (Sectors)', type: 'range', min: 3, max: 12, step: 1 },
-      { name: 'radius', label: 'Radius', type: 'range', min: 50, max: 400, step: 5 },
-      { name: 'thickness', label: 'Line Thickness', type: 'range', min: 0.5, max: 10, step: 0.5 },
-      { name: 'speed', label: 'Growth Speed', type: 'range', min: 0.1, max: 5.0, step: 0.1 },
-      { name: 'detail', label: 'Branch Detail', type: 'range', min: 0.1, max: 2.0, step: 0.1 },
+      { name: 'count', label: 'Snowflake Count', type: 'range', min: 10, max: 150, step: 5 },
+      { name: 'symmetry', label: 'Symmetry', type: 'range', min: 3, max: 12, step: 1 },
+      { name: 'radius', label: 'Snowflake Size', type: 'range', min: 10, max: 150, step: 1 },
+      { name: 'speed', label: 'Fall Speed', type: 'range', min: 0.5, max: 8.0, step: 0.1 },
+      { name: 'thickness', label: 'Line Thickness', type: 'range', min: 0.5, max: 5.0, step: 0.1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
   }
 
+  createParticle(width, height) {
+    return {
+      x: Math.random() * width,
+      y: Math.random() * (height + 100) - 100, // Spawn throughout screen initially
+      vy: this.params.speed * (0.6 + Math.random() * 0.8),
+      size: this.params.radius * (0.6 + Math.random() * 0.8),
+      alpha: Math.random() * 0.5 + 0.5,
+      seed: Math.random() * 100,
+      // 3D Angles
+      angleX: Math.random() * Math.PI * 2,
+      angleY: Math.random() * Math.PI * 2,
+      angleZ: Math.random() * Math.PI * 2,
+      // Rotation speeds
+      rx: (Math.random() - 0.5) * 0.03,
+      ry: (Math.random() - 0.5) * 0.03,
+      rz: (Math.random() - 0.5) * 0.03
+    };
+  }
+
+  update(time, frameCount, width, height) {
+    const targetCount = Math.round(this.params.count);
+    if (this.particles.length !== targetCount) {
+      if (this.particles.length < targetCount) {
+        while (this.particles.length < targetCount) {
+          this.particles.push(this.createParticle(width, height));
+        }
+      } else {
+        this.particles.length = targetCount;
+      }
+    }
+
+    for (let p of this.particles) {
+      // Fall down
+      p.y += p.vy;
+
+      // Drift left/right using noise
+      const drift = noiseInst.noise2D(p.x * 0.005, p.y * 0.005 + time * 0.0001);
+      p.x += drift * 1.5;
+
+      // Update 3D angles
+      p.angleX += p.rx;
+      p.angleY += p.ry;
+      p.angleZ += p.rz;
+
+      // Wrap around screen boundaries
+      if (p.y > height + p.size) {
+        p.y = -p.size;
+        p.x = Math.random() * width;
+        p.vy = this.params.speed * (0.6 + Math.random() * 0.8);
+        p.size = this.params.radius * (0.6 + Math.random() * 0.8);
+      }
+      if (p.x < -p.size) p.x = width + p.size;
+      if (p.x > width + p.size) p.x = -p.size;
+    }
+  }
+
   draw(ctx, width, height, time) {
+    if (this.particles.length === 0) {
+      this.particles = [];
+      const targetCount = Math.round(this.params.count);
+      for (let i = 0; i < targetCount; i++) {
+        this.particles.push(this.createParticle(width, height));
+      }
+    }
+
     ctx.save();
     ctx.strokeStyle = adjustColorLightness(this.params.color, this.params.colorLightness);
     ctx.lineWidth = this.params.thickness;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    const cx = width / 2;
-    const cy = height / 2;
-    ctx.translate(cx, cy);
-
     const sym = Math.round(this.params.symmetry);
     const angle = (Math.PI * 2) / sym;
-    const maxRadius = this.params.radius;
-    
-    const growth = 0.5 + Math.sin(time * 0.001 * this.params.speed) * 0.3;
-    const currentRadius = maxRadius * growth;
 
-    for (let s = 0; s < sym; s++) {
+    for (let p of this.particles) {
       ctx.save();
-      ctx.rotate(s * angle);
+      ctx.translate(p.x, p.y);
       
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(currentRadius, 0);
-      ctx.stroke();
+      // Z-rotation and X/Y-rotation via scale (3D effect)
+      ctx.rotate(p.angleZ);
+      ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
 
-      const branchCount = Math.max(2, Math.floor(6 * this.params.detail));
-      for (let i = 1; i <= branchCount; i++) {
-        const branchX = currentRadius * (i / (branchCount + 1));
-        const branchLength = (currentRadius - branchX) * 0.6 * this.params.detail;
+      ctx.globalAlpha = p.alpha;
 
-        if (branchLength <= 0) continue;
+      const r = p.size;
 
+      // Draw symmetrical snowflake branch vectors
+      for (let s = 0; s < sym; s++) {
+        ctx.save();
+        ctx.rotate(s * angle);
+        
+        // Main branch line
         ctx.beginPath();
-        ctx.moveTo(branchX, 0);
-        ctx.lineTo(branchX + branchLength * 0.5, branchLength * 0.866);
-        ctx.moveTo(branchX, 0);
-        ctx.lineTo(branchX + branchLength * 0.5, -branchLength * 0.866);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(r, 0);
         ctx.stroke();
+
+        // Branch spikes
+        const branchCount = 3;
+        for (let i = 1; i <= branchCount; i++) {
+          const branchX = r * (i / (branchCount + 1));
+          const branchLength = (r - branchX) * 0.6;
+          if (branchLength <= 0) continue;
+
+          ctx.beginPath();
+          ctx.moveTo(branchX, 0);
+          ctx.lineTo(branchX + branchLength * 0.5, branchLength * 0.866);
+          ctx.moveTo(branchX, 0);
+          ctx.lineTo(branchX + branchLength * 0.5, -branchLength * 0.866);
+          ctx.stroke();
+        }
+
+        ctx.restore();
       }
 
       ctx.restore();
     }
-
     ctx.restore();
   }
 }
@@ -1571,6 +1723,7 @@ export class DryIceGenerator extends BaseGenerator {
       fallSpeed: 2.5,
       diffusion: 1.5,
       maxSize: 40,
+      shapeType: 0, // 0=Soft Circle(ぼかし円), 1=Circle(くっきり円), 2=Square, 3=Hexagon, 4=Star
       color: '#ffffff',
       colorLightness: 80
     };
@@ -1582,6 +1735,7 @@ export class DryIceGenerator extends BaseGenerator {
       { name: 'fallSpeed', label: 'Fall Speed', type: 'range', min: 0.5, max: 8.0, step: 0.1 },
       { name: 'diffusion', label: 'Horizontal Wind', type: 'range', min: 0.1, max: 4.0, step: 0.1 },
       { name: 'maxSize', label: 'Max Smoke Size', type: 'range', min: 5, max: 80, step: 1 },
+      { name: 'shapeType', label: 'Shape Type (0-4)', type: 'range', min: 0, max: 4, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -1601,7 +1755,14 @@ export class DryIceGenerator extends BaseGenerator {
           life: 1.0,
           decay: 0.005 + Math.random() * 0.015,
           size: Math.random() * (this.params.maxSize * 0.5) + this.params.maxSize * 0.5,
-          seed: Math.random() * 200
+          seed: Math.random() * 200,
+          // 3D angles
+          angleX: Math.random() * Math.PI * 2,
+          angleY: Math.random() * Math.PI * 2,
+          angleZ: Math.random() * Math.PI * 2,
+          rx: (Math.random() - 0.5) * 0.03,
+          ry: (Math.random() - 0.5) * 0.03,
+          rz: (Math.random() - 0.5) * 0.03
         });
       }
     }
@@ -1617,23 +1778,81 @@ export class DryIceGenerator extends BaseGenerator {
       const windNoise = noiseInst.noise2D(p.x * 0.005, p.y * 0.005 + time * 0.0002);
       p.x += p.vx + windNoise * this.params.diffusion;
       p.y += p.vy;
+
+      // Update 3D angles
+      p.angleX += p.rx;
+      p.angleY += p.ry;
+      p.angleZ += p.rz;
     }
   }
 
   draw(ctx, width, height, time) {
     ctx.save();
     const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+    const parsedColor = parseHexToRgb(this.params.color);
 
     for (let p of this.particles) {
       const currentSize = p.size * (1.0 + (1.0 - p.life) * 0.8);
       const alpha = p.life * 0.3;
+      if (currentSize <= 0.1) continue;
 
-      ctx.fillStyle = themeColor;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angleZ);
+      ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
+
       ctx.globalAlpha = alpha;
 
+      const type = Math.round(this.params.shapeType);
       ctx.beginPath();
-      ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
-      ctx.fill();
+      if (type === 0) {
+        // Soft Circle (ぼかし円)
+        const grad = ctx.createRadialGradient(0, 0, currentSize * 0.1, 0, 0, currentSize);
+        grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 1)`);
+        grad.addColorStop(0.3, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.5)`);
+        grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 1) {
+        // Circle (くっきり円)
+        ctx.fillStyle = themeColor;
+        ctx.arc(0, 0, currentSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 2) {
+        // Square
+        ctx.fillStyle = themeColor;
+        ctx.rect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
+        ctx.fill();
+      } else if (type === 3) {
+        // Hexagon
+        ctx.fillStyle = themeColor;
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const x = Math.cos(angle) * (currentSize / 2);
+          const y = Math.sin(angle) * (currentSize / 2);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === 4) {
+        // Star
+        ctx.fillStyle = themeColor;
+        const outerR = currentSize / 2;
+        const innerR = currentSize / 4;
+        for (let i = 0; i < 10; i++) {
+          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          const r = i % 2 === 0 ? outerR : innerR;
+          const x = Math.cos(angle) * r;
+          const y = Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }

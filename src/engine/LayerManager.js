@@ -75,7 +75,13 @@ export class Layer {
       distortionFrequency: 0.02,
       distortionSpeed: 3,
       kaleidoscopeSegment: 0,
-      chromaticOffset: 0
+      chromaticOffset: 0,
+      
+      // 3D Transforms
+      rotateX: 0,
+      rotateY: 0,
+      rotateZ: 0,
+      translateZ: 0
     };
 
     // Keep track of opacity multiplied by strobe
@@ -168,7 +174,11 @@ export class Layer {
       { name: 'feedbackRotate',      min: -0.05, max: 0.05, timePct: 50, behavior: 'return' },
       { name: 'distortionIntensity', min: 0,     max: 40,   timePct: 50, behavior: 'return' },
       { name: 'kaleidoscopeSegment', min: 0,     max: 12,   timePct: 50, behavior: 'return' },
-      { name: 'chromaticOffset',     min: 0,     max: 30,   timePct: 50, behavior: 'return' }
+      { name: 'chromaticOffset',     min: 0,     max: 30,   timePct: 50, behavior: 'return' },
+      { name: 'rotateX',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
+      { name: 'rotateY',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
+      { name: 'rotateZ',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
+      { name: 'translateZ',          min: -600,  max: 600,  timePct: 50, behavior: 'return' }
     ];
     fxConfigs.forEach(config => {
       this.modulations[config.name] = {
@@ -433,9 +443,29 @@ export class Layer {
     const h = this.canvas.height;
 
     // 1. Process feedback on the RAW canvas to avoid feedback looping glow/distortion!
+    const apply3DTransform = (ctx) => {
+      const rx = (this.effects.rotateX || 0) * Math.PI / 180;
+      const ry = (this.effects.rotateY || 0) * Math.PI / 180;
+      const rz = (this.effects.rotateZ || 0) * Math.PI / 180;
+      const z = this.effects.translateZ || 0;
+      
+      if (rx === 0 && ry === 0 && rz === 0 && z === 0) return;
+      
+      const fov = 400;
+      const scaleZ = fov / Math.max(1, fov + z);
+      
+      ctx.translate(w / 2, h / 2);
+      ctx.scale(scaleZ * Math.cos(ry), scaleZ * Math.cos(rx));
+      ctx.rotate(rz);
+      ctx.translate(-w / 2, -h / 2);
+    };
+
     if (this.effects.feedbackDecay <= 0.0) {
       this.rawCtx.clearRect(0, 0, w, h);
+      this.rawCtx.save();
+      apply3DTransform(this.rawCtx);
       this.generator.draw(this.rawCtx, w, h, time);
+      this.rawCtx.restore();
     } else {
       // Process feedback trail on raw canvas
       this.feedbackHandler.process(this.rawCtx, this.rawCanvas, {
@@ -444,7 +474,10 @@ export class Layer {
         rotate: this.effects.feedbackRotate
       });
       // Draw fresh generator frames on top of raw faded history trail
+      this.rawCtx.save();
+      apply3DTransform(this.rawCtx);
       this.generator.draw(this.rawCtx, w, h, time);
+      this.rawCtx.restore();
     }
 
     // 2. Clear output canvas and copy raw canvas contents with Scale & Rotation transforms applied

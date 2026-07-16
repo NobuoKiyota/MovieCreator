@@ -89,7 +89,11 @@ export class Controls {
       feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',    min: -0.05, max: 0.05, step: 0.001, type: 'range' },
       distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',    min: 0,     max: 40,   step: 1,     type: 'range' },
       kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   min: 0,     max: 12,   step: 1,     type: 'range' },
-      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr', min: 0,     max: 30,   step: 0.5,   type: 'range' }
+      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr', min: 0,     max: 30,   step: 0.5,   type: 'range' },
+      rotateX:             { name: 'rotateX',             label: 'Rotate X',      min: -180,  max: 180,  step: 1,     type: 'range' },
+      rotateY:             { name: 'rotateY',             label: 'Rotate Y',      min: -180,  max: 180,  step: 1,     type: 'range' },
+      rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',      min: -180,  max: 180,  step: 1,     type: 'range' },
+      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',     min: -600,  max: 600,  step: 5,     type: 'range' }
     };
     this.activeDocument = document;
   }
