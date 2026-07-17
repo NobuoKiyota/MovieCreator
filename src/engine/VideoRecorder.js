@@ -225,7 +225,7 @@ export class VideoRecorder {
 
     const recorderPromise = new Promise((resolve) => {
       mediaRecorder.onstop = () => {
-        const blob = new Blob([chunks], { type: 'video/webm' });
+        const blob = new Blob(chunks, { type: 'video/webm' });
         this.downloadBlob(blob, `${filename}.webm`);
         resolve();
       };
