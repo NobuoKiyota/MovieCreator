@@ -4,4 +4,6 @@ dist/
 *.mp4
 ai_archives/
 .DS_Store
-data/
+# data/scores.json (教師データ本体) はマルチPC間で同期する必要があるため追跡対象。
+# 破損時フォールバック(apiHandler.js)が作るバックアップだけ除外する。
+data/*.corrupted-*.json
