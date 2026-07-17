@@ -96,6 +96,10 @@ export class Controls {
       translateZ:          { name: 'translateZ',          label: 'Depth (Z)',     min: -600,  max: 600,  step: 5,     type: 'range' }
     };
     this.activeDocument = document;
+
+    // Good-attraction randomizer tuning (see randomizeLayer / showLearningStatsDialog)
+    this.GOOD_ATTRACTION_MAX_WEIGHT = 0.35;
+    this.GOOD_ATTRACTION_CONFIDENCE_SAMPLES = 5;
   }
 
   createElement(tagName) {
@@ -1628,6 +1632,23 @@ export class Controls {
   randomizeLayer(layer, spreadPct) {
     const spread = spreadPct / 100;
     const badEvaluations = (this.scoreData || []).filter(evalItem => evalItem.layerType === layer.type && evalItem.score === 'bad');
+    const goodEvaluations = (this.scoreData || []).filter(evalItem => evalItem.layerType === layer.type && evalItem.score === 'good');
+
+    // Good-attraction: pull the mutation center toward the average of past Good-rated parameters.
+    // Weight ramps from 0 (no Good data, identical to legacy behavior) up to GOOD_ATTRACTION_MAX_WEIGHT
+    // as samples accumulate, saturating at GOOD_ATTRACTION_CONFIDENCE_SAMPLES to avoid overfitting a single sample.
+    const goodAttractionWeight = goodEvaluations.length === 0
+      ? 0
+      : this.GOOD_ATTRACTION_MAX_WEIGHT * Math.min(1, goodEvaluations.length / this.GOOD_ATTRACTION_CONFIDENCE_SAMPLES);
+
+    const goodParamCentroid = (key) => {
+      const vals = goodEvaluations.map(e => e.params && e.params[key]).filter(v => typeof v === 'number');
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+    const goodEffectCentroid = (key) => {
+      const vals = goodEvaluations.map(e => e.effects && e.effects[key]).filter(v => typeof v === 'number');
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
 
     // Analyze negative reasons from past bad evaluations
     const hasStrobeExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('strobe_excess'));
@@ -1681,9 +1702,14 @@ export class Controls {
           }
 
           const range = config.max - config.min;
-          const baseVal = layer.generator.params[config.name] !== undefined 
-            ? layer.generator.params[config.name] 
+          let baseVal = layer.generator.params[config.name] !== undefined
+            ? layer.generator.params[config.name]
             : (localMin + (localMax - localMin) / 2);
+
+          const goodCentroidVal = goodParamCentroid(config.name);
+          if (goodCentroidVal !== null && goodAttractionWeight > 0) {
+            baseVal = baseVal * (1 - goodAttractionWeight) + goodCentroidVal * goodAttractionWeight;
+          }
 
           const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
           let newVal = baseVal + offset;
@@ -1737,7 +1763,11 @@ export class Controls {
       const rotConfig = this.fxConfigs['rotation'];
       if (rotConfig) {
         const range = rotConfig.max - rotConfig.min;
-        const baseVal = layer.effects['rotation'] !== undefined ? layer.effects['rotation'] : 0;
+        let baseVal = layer.effects['rotation'] !== undefined ? layer.effects['rotation'] : 0;
+        const goodRotationCentroid = goodEffectCentroid('rotation');
+        if (goodRotationCentroid !== null && goodAttractionWeight > 0) {
+          baseVal = baseVal * (1 - goodAttractionWeight) + goodRotationCentroid * goodAttractionWeight;
+        }
         const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
         tempRotation = baseVal + offset;
         tempRotation = Math.max(rotConfig.min, Math.min(rotConfig.max, tempRotation));
@@ -1829,7 +1859,12 @@ export class Controls {
         }
 
         const range = config.max - config.min;
-        const baseVal = layer.effects[fxName] !== undefined ? layer.effects[fxName] : (localMin + (localMax - localMin) / 2);
+        let baseVal = layer.effects[fxName] !== undefined ? layer.effects[fxName] : (localMin + (localMax - localMin) / 2);
+
+        const goodCentroidVal = goodEffectCentroid(fxName);
+        if (goodCentroidVal !== null && goodAttractionWeight > 0) {
+          baseVal = baseVal * (1 - goodAttractionWeight) + goodCentroidVal * goodAttractionWeight;
+        }
 
         const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
         let newVal = baseVal + offset;
@@ -2602,6 +2637,15 @@ export class Controls {
     const goodLayer = layerData.filter(e => e.score === 'good').length;
     const badLayer = layerData.filter(e => e.score === 'bad').length;
 
+    // Good引力（randomizeLayerの goodAttractionWeight と同じ計算式）
+    const goodAttractionWeight = goodLayer === 0
+      ? 0
+      : this.GOOD_ATTRACTION_MAX_WEIGHT * Math.min(1, goodLayer / this.GOOD_ATTRACTION_CONFIDENCE_SAMPLES);
+    const goodAttractionPct = Math.round(goodAttractionWeight * 100);
+    const goodAttractionStatus = goodLayer === 0
+      ? { icon: '⚪ なし', color: '#6b7280' }
+      : (goodAttractionWeight < this.GOOD_ATTRACTION_MAX_WEIGHT ? { icon: '🟡 弱', color: '#f59e0b' } : { icon: '🟢 有効', color: '#10b981' });
+
     // 理由別カウント（現在のレイヤー）
     const reasonCounts = {
       strobe_excess: 0,
@@ -2703,6 +2747,11 @@ export class Controls {
           <p style="margin: 0 0 0.8rem 0; font-size: 0.8rem; color: #9ca3af; line-height: 1.4;">
             このレイヤータイプの評価数: <strong>${totalLayer}回</strong> (👍 ${goodLayer} / 👎 ${badLayer})
           </p>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 0.8rem; background: #111122; border-radius: 6px; padding: 0.5rem 0.75rem; border: 1px solid rgba(16,185,129,0.15);">
+            <span style="color: #e2e8f0; font-weight: 600;">Good引力 (Attraction)</span>
+            <span style="color: ${goodAttractionStatus.color}; font-weight: 700;">${goodAttractionStatus.icon} (${goodLayer}件, 重み${goodAttractionPct}%)</span>
+          </div>
 
           <!-- 各理由と制約のリスト -->
           <div style="max-height: 320px; overflow-y: auto; padding-right: 0.5rem;">
