@@ -13,6 +13,13 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-18 02:24 [Claude Code] ガチャ感軽減の第一弾: ①FADEデフォルトを2.0→0に変更(ループ動画用途)、ついでに`|| 2.0`のfalsy-zeroバグ(FADE=0にしても書き出し時2.0に戻る)を8箇所修正 ②`randomizeLayer`にGood側のソフトランキングを追加(Bad類似度だけでなくGood類似度もスコア化し、複数試行中で最良スコアを採用)、LFO Spread/Spawn Jitter幅のデフォルトを50%/30%→30%/20%に引き下げ。テストの結果、単一パラメータに絞ると効果は明確(Good距離41→13)だが、実際の全パラメータ平均だと効果が薄まることを確認 → 根本改善にはCLAUDE.mdロードマップの「多次元重み付き類似度判定」が必要と判明。動作確認済み・未コミット
+- 2026-07-18 01:58 [Claude Code] Spawn Jitterノブの2点修正: ①`.btn-spawn-jitter-toggle`にCSS未定義でブラウザ既定の白背景ボタンになっていた問題を`.btn-modulation-toggle`と同じ透明背景スタイルで修正(style.css) ②幅バッジをパラメータ単位の±実数値(桁数がパラメータごとにバラバラで行崩れの原因)から固定幅の整数%表示に変更、詳細な±実数値はhoverツールチップに退避。動作確認済み・未コミット
+- 2026-07-18 01:52 [Claude Code] Spawn Jitterトグルの🎲絵文字をDAWノブ風SVGインジケーター(円+ドット、値に応じて位置と色の濃さが変化)に置き換え。ドラッグ中もリアルタイムにノブを再描画。動作確認済み・未コミット
+- 2026-07-18 01:17 [Claude Code] Shockwave Burstを波紋(Ripple)との差別化のため作り直し: ①ジグザグ多角形(`jaggedness`/`spikeCount`をサイクル毎キャッシュ)で滑らかな円ではなく尖った星形シルエットに、②`windupFrac`で「一度中心へ収縮してから爆発的に拡大(ease-out)」する2段階の半径カーブに変更。新規パラメータ2つ(jaggedness, windupFrac)追加、既存プリセットはdefaultParamsのマージでそのまま読み込み可能。動作確認済み・未コミット
+- 2026-07-18 00:54 [Claude Code] Spawn Jitter UIをフィードバックで再設計: 共有%スライダーを廃止し、各パラメータの🎲ボタン自体を上下ドラッグ(DAWノブ風)して個別の揺らぎ幅を設定する方式に変更(クリック=ON/OFFトグル、ドラッグ=幅調整、ドラッグ中±実数値バッジ表示)。LayerManager側は`mod.jitterWidth`(パラメータ毎)+`applySpawnJitterOne(name)`に分離、randomizeLayer適用・プロジェクト/プリセット読込の5箇所も追従・動作確認済み・未コミット
+- 2026-07-18 00:41 [Claude Code] 全プリセット共通の拡張3点を実装・動作確認済み・未コミット: ①Glass Crackの各ヒビの全キンクでbranchChance判定する多点分岐(新規パラメータなし) ②全ジェネレーター共通の`positionX`/`positionY`スポーン位置オフセット(LayerManager合成段階にtranslate追加、FX_PARAM_RANGES経由でLFO/キーフレームも自動対応) ③パラメータ行ごとの🎲Spawn Jitterトグル+共有%スライダー(レイヤー追加時+cycleDuration系ジェネレーターのサイクル再スタート毎に再抽選、jitterBaseで非ドリフト保証)。詳細はCLAUDE.mdへの追記を検討
+- 2026-07-18 00:07 [Claude Code] Glass Crackの銃痕(holeRadius)を物理的に導出する方式に変更: 独立ランダム星形ポリゴンをやめ、放射クラックの根元点をそのまま穴の頂点(尖り)、隣接クラック間の中間角度を谷(欠落)として穴形状を構築。crackCount 4/10/24・holeRadius 0(穴なし)で描画確認・エラーなし・未コミット
 - 2026-07-17 21:12 [Claude Code] Glass Crackの描画クオリティを刷新(先細りライン・中心の微細ひび密集・星形の欠け穴+破片フレーク・不規則な連結リング)、参照画像相当まで改善・動作確認済み・未コミット
 - 2026-07-17 20:45 [Claude Code] Glass Crackジェネレーター(ひび割れ/銃痕)新設、LightningGeneratorのフラクタル折れ線をfractalLine.jsに共通化・動作確認・コミット (feat 1cc899a, docs 3d7aae5)
 - 2026-07-17 20:18 [Claude Code] 他PC再開用セットアップ手順をCLAUDE.mdに整備。data/scores.jsonをgit追跡化(教師データ同期の欠落を修正)、ユーザー作成プリセット取り込み (chore c4efa8f, docs dbdec60, ほか)

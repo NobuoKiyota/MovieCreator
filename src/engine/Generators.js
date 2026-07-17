@@ -2082,12 +2082,20 @@ export class LighthouseGenerator extends BaseGenerator {
 // カットイン系ジェネレーターの作り方" for the cycleDuration/progress/envelope pattern
 // this and future transition-style generators should follow).
 export class ShockwaveBurstGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.lastCycleIndex = -1;
+    this.spikeProfiles = []; // one jagged radius-multiplier profile per ring, cached per cycle
+  }
+
   defaultParams() {
     return {
       cycleDuration: 1500, // ms; match the project's export Duration for a single burst
       ringCount: 1,
       maxRadius: 800,
       ringThickness: 30,
+      jaggedness: 0.35, // 0 = perfect circle (old look); higher = sharp spiky silhouette, not a smooth wobble
+      windupFrac: 0.12, // fraction of the cycle spent coiling inward before the burst fires outward
       fadeInFrac: 0.05,
       fadeOutFrac: 0.3,
       color: '#22d3ee',
@@ -2101,6 +2109,8 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
       { name: 'ringCount', label: 'Ring Count', type: 'range', min: 1, max: 3, step: 1 },
       { name: 'maxRadius', label: 'Max Radius', type: 'range', min: 200, max: 1500, step: 10 },
       { name: 'ringThickness', label: 'Ring Thickness', type: 'range', min: 5, max: 100, step: 1 },
+      { name: 'jaggedness', label: 'Jaggedness', type: 'range', min: 0, max: 1, step: 0.05 },
+      { name: 'windupFrac', label: 'Windup Fraction', type: 'range', min: 0, max: 0.3, step: 0.01 },
       { name: 'fadeInFrac', label: 'Fade In Fraction', type: 'range', min: 0, max: 0.3, step: 0.01 },
       { name: 'fadeOutFrac', label: 'Fade Out Fraction', type: 'range', min: 0, max: 0.5, step: 0.01 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
@@ -2108,8 +2118,51 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
     ];
   }
 
+  // Builds one jagged radius-multiplier profile per ring for this cycle - sharp alternating
+  // near/far spike points around the circle (a real jagged silhouette, not a smooth sine wobble).
+  // Cached per cycle so the burst reads as one consistent spiky shape as it expands, rather than
+  // flickering noise from frame to frame.
+  generateSpikeProfiles() {
+    const ringCount = Math.round(this.params.ringCount);
+    const jag = this.params.jaggedness;
+    this.spikeProfiles = [];
+    for (let i = 0; i < ringCount; i++) {
+      const spikeCount = 12 + Math.floor(Math.random() * 10); // 12-21 points, varies per ring
+      const profile = [];
+      for (let s = 0; s < spikeCount; s++) {
+        const angle = (s / spikeCount) * Math.PI * 2;
+        const isOuter = s % 2 === 0;
+        const mult = isOuter
+          ? 1.0 + jag * (0.15 + Math.random() * 0.15)
+          : 1.0 - jag * (0.35 + Math.random() * 0.25);
+        profile.push({ angle, mult: Math.max(0.05, mult) });
+      }
+      this.spikeProfiles.push(profile);
+    }
+  }
+
+  // Two-phase radius curve: a brief inward "windup" compression down toward the center, then a
+  // snappy ease-out burst back outward - a real explosion coils back before it fires, unlike a
+  // plain ripple that only ever expands. Returns a 0..1 fraction of maxRadius.
+  computeRadiusFrac(progress) {
+    const windupFrac = this.params.windupFrac;
+    if (windupFrac > 0 && progress < windupFrac) {
+      const wp = progress / windupFrac;
+      return 0.22 * (1 - wp) + 0.02 * wp;
+    }
+    const ep = windupFrac < 1 ? (progress - windupFrac) / (1 - windupFrac) : progress;
+    const epClamped = Math.max(0, Math.min(1, ep));
+    return 0.02 + 0.98 * (1 - Math.pow(1 - epClamped, 3));
+  }
+
   draw(ctx, width, height, time) {
     const cycleDuration = this.params.cycleDuration;
+    const cycleIndex = Math.floor(time / cycleDuration);
+    if (cycleIndex !== this.lastCycleIndex) {
+      this.lastCycleIndex = cycleIndex;
+      this.generateSpikeProfiles();
+    }
+
     const progress = (time % cycleDuration) / cycleDuration;
 
     let envelope = 1.0;
@@ -2125,21 +2178,33 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
     const cy = height / 2;
     const parsedColor = parseHexToRgb(this.params.color);
     const ringCount = Math.round(this.params.ringCount);
+    const jag = this.params.jaggedness;
 
     ctx.save();
     for (let i = 0; i < ringCount; i++) {
       const ringProgress = Math.max(0, progress - i * 0.15);
-      const radius = ringProgress * this.params.maxRadius;
+      const radius = this.computeRadiusFrac(ringProgress) * this.params.maxRadius;
       if (radius <= 0) continue;
 
       const grad = ctx.createRadialGradient(cx, cy, Math.max(0, radius - this.params.ringThickness), cx, cy, radius);
       grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
       grad.addColorStop(0.5, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, ${0.8 * envelope})`);
       grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
-
       ctx.fillStyle = grad;
+
       ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      const profile = this.spikeProfiles[i];
+      if (jag <= 0.001 || !profile) {
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      } else {
+        profile.forEach((p, idx) => {
+          const r = radius * p.mult;
+          const x = cx + Math.cos(p.angle) * r;
+          const y = cy + Math.sin(p.angle) * r;
+          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+      }
       ctx.fill();
     }
     ctx.restore();
@@ -2196,7 +2261,9 @@ export class GlassCrackGenerator extends BaseGenerator {
 
   // Builds a mostly-straight crack line with a few sharp kinks - real glass fractures follow
   // stress lines and only bend at flaws, unlike the fine all-scale zigzag of a lightning bolt's
-  // midpoint-displacement path. Optionally forks into a thin Y-split near its tip.
+  // midpoint-displacement path. At every kink (including the tip) independently rolls forkChance
+  // to spin off a shorter branch crack, so a single radial line can end up feeding several smaller
+  // cracks along its length rather than just one fork right at the end.
   buildShardLine(x1, y1, angle, length, kinkCount, kinkJitterDeg, forkChance) {
     const segCount = Math.max(1, Math.round(kinkCount) + 1);
     const weights = [];
@@ -2208,6 +2275,7 @@ export class GlassCrackGenerator extends BaseGenerator {
     }
 
     const points = [{ x: x1, y: y1 }];
+    const branches = [];
     let curX = x1, curY = y1, curAngle = angle;
     for (let i = 0; i < segCount; i++) {
       if (i > 0) curAngle += (Math.random() - 0.5) * 2 * (kinkJitterDeg * Math.PI / 180);
@@ -2215,20 +2283,18 @@ export class GlassCrackGenerator extends BaseGenerator {
       curX += Math.cos(curAngle) * segLen;
       curY += Math.sin(curAngle) * segLen;
       points.push({ x: curX, y: curY });
+
+      if (Math.random() < forkChance) {
+        const branchAngle = curAngle + (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 22) * Math.PI / 180;
+        const branchLen = segLen * (0.5 + Math.random() * 0.5);
+        branches.push([
+          { x: curX, y: curY },
+          { x: curX + Math.cos(branchAngle) * branchLen, y: curY + Math.sin(branchAngle) * branchLen }
+        ]);
+      }
     }
 
-    let forkPoints = null;
-    if (Math.random() < forkChance && points.length >= 2) {
-      const branchStart = points[points.length - 2];
-      const forkAngle = curAngle + (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 22) * Math.PI / 180;
-      const forkLen = length * (0.15 + Math.random() * 0.15);
-      forkPoints = [
-        { x: branchStart.x, y: branchStart.y },
-        { x: branchStart.x + Math.cos(forkAngle) * forkLen, y: branchStart.y + Math.sin(forkAngle) * forkLen }
-      ];
-    }
-
-    return { points, forkPoints };
+    return { points, branches };
   }
 
   // Builds one fresh randomized crack pattern (radial shard cracks with tip forks, a dense
@@ -2248,8 +2314,8 @@ export class GlassCrackGenerator extends BaseGenerator {
       const startR = holeR > 0 ? holeR * (0.9 + Math.random() * 0.2) : 0;
       const x1 = Math.cos(angle) * startR;
       const y1 = Math.sin(angle) * startR;
-      const { points, forkPoints } = this.buildShardLine(x1, y1, angle, len, kinkCount, kinkJitterDeg, this.params.branchChance);
-      cracks.push({ main: points, fork: forkPoints });
+      const { points, branches } = this.buildShardLine(x1, y1, angle, len, kinkCount, kinkJitterDeg, this.params.branchChance);
+      cracks.push({ main: points, branches });
     }
 
     // Dense cluster of short micro-cracks around the impact point (hackle marks) - this is
@@ -2288,23 +2354,37 @@ export class GlassCrackGenerator extends BaseGenerator {
       }
     }
 
-    // Star-shaped shattered hole (bullet-hole mode only), with a few jutting shard flakes
-    // around its rim so it reads as missing glass rather than a clean-edged circle.
+    // Shattered hole (bullet-hole mode only). Real punch-through holes aren't an
+    // independent shape stamped on top of the cracks - the hole boundary IS the set of
+    // radial cracks near the impact point: glass tears cleanly along each radial crack
+    // (an outward "point" of the hole), while the pane fragment trapped between two
+    // neighboring radial cracks has no fracture line to cling to and falls out entirely
+    // (an inward "valley"). So the polygon is built directly from the roots of `cracks`
+    // rather than from an independent random n-gon.
     let holePoly = null;
     let holeFlakes = [];
     if (holeR > 0) {
-      const n = 10 + 2 * Math.floor(Math.random() * 3); // 10, 12, or 14 - even, for alternation
       holePoly = [];
-      for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        const r = (i % 2 === 0)
-          ? holeR * (0.9 + Math.random() * 0.25)
-          : holeR * (0.35 + Math.random() * 0.2);
-        holePoly.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+      for (let i = 0; i < crackCount; i++) {
+        const outerPt = cracks[i].main[0];
+        holePoly.push({ x: outerPt.x, y: outerPt.y });
+
+        const nextPt = cracks[(i + 1) % crackCount].main[0];
+        const angleA = Math.atan2(outerPt.y, outerPt.x);
+        const angleB = Math.atan2(nextPt.y, nextPt.x);
+        let da = angleB - angleA;
+        while (da <= -Math.PI) da += Math.PI * 2;
+        while (da > Math.PI) da -= Math.PI * 2;
+        const valleyAngle = angleA + da / 2 + (Math.random() - 0.5) * 0.08;
+        const valleyR = holeR * (0.3 + Math.random() * 0.25);
+        holePoly.push({ x: Math.cos(valleyAngle) * valleyR, y: Math.sin(valleyAngle) * valleyR });
       }
+
+      // Rim flakes cling to the actual fracture lines (the "point" vertices), not to the
+      // smooth crushed-out valleys, so only even indices (crack roots) are eligible bases.
       const flakeCount = 2 + Math.floor(Math.random() * 4);
       for (let i = 0; i < flakeCount; i++) {
-        const base = holePoly[Math.floor(Math.random() * holePoly.length)];
+        const base = holePoly[Math.floor(Math.random() * crackCount) * 2];
         const ang = Math.atan2(base.y, base.x);
         const flakeLen = holeR * (0.2 + Math.random() * 0.3);
         const spread = 0.2 + Math.random() * 0.15;
@@ -2422,8 +2502,8 @@ export class GlassCrackGenerator extends BaseGenerator {
 
     for (const crack of this.cracks) {
       this.drawCrackLine(ctx, crack.main, growProgress, hueSat, lightness, 4.5);
-      if (crack.fork) {
-        this.drawCrackLine(ctx, crack.fork, growProgress, hueSat, lightness, 2.4);
+      for (const branch of crack.branches) {
+        this.drawCrackLine(ctx, branch, growProgress, hueSat, lightness, 2.4);
       }
     }
 
