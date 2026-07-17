@@ -136,7 +136,20 @@
 - **コード同期はgit(GitHubリモート `origin` = NobuoKiyota/MovieCreator)を正とする**。作業開始前に必ず `git pull`、作業終了時は `git push` で同期する。Google Driveでリポジトリ本体をライブ同期しない(`.git`内部ファイルの同期競合による破損リスクがあるため)。
 - Google Drive(`D:\マイドライブ\MovieCreator_Backup\`)は**書き出し済み成果物のバックアップ専用**。レンダリングしたMP4/WebM、`.mvproj`、presetsのスナップショットなどを手動または任意のタイミングで保存する場所であり、ソースコードの同期経路ではない。
 - `ai_archives/` は `.gitignore` 対象のためGit経由では他PCに引き継がれない(過去記録のローカルアーカイブとして自宅PCにのみ残る想定。運用終了済みなので実害なし)。
-- Claude Codeの会話メモリ(`~/.claude/`配下)は**作業ディレクトリのパスに紐づく**ため、PCが変わると引き継がれない。プロジェクトの恒久的な情報は個人メモリではなく、この `CLAUDE.md`(git管理下)に書くこと。
+- **`data/scores.json`(教師データ本体)はgit追跡対象**(2026-07-17〜)。Good引力ランダマイザーの学習データが他PCでも常に最新になるよう、通常のソースコードと同じく`git pull`/`push`で同期する。破損時フォールバック(`apiHandler.js`)が作る`data/*.corrupted-*.json`バックアップのみ`.gitignore`で除外。
+- Claude Codeの会話メモリ・個人設定(`~/.claude/`配下)は**作業ディレクトリのパスに紐づく**ため、PCが変わると引き継がれない。プロジェクトの恒久的な情報は個人メモリではなく、この `CLAUDE.md`(git管理下)に書くこと。
+
+### 新しいPC(会社PC等)でのセットアップ手順
+
+1. **前提**: [Node.js (LTS)](https://nodejs.org/) をインストール
+2. **クローン**: `git clone https://github.com/NobuoKiyota/MovieCreator.git`(既存クローンがあれば `git pull` のみでよい)
+3. **依存関係インストール**: プロジェクトフォルダで `npm install`
+4. **起動確認**: `npm run dev`(または `run_app.bat`)→ `http://localhost:5173/` にブラウザでアクセスし、既存プリセットが読み込めること・Good引力の📊ダイアログで評価件数がこのPCでも反映されていることを確認
+5. **状況把握**: [TASKLOG.md](TASKLOG.md) の直近数行と、このCLAUDE.mdの「開発ロードマップ＆タスク一覧」のチェック状況を読んで、直前の作業内容・未着手タスクを把握してから着手する
+6. **Claude Code固有の設定**(このPCで初めてClaude Codeを使う場合のみ):
+   - `.claude/launch.json` はgit管理下なので自動的に引き継がれる(ブラウザプレビューの`npm run dev`起動設定)
+   - 個人のグローバル設定(`~/.claude/CLAUDE.md`)は各PCで別ファイルなので、必要であれば手動で作成する(日本語応答・クレジット節約方針など、プロジェクト非依存の個人的な運用ルール)
+7. **Google Drive**: そのPCの実際のGoogle Driveパス(自宅PCでは`D:\マイドライブ\`だが、会社PCでは異なる場合がある)に`MovieCreator_Backup`フォルダを用意する。ソースコードとは無関係(バックアップ専用)なので、セットアップの必須項目ではない
 
 ## 注意点
 
