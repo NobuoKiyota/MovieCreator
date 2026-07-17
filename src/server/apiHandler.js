@@ -30,6 +30,33 @@ export function getSafeFilename(name, fallbackPrefix = 'file') {
 }
 
 /**
+ * scores.json(教師データ)を読み込む。JSONが破損している場合は、
+ * 破損ファイルをタイムスタンプ付きで退避してから空配列で復旧する
+ * （評価データの蓄積が全損しないようにするためのフォールバック）。
+ *
+ * @param {string} scoresPath - scores.jsonの絶対パス
+ * @returns {Array} スコア評価レコードの配列
+ */
+function loadScoresWithFallback(scoresPath) {
+  if (!fs.existsSync(scoresPath)) {
+    return [];
+  }
+  const fileContent = fs.readFileSync(scoresPath, 'utf-8');
+  try {
+    return JSON.parse(fileContent);
+  } catch (err) {
+    const backupPath = scoresPath.replace(/\.json$/, `.corrupted-${Date.now()}.json`);
+    console.error(`[API Server] scores.json is corrupted (${err.message}). Backing up to ${backupPath} and starting fresh.`);
+    try {
+      fs.copyFileSync(scoresPath, backupPath);
+    } catch (backupErr) {
+      console.error('[API Server] Failed to back up corrupted scores.json:', backupErr);
+    }
+    return [];
+  }
+}
+
+/**
  * MovieCreatorのAPIリクエストを処理するミドルウェアハンドラー。
  * Viteの `configureServer` から呼び出されることを想定しています。
  * 
@@ -197,11 +224,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
         }
 
         // Load current scores.json
-        let scores = [];
-        if (fs.existsSync(scoresPath)) {
-          const fileContent = fs.readFileSync(scoresPath, 'utf-8');
-          scores = JSON.parse(fileContent);
-        }
+        let scores = loadScoresWithFallback(scoresPath);
 
         // Append new score evaluation record
         const record = {
@@ -234,11 +257,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
   // 5. GET /api/scores - Retrieve all score histories
   if (req.method === 'GET' && pathname === '/api/scores') {
     try {
-      let scores = [];
-      if (fs.existsSync(scoresPath)) {
-        const fileContent = fs.readFileSync(scoresPath, 'utf-8');
-        scores = JSON.parse(fileContent);
-      }
+      const scores = loadScoresWithFallback(scoresPath);
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify(scores));
     } catch (err) {

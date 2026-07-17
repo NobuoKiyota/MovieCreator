@@ -4,6 +4,8 @@
  * Right Upper: Layers Hierarchy List (Simple rows: reorder, delete, visibility, active toggle)
  * Right Lower: Inspector Panel (Detailed parameter tuning & LFO settings for the ACTIVE layer only)
  */
+import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
+
 export class Controls {
   constructor(layerManager, mainApp) {
     this.layerManager = layerManager;
@@ -79,27 +81,34 @@ export class Controls {
     this.activeLayerId = null; // Currently selected layer ID in Inspector
     this.expandedMods = new Set();  // Holds 'layerId-paramName' for expanded LFO sub-panels
 
-    // Common FX Configs supporting LFO modulation
+    // Common FX Configs supporting LFO modulation.
+    // min/max come from the shared FX_PARAM_RANGES table (see LayerManager.js `initModulations`
+    // for the modulation-bounds counterpart) so the two never drift apart; label/step/type stay
+    // here since they're UI-only concerns.
+    const R = FX_PARAM_RANGES;
     this.fxConfigs = {
-      rotation:            { name: 'rotation',            label: 'Rotation',      min: -360,  max: 360,  step: 1,     type: 'range' },
-      scale:               { name: 'scale',               label: 'Scale',         min: 0.1,   max: 5.0,  step: 0.05,  type: 'range' },
-      strobe:              { name: 'strobe',              label: 'Strobe Speed',  min: 0,     max: 30,   step: 0.5,   type: 'range' },
-      glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',     min: 0,     max: 50,   step: 1,     type: 'range' },
-      feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails', min: 0.0,   max: 0.95, step: 0.01,  type: 'range' },
-      feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',    min: -0.05, max: 0.05, step: 0.001, type: 'range' },
-      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',    min: 0,     max: 40,   step: 1,     type: 'range' },
-      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   min: 0,     max: 12,   step: 1,     type: 'range' },
-      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr', min: 0,     max: 30,   step: 0.5,   type: 'range' },
-      rotateX:             { name: 'rotateX',             label: 'Rotate X',      min: -180,  max: 180,  step: 1,     type: 'range' },
-      rotateY:             { name: 'rotateY',             label: 'Rotate Y',      min: -180,  max: 180,  step: 1,     type: 'range' },
-      rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',      min: -180,  max: 180,  step: 1,     type: 'range' },
-      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',     min: -600,  max: 600,  step: 5,     type: 'range' }
+      rotation:            { name: 'rotation',            label: 'Rotation',       ...R.rotation,            step: 1,     type: 'range' },
+      scale:               { name: 'scale',               label: 'Scale',          ...R.scale,               step: 0.05,  type: 'range' },
+      strobe:              { name: 'strobe',              label: 'Strobe Speed',   ...R.strobe,              step: 0.5,   type: 'range' },
+      glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',      ...R.glowIntensity,       step: 1,     type: 'range' },
+      feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails',  ...R.feedbackDecay,       step: 0.01,  type: 'range' },
+      feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',     ...R.feedbackRotate,      step: 0.001, type: 'range' },
+      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',     ...R.distortionIntensity, step: 1,     type: 'range' },
+      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, step: 1,     type: 'range' },
+      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     step: 0.5,   type: 'range' },
+      rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             step: 1,     type: 'range' },
+      rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             step: 1,     type: 'range' },
+      rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',       ...R.rotateZ,             step: 1,     type: 'range' },
+      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',      ...R.translateZ,          step: 5,     type: 'range' }
     };
     this.activeDocument = document;
 
     // Good-attraction randomizer tuning (see randomizeLayer / showLearningStatsDialog)
     this.GOOD_ATTRACTION_MAX_WEIGHT = 0.35;
     this.GOOD_ATTRACTION_CONFIDENCE_SAMPLES = 5;
+
+    // feedbackDecay values above this start compounding into runaway feedback loops (see randomizeLayer)
+    this.FEEDBACK_DECAY_HARD_CAP = 0.92;
   }
 
   createElement(tagName) {
@@ -1567,36 +1576,6 @@ export class Controls {
     return fieldWrapper;
   }
 
-  createStaticFXField(fxName, label, min, max, step, val, onChange) {
-    const field = this.createElement('div');
-    field.className = 'layer-field';
-    field.dataset.staticFx = fxName;
-    
-    let displayVal = val;
-    if (typeof val === 'number') {
-      displayVal = val % 1 === 0 ? val.toString() : val.toFixed(2);
-    }
-
-    field.innerHTML = `
-      <label>${label}</label>
-      <input type="range" min="${min}" max="${max}" step="${step}" value="${val}">
-      <span class="val-display">${displayVal}</span>
-      <div style="width: 30px;"></div>
-    `;
-
-    const rangeInput = field.querySelector('input[type="range"]');
-    const valDisplay = field.querySelector('.val-display');
-
-    rangeInput.addEventListener('input', (e) => {
-      const v = e.target.value;
-      const numVal = parseFloat(v);
-      valDisplay.textContent = numVal % 1 === 0 ? numVal.toString() : numVal.toFixed(2);
-      onChange(v);
-    });
-
-    return field;
-  }
-
   createSliderField(name, label, min, max, step, val, onChange) {
     const field = this.createElement('div');
     field.className = 'layer-field';
@@ -1871,7 +1850,7 @@ export class Controls {
         newVal = Math.max(localMin, Math.min(localMax, newVal));
 
         if (fxName === 'feedbackDecay') {
-          newVal = Math.min(0.92, newVal); // Hard cap to prevent feedback loops
+          newVal = Math.min(this.FEEDBACK_DECAY_HARD_CAP, newVal);
         }
 
         if (fxName === 'rotation') {
@@ -1890,7 +1869,7 @@ export class Controls {
               let newKfVal = kf.value + kfOffset;
               newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
               if (fxName === 'feedbackDecay') {
-                newKfVal = Math.min(0.92, newKfVal);
+                newKfVal = Math.min(this.FEEDBACK_DECAY_HARD_CAP, newKfVal);
               }
               kf.value = newKfVal;
             });
@@ -1905,7 +1884,7 @@ export class Controls {
             newMax = Math.max(localMin, Math.min(localMax, newMax));
             
             if (fxName === 'feedbackDecay') {
-              newMax = Math.min(0.92, newMax);
+              newMax = Math.min(this.FEEDBACK_DECAY_HARD_CAP, newMax);
             }
             
             candidateMod.min = newMin;

@@ -1,5 +1,6 @@
-import { 
-  SineWaveGenerator, 
+import { FX_PARAM_RANGES } from './fxParamRanges.js';
+import {
+  SineWaveGenerator,
   NoiseWaveGenerator, 
   ParticlesGenerator, 
   GeometryGenerator, 
@@ -67,11 +68,11 @@ export class Layer {
       glowIntensity: 0,  // 0 to 50
       glowMix: 0.5,
       // Feedback trails
-      feedbackDecay: 0.0, // 0.0 (off) to 0.99
+      feedbackDecay: 0.0, // 0.0 (off) to 0.95
       feedbackScale: 1.002,
       feedbackRotate: 0.005,
       // Distortion
-      distortionIntensity: 0, // 0 to 30
+      distortionIntensity: 0, // 0 to 40
       distortionFrequency: 0.02,
       distortionSpeed: 3,
       kaleidoscopeSegment: 0,
@@ -164,22 +165,10 @@ export class Layer {
       }
     });
 
-    // 2. Initialize modulations for FX parameters (Rotation, Scale, Strobe, Glow)
-    const fxConfigs = [
-      { name: 'rotation',            min: -360,  max: 360  },
-      { name: 'scale',               min: 0.1,   max: 5.0  },
-      { name: 'strobe',              min: 0,     max: 30   },
-      { name: 'glowIntensity',       min: 0,     max: 50   },
-      { name: 'feedbackDecay',       min: 0.0,   max: 0.95, timePct: 50, behavior: 'return' },
-      { name: 'feedbackRotate',      min: -0.05, max: 0.05, timePct: 50, behavior: 'return' },
-      { name: 'distortionIntensity', min: 0,     max: 40,   timePct: 50, behavior: 'return' },
-      { name: 'kaleidoscopeSegment', min: 0,     max: 12,   timePct: 50, behavior: 'return' },
-      { name: 'chromaticOffset',     min: 0,     max: 30,   timePct: 50, behavior: 'return' },
-      { name: 'rotateX',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
-      { name: 'rotateY',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
-      { name: 'rotateZ',             min: -180,  max: 180,  timePct: 50, behavior: 'return' },
-      { name: 'translateZ',          min: -600,  max: 600,  timePct: 50, behavior: 'return' }
-    ];
+    // 2. Initialize modulations for FX parameters (Rotation, Scale, Strobe, Glow, ...)
+    // Ranges come from the shared FX_PARAM_RANGES table (see Controls.js `fxConfigs` for the
+    // UI-facing counterpart) so the two never drift apart.
+    const fxConfigs = Object.keys(FX_PARAM_RANGES).map(name => ({ name, ...FX_PARAM_RANGES[name] }));
     fxConfigs.forEach(config => {
       this.modulations[config.name] = {
         enabled: false,
