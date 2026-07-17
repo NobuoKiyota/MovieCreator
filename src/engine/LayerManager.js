@@ -63,6 +63,8 @@ export class Layer {
     // Default effect settings (including Rotation, Scale, Strobe)
     this.effects = {
       // Transforms
+      positionX: 0,      // spawn position offset, fraction of canvas width (-1 to 1, 0 = center)
+      positionY: 0,      // spawn position offset, fraction of canvas height (-1 to 1, 0 = center)
       rotation: 0,       // degrees (-360 to 360)
       scale: 1.0,        // 0.1 to 5.0
       strobe: 0,         // Speed / Frequency (0 to 30 Hz)
@@ -91,8 +93,13 @@ export class Layer {
     // Keep track of opacity multiplied by strobe
     this.currentRenderOpacity = 1.0;
 
-    // State preservation for randomizer Spread value
-    this.randomSpread = 50;
+    // State preservation for randomizer Spread value (kept lower than the old 50% default so a
+    // batch/mutation stays a recognizable variation of the current look rather than a wide swing)
+    this.randomSpread = 30;
+
+    // -1 = "never spawned yet" so the very first draw() call always triggers one jitter pass,
+    // covering plain (non-cyclic) generators whose spawn event is just layer creation.
+    this.lastSpawnCycleIndex = -1;
 
     // Modulation (LFO-like Parameter Automation)
     this.modulations = {};
@@ -169,7 +176,10 @@ export class Layer {
           timePct: 50, // 50% of the total duration by default
           behavior: 'return', // 'repeat' (saw), 'return' (ping-pong), 'one' (ramp & hold)
           keyframeEnabled: false,
-          keyframes: []
+          keyframes: [],
+          spawnJitter: false, // see applySpawnJitter()
+          jitterBase: this.generator.params[config.name],
+          jitterWidth: 20 // % of this parameter's own min-max range; drag the 🎲 button to adjust
         };
       }
     });
@@ -186,9 +196,54 @@ export class Layer {
         timePct: config.timePct !== undefined ? config.timePct : 50,
         behavior: config.behavior !== undefined ? config.behavior : 'return',
         keyframeEnabled: false,
-        keyframes: []
+        keyframes: [],
+        spawnJitter: false, // see applySpawnJitter()
+        jitterBase: this.effects[config.name],
+        jitterWidth: 20 // % of this parameter's own min-max range; drag the 🎲 button to adjust
       };
     });
+  }
+
+  // Looks up a range param's {min,max} regardless of whether it's a generator param or a common
+  // FX param, so applySpawnJitterOne can treat both uniformly.
+  getRangeConfig(name) {
+    if (name in FX_PARAM_RANGES) return FX_PARAM_RANGES[name];
+    return this.generator.getParameterConfig().find(c => c.type === 'range' && c.name === name) || null;
+  }
+
+  /**
+   * Re-rolls a fresh random value for a single parameter with its 🎲 Spawn Jitter toggle enabled,
+   * offsetting from that parameter's stable jitterBase (not its possibly-already-jittered live
+   * value, which would let repeated jitters random-walk away from what the user actually dialed
+   * in). Uses the same damped-offset formula as the manual Mutation randomizer (randomizeLayer)
+   * for a consistent "feel" between the two features. Skips any parameter currently under LFO or
+   * keyframe automation, since those already own that parameter's live value every frame. Each
+   * parameter has its own jitterWidth (dragged directly on its 🎲 button), not a shared value.
+   */
+  applySpawnJitterOne(name) {
+    const mod = this.modulations[name];
+    if (!mod || !mod.spawnJitter || mod.enabled || mod.keyframeEnabled) return;
+    const widthPct = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+    if (widthPct <= 0) return;
+    const config = this.getRangeConfig(name);
+    if (!config) return;
+    const target = (name in FX_PARAM_RANGES) ? this.effects : this.generator.params;
+    const range = config.max - config.min;
+    const base = mod.jitterBase !== undefined ? mod.jitterBase : target[name];
+    const offset = (Math.random() * 2 - 1) * (range * (widthPct / 100) * 0.2);
+    target[name] = Math.max(config.min, Math.min(config.max, base + offset));
+  }
+
+  // Re-rolls every jitter-enabled parameter on this layer (generator + FX). Used on spawn events
+  // (layer creation, cycle restarts - see draw()); UI drag interactions call applySpawnJitterOne
+  // directly so dragging one parameter's width doesn't also re-roll unrelated ones.
+  applySpawnJitter() {
+    this.generator.getParameterConfig().forEach(config => {
+      if (config.type === 'range') this.applySpawnJitterOne(config.name);
+    });
+    for (let name in FX_PARAM_RANGES) {
+      this.applySpawnJitterOne(name);
+    }
   }
 
   getDefaultPresetName(type) {
@@ -437,6 +492,19 @@ export class Layer {
   draw(time, frameCount) {
     if (!this.visible) return;
 
+    // Spawn Jitter: re-roll jitter-enabled parameters whenever a new "spawn" starts. Cycle-based
+    // generators (Glass Crack, Shockwave Burst, ...) restart every params.cycleDuration, so this
+    // recomputes their cycle index the same way those generators do internally and re-rolls on
+    // every boundary; plain (non-cyclic) generators have no cycleDuration and so stay at index 0
+    // forever, meaning this only fires once, right after layer creation (lastSpawnCycleIndex
+    // starts at -1). Must run before generator.draw() so jittered params affect this frame.
+    const cycleDuration = this.generator.params.cycleDuration;
+    const spawnCycleIndex = cycleDuration ? Math.floor(time / cycleDuration) : 0;
+    if (spawnCycleIndex !== this.lastSpawnCycleIndex) {
+      this.lastSpawnCycleIndex = spawnCycleIndex;
+      this.applySpawnJitter();
+    }
+
     const w = this.canvas.width;
     const h = this.canvas.height;
 
@@ -481,7 +549,13 @@ export class Layer {
     // 2. Clear output canvas and copy raw canvas contents with Scale & Rotation transforms applied
     this.ctx.clearRect(0, 0, w, h);
     this.ctx.save();
-    
+
+    // Spawn position offset - shifts the whole composited result after rotation/scale, so the
+    // generator keeps rotating/scaling around its own center rather than the canvas center.
+    if (this.effects.positionX || this.effects.positionY) {
+      this.ctx.translate((this.effects.positionX || 0) * w, (this.effects.positionY || 0) * h);
+    }
+
     // Apply layout transformations centered on canvas
     this.ctx.translate(w / 2, h / 2);
     if (this.effects.rotation !== 0) {

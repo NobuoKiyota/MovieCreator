@@ -699,6 +699,23 @@ select:focus {
   transform: scale(1.15);
 }
 
+.btn-spawn-jitter-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.8;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-spawn-jitter-toggle:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
 /* Modulation Dropdown Panel */
 .modulation-panel {
   background: rgba(8, 7, 16, 0.75);
@@ -1079,6 +1096,28 @@ input[type="color"]::-webkit-color-swatch {
   cursor: pointer;
   outline: none;
   line-height: 1;
+}
+
+.param-section-grid .layer-field-header .btn-spawn-jitter-toggle {
+  padding: 0.1rem;
+  background: transparent;
+  border: none;
+  cursor: ns-resize;
+  outline: none;
+  line-height: 1;
+}
+
+.param-section-grid .layer-field-header .jitter-width-badge {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  min-width: 30px;
+  max-width: 34px;
+  width: 34px;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Expand range slider to fill bottom row fully */

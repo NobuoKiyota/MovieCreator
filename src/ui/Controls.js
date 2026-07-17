@@ -87,6 +87,8 @@ export class Controls {
     // here since they're UI-only concerns.
     const R = FX_PARAM_RANGES;
     this.fxConfigs = {
+      positionX:           { name: 'positionX',           label: 'Position X',     ...R.positionX,           step: 0.01,  type: 'range' },
+      positionY:           { name: 'positionY',           label: 'Position Y',     ...R.positionY,           step: 0.01,  type: 'range' },
       rotation:            { name: 'rotation',            label: 'Rotation',       ...R.rotation,            step: 1,     type: 'range' },
       scale:               { name: 'scale',               label: 'Scale',          ...R.scale,               step: 0.05,  type: 'range' },
       strobe:              { name: 'strobe',              label: 'Strobe Speed',   ...R.strobe,              step: 0.5,   type: 'range' },
@@ -176,7 +178,7 @@ export class Controls {
         width: w,
         height: h,
         bgMode: this.exportBgEl.value,
-        fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 2.0
+        fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 0
       };
       this.mainApp.exportVideo(options);
     });
@@ -1432,18 +1434,51 @@ export class Controls {
 
       const mainField = this.createElement('div');
       mainField.className = 'layer-field';
-      
+
       const currentVal = isFx ? layer.effects[config.name] : layer.generator.params[config.name];
       let displayVal = currentVal;
       if (typeof displayVal === 'number') {
         displayVal = displayVal % 1 === 0 ? displayVal.toString() : displayVal.toFixed(4);
       }
 
+      // Spawn Jitter width is per-parameter (dragged directly on the knob button, DAW-style).
+      // The badge itself always shows a fixed-width integer percentage (never more than 3
+      // digits) so it can't push the row layout around; the actual ± amount in the parameter's
+      // own units is available as a hover tooltip for anyone who wants the precise figure.
+      const formatJitterPct = () => {
+        const jw = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+        return `${Math.round(jw)}%`;
+      };
+      const formatJitterDetail = () => {
+        const jw = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+        const half = (config.max - config.min) * (jw / 100) * 0.2;
+        return `±${half % 1 === 0 ? half.toString() : half.toFixed(2)}`;
+      };
+
+      // Renders the toggle as a small rotary-knob indicator (ring + position dot, like a DAW
+      // pot) instead of a static icon, so the current jitter width reads at a glance from the
+      // dot's angle and color intensity rather than having to notice a number changing.
+      const renderJitterKnob = () => {
+        const jw = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+        const on = !!mod.spawnJitter;
+        const thetaRad = (-135 + (jw / 100) * 270) * Math.PI / 180;
+        const dotX = (9 + 6.2 * Math.sin(thetaRad)).toFixed(2);
+        const dotY = (9 - 6.2 * Math.cos(thetaRad)).toFixed(2);
+        const trackOpacity = on ? (0.35 + 0.45 * (jw / 100)).toFixed(2) : 0.25;
+        const color = on ? '#f59e0b' : '#9ca3af';
+        return `<svg width="18" height="18" viewBox="0 0 18 18" style="display: block;">
+          <circle cx="9" cy="9" r="7" fill="none" stroke="${color}" stroke-width="1.4" stroke-opacity="${trackOpacity}"/>
+          <circle cx="${dotX}" cy="${dotY}" r="1.7" fill="${color}"/>
+        </svg>`;
+      };
+
       mainField.innerHTML = `
         <div class="layer-field-header">
           <label>${config.label}</label>
           <span class="val-display">${displayVal}</span>
           <div style="display: flex; gap: 0.2rem; align-items: center;">
+            <button class="btn-spawn-jitter-toggle" title="Click: toggle Spawn Jitter. Drag up/down: set jitter width.">${renderJitterKnob()}</button>
+            <span class="jitter-width-badge" title="${formatJitterDetail()}" style="display: ${mod.spawnJitter ? 'inline' : 'none'}; color: #f59e0b;">${formatJitterPct()}</span>
             <button class="btn-modulation-toggle" ${modActiveGlow} title="Toggle LFO Automation">🧬</button>
             <button ${keyActiveGlow} title="Toggle Keyframe Timeline">🔑</button>
             <button class="btn-add-keyframe" style="${showAddKey} font-size: 0.65rem; padding: 0.1rem 0.25rem; line-height: 1;" title="Add Keyframe at Current Time">+ Key</button>
@@ -1457,17 +1492,66 @@ export class Controls {
       const btnModToggle = mainField.querySelector('.btn-modulation-toggle');
       const btnKeyframeToggle = mainField.querySelector('.btn-keyframe-toggle');
       const btnAddKeyframe = mainField.querySelector('.btn-add-keyframe');
+      const btnSpawnJitterToggle = mainField.querySelector('.btn-spawn-jitter-toggle');
+      const jitterWidthBadge = mainField.querySelector('.jitter-width-badge');
 
       rangeInput.addEventListener('input', (e) => {
         const v = parseFloat(e.target.value);
         valDisplay.textContent = v % 1 === 0 ? v.toString() : v.toFixed(4);
         onValUpdate(v);
-        
+
         if (mod && !mod.enabled && !mod.keyframeEnabled) {
           mod.min = v;
           mod.max = v;
+          mod.jitterBase = v;
         }
         this.mainApp.renderSingleFrame();
+      });
+
+      // Click toggles Spawn Jitter on/off; a vertical drag instead scrubs this parameter's own
+      // jitter width (DAW-knob style), so there's no separate numeric input to add per parameter.
+      let jitterDragStartY = null;
+      let jitterDragStartWidth = null;
+      let jitterDragMoved = false;
+
+      const onJitterDragMove = (e) => {
+        const dy = jitterDragStartY - e.clientY; // dragging up increases width
+        if (Math.abs(dy) > 3) jitterDragMoved = true;
+        if (!jitterDragMoved) return;
+
+        mod.jitterWidth = Math.max(0, Math.min(100, Math.round(jitterDragStartWidth + dy * 0.5)));
+        if (!mod.spawnJitter) mod.spawnJitter = true;
+
+        btnSpawnJitterToggle.innerHTML = renderJitterKnob();
+        jitterWidthBadge.style.display = 'inline';
+        jitterWidthBadge.textContent = formatJitterPct();
+        jitterWidthBadge.title = formatJitterDetail();
+
+        layer.applySpawnJitterOne(config.name);
+        this.mainApp.renderSingleFrame();
+      };
+
+      const onJitterDragEnd = () => {
+        document.removeEventListener('mousemove', onJitterDragMove);
+        document.removeEventListener('mouseup', onJitterDragEnd);
+
+        if (!jitterDragMoved) {
+          // Plain click (no drag): toggle on/off.
+          mod.spawnJitter = !mod.spawnJitter;
+          if (mod.spawnJitter) layer.applySpawnJitterOne(config.name);
+        }
+        this.rebuildInspector();
+        this.mainApp.renderSingleFrame();
+      };
+
+      btnSpawnJitterToggle.addEventListener('mousedown', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        jitterDragStartY = e.clientY;
+        jitterDragStartWidth = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+        jitterDragMoved = false;
+        document.addEventListener('mousemove', onJitterDragMove);
+        document.addEventListener('mouseup', onJitterDragEnd);
       });
 
       btnModToggle.addEventListener('click', (e) => {
@@ -1690,9 +1774,55 @@ export class Controls {
     const hasNoiseWarpExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('noise_warp_excess'));
     const hasNothingVisible = badEvaluations.some(e => e.reasons && e.reasons.includes('nothing_visible'));
 
+    // Normalized-diff similarity between a candidate and one past evaluation (1.0 = identical,
+    // 0.0 = as different as the parameter ranges allow). Shared by both the Bad-avoidance check
+    // and the Good-closeness check below so the two use exactly the same metric.
+    const calcSimilarityToEval = (evalItem, candidateParams, candidateEffects, genConfigs) => {
+      let paramDiffSum = 0;
+      let paramCount = 0;
+
+      genConfigs.forEach(config => {
+        if (config.type !== 'range') return;
+        const absoluteRange = config.max - config.min;
+        if (absoluteRange <= 0) return;
+        const val = (evalItem.params && evalItem.params[config.name] !== undefined)
+          ? evalItem.params[config.name] : config.min + absoluteRange / 2;
+        const normEval = (val - config.min) / absoluteRange;
+        const normCurrent = (candidateParams[config.name] - config.min) / absoluteRange;
+        paramDiffSum += Math.abs(normCurrent - normEval);
+        paramCount++;
+      });
+
+      for (let fxName in this.fxConfigs) {
+        const config = this.fxConfigs[fxName];
+        const absoluteRange = config.max - config.min;
+        if (absoluteRange <= 0) continue;
+        const val = (evalItem.effects && evalItem.effects[fxName] !== undefined)
+          ? evalItem.effects[fxName] : config.min + absoluteRange / 2;
+        const normEval = (val - config.min) / absoluteRange;
+        const normCurrent = (candidateEffects[fxName] - config.min) / absoluteRange;
+        paramDiffSum += Math.abs(normCurrent - normEval);
+        paramCount++;
+      }
+
+      return paramCount > 0 ? 1.0 - (paramDiffSum / paramCount) : 0;
+    };
+
+    const maxSimilarityAmong = (evalList, candidateParams, candidateEffects, genConfigs) => {
+      let max = 0;
+      for (const evalItem of evalList) {
+        const sim = calcSimilarityToEval(evalItem, candidateParams, candidateEffects, genConfigs);
+        if (sim > max) max = sim;
+      }
+      return max;
+    };
+
     let attempt = 0;
     let bestCandidate = null;
-    let bestMinMaxSimilarity = 1.0;
+    // Soft ranking score = closeness to a known-Good look minus closeness to a known-Bad one
+    // (see the scoring block below). Kept across attempts so the best-scoring candidate wins
+    // even when none clears the early-exit bar within the attempt budget.
+    let bestScore = -Infinity;
 
     for (attempt = 0; attempt < 10; attempt++) {
       const candidateParams = {};
@@ -1751,6 +1881,7 @@ export class Controls {
           const mod = layer.modulations[config.name];
           if (mod) {
             const candidateMod = JSON.parse(JSON.stringify(mod));
+            candidateMod.jitterBase = newVal; // keep Spawn Jitter centered on the new mutated value
 
             if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
               candidateMod.keyframes.forEach(kf => {
@@ -1914,6 +2045,7 @@ export class Controls {
         const mod = layer.modulations[fxName];
         if (mod) {
           const candidateMod = JSON.parse(JSON.stringify(mod));
+          candidateMod.jitterBase = newVal; // keep Spawn Jitter centered on the new mutated value
 
           if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
             candidateMod.keyframes.forEach(kf => {
@@ -1969,80 +2101,38 @@ export class Controls {
         modulations: candidateModulations
       };
 
-      if (badEvaluations.length === 0) {
+      // Soft-ranking selection: score every attempt by closeness to a known-Good look minus
+      // closeness to a known-Bad one, and keep the best-scoring one seen. With no Good data yet
+      // this collapses to "just avoid Bad" (legacy behavior) since maxGoodSimilarity is treated
+      // as 0. Still exits early once an attempt clears reasonable bars on both counts, so this
+      // doesn't burn all 10 attempts when the very first draw is already solid.
+      const maxBadSimilarity = badEvaluations.length > 0
+        ? maxSimilarityAmong(badEvaluations, candidateParams, candidateEffects, genConfigs)
+        : 0;
+      const maxGoodSimilarity = goodEvaluations.length > 0
+        ? maxSimilarityAmong(goodEvaluations, candidateParams, candidateEffects, genConfigs)
+        : null;
+      const score = (maxGoodSimilarity !== null ? maxGoodSimilarity : 0) - maxBadSimilarity;
+
+      const clearsBad = maxBadSimilarity < 0.90;
+      const clearsGood = maxGoodSimilarity === null || maxGoodSimilarity >= 0.6;
+      if (clearsBad && clearsGood) {
         bestCandidate = candidateState;
+        bestScore = score;
         break;
       }
 
-      // Check similarity with past Bad evaluations
-      let maxSimilarityFound = 0.0;
-
-      for (let badEval of badEvaluations) {
-        let paramDiffSum = 0;
-        let paramCount = 0;
-
-        genConfigs.forEach(config => {
-          if (config.type === 'range') {
-            const absoluteRange = config.max - config.min;
-            if (absoluteRange <= 0) return;
-
-            const badVal = (badEval.params && badEval.params[config.name] !== undefined)
-              ? badEval.params[config.name]
-              : config.min + absoluteRange / 2;
-
-            const currentVal = candidateParams[config.name];
-            
-            const normBad = (badVal - config.min) / absoluteRange;
-            const normCurrent = (currentVal - config.min) / absoluteRange;
-            
-            paramDiffSum += Math.abs(normCurrent - normBad);
-            paramCount++;
-          }
-        });
-
-        for (let fxName in this.fxConfigs) {
-          const config = this.fxConfigs[fxName];
-          const absoluteRange = config.max - config.min;
-          if (absoluteRange <= 0) continue;
-
-          const badVal = (badEval.effects && badEval.effects[fxName] !== undefined)
-            ? badEval.effects[fxName]
-            : config.min + absoluteRange / 2;
-
-          const currentVal = candidateEffects[fxName];
-
-          const normBad = (badVal - config.min) / absoluteRange;
-          const normCurrent = (currentVal - config.min) / absoluteRange;
-
-          paramDiffSum += Math.abs(normCurrent - normBad);
-          paramCount++;
-        }
-
-        if (paramCount > 0) {
-          const avgDiff = paramDiffSum / paramCount;
-          const similarity = 1.0 - avgDiff;
-          if (similarity > maxSimilarityFound) {
-            maxSimilarityFound = similarity;
-          }
-        }
-      }
-
-      if (maxSimilarityFound < 0.90) {
-        bestCandidate = candidateState;
-        break;
-      }
-
-      if (maxSimilarityFound < bestMinMaxSimilarity) {
-        bestMinMaxSimilarity = maxSimilarityFound;
+      if (score > bestScore) {
+        bestScore = score;
         bestCandidate = candidateState;
       }
-      
-      console.log(`[Score Filter] Randomize attempt ${attempt + 1}: Bad similarity is ${Math.round(maxSimilarityFound * 100)}%. Rerolling...`);
+
+      console.log(`[Score Filter] Randomize attempt ${attempt + 1}: score ${score.toFixed(2)} (bad ${Math.round(maxBadSimilarity * 100)}%${maxGoodSimilarity !== null ? ', good ' + Math.round(maxGoodSimilarity * 100) + '%' : ''}). Rerolling...`);
     }
 
     if (bestCandidate) {
       if (attempt >= 10) {
-        console.warn(`[Score Filter] Randomize reached max attempts. Using best available candidate with bad similarity of ${Math.round(bestMinMaxSimilarity * 100)}%`);
+        console.warn(`[Score Filter] Randomize reached max attempts. Using best-scoring candidate (score ${bestScore.toFixed(2)}).`);
       } else {
         console.log(`[Score Filter] Randomize succeeded on attempt ${attempt + 1}.`);
       }
@@ -2064,6 +2154,9 @@ export class Controls {
           targetMod.behavior = srcMod.behavior;
           targetMod.keyframeEnabled = srcMod.keyframeEnabled;
           targetMod.keyframes = JSON.parse(JSON.stringify(srcMod.keyframes || []));
+          targetMod.spawnJitter = srcMod.spawnJitter;
+          if (srcMod.jitterBase !== undefined) targetMod.jitterBase = srcMod.jitterBase;
+          if (srcMod.jitterWidth !== undefined) targetMod.jitterWidth = srcMod.jitterWidth;
         }
       }
     }
@@ -2114,7 +2207,7 @@ export class Controls {
 
       const fpsVal = this.exportFpsEl ? parseInt(this.exportFpsEl.value, 10) : 60;
       const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-      const fadeOutVal = parseFloat(this.masterFadeOutEl.value) || 2.0;
+      const fadeOutVal = parseFloat(this.masterFadeOutEl.value) || 0;
 
       for (let i = 0; i < variations.length; i++) {
         // Apply parameters for current variation
@@ -2248,6 +2341,9 @@ export class Controls {
         targetMod.behavior = srcMod.behavior;
         targetMod.keyframeEnabled = srcMod.keyframeEnabled;
         targetMod.keyframes = JSON.parse(JSON.stringify(srcMod.keyframes || []));
+        targetMod.spawnJitter = srcMod.spawnJitter;
+        if (srcMod.jitterBase !== undefined) targetMod.jitterBase = srcMod.jitterBase;
+        if (srcMod.jitterWidth !== undefined) targetMod.jitterWidth = srcMod.jitterWidth;
       }
     }
   }
@@ -2411,7 +2507,7 @@ export class Controls {
       master: {
         duration: parseFloat(this.exportDurationEl.value) || 10,
         bgMode: this.exportBgEl.value,
-        fadeOut: parseFloat(this.masterFadeOutEl.value) || 2.0,
+        fadeOut: parseFloat(this.masterFadeOutEl.value) || 0,
         vignette: this.layerManager.masterVignette,
         grain: this.layerManager.masterFilmGrain
       },
@@ -2478,7 +2574,7 @@ export class Controls {
       if (data.master) {
         this.exportDurationEl.value = data.master.duration || 10;
         this.exportBgEl.value = data.master.bgMode || 'black';
-        this.masterFadeOutEl.value = data.master.fadeOut !== undefined ? data.master.fadeOut : 2.0;
+        this.masterFadeOutEl.value = data.master.fadeOut !== undefined ? data.master.fadeOut : 0;
         this.layerManager.masterVignette = data.master.vignette !== undefined ? data.master.vignette : 0.3;
         this.layerManager.masterFilmGrain = data.master.grain !== undefined ? data.master.grain : 0.03;
       }
@@ -2513,6 +2609,9 @@ export class Controls {
               newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
               newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
               newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+              newLayer.modulations[paramName].spawnJitter = srcMod.spawnJitter !== undefined ? srcMod.spawnJitter : false;
+              if (srcMod.jitterBase !== undefined) newLayer.modulations[paramName].jitterBase = srcMod.jitterBase;
+              if (srcMod.jitterWidth !== undefined) newLayer.modulations[paramName].jitterWidth = srcMod.jitterWidth;
             }
           }
         }
@@ -2566,7 +2665,7 @@ export class Controls {
       master: {
         duration: parseFloat(this.exportDurationEl.value) || 10,
         bgMode: this.exportBgEl.value,
-        fadeOut: parseFloat(this.masterFadeOutEl.value) || 2.0,
+        fadeOut: parseFloat(this.masterFadeOutEl.value) || 0,
         vignette: this.layerManager.masterVignette,
         grain: this.layerManager.masterFilmGrain
       },
@@ -2614,7 +2713,7 @@ export class Controls {
       master: {
         duration: parseFloat(this.exportDurationEl.value) || 10,
         bgMode: this.exportBgEl.value,
-        fadeOut: parseFloat(this.masterFadeOutEl.value) || 2.0,
+        fadeOut: parseFloat(this.masterFadeOutEl.value) || 0,
         vignette: this.layerManager.masterVignette,
         grain: this.layerManager.masterFilmGrain
       },
@@ -2673,7 +2772,7 @@ export class Controls {
         if (data.master) {
           this.exportDurationEl.value = data.master.duration || 10;
           this.exportBgEl.value = data.master.bgMode || 'black';
-          this.masterFadeOutEl.value = data.master.fadeOut !== undefined ? data.master.fadeOut : 2.0;
+          this.masterFadeOutEl.value = data.master.fadeOut !== undefined ? data.master.fadeOut : 0;
           this.layerManager.masterVignette = data.master.vignette !== undefined ? data.master.vignette : 0.3;
           this.layerManager.masterFilmGrain = data.master.grain !== undefined ? data.master.grain : 0.03;
         }
@@ -2708,6 +2807,9 @@ export class Controls {
                 newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
                 newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
                 newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+                newLayer.modulations[paramName].spawnJitter = srcMod.spawnJitter !== undefined ? srcMod.spawnJitter : false;
+                if (srcMod.jitterBase !== undefined) newLayer.modulations[paramName].jitterBase = srcMod.jitterBase;
+                if (srcMod.jitterWidth !== undefined) newLayer.modulations[paramName].jitterWidth = srcMod.jitterWidth;
               }
             }
           }
@@ -3133,7 +3235,7 @@ export class Controls {
       master: {
         duration: parseFloat(this.exportDurationEl.value) || 10,
         bgMode: this.exportBgEl.value,
-        fadeOut: parseFloat(this.masterFadeOutEl.value) || 2.0,
+        fadeOut: parseFloat(this.masterFadeOutEl.value) || 0,
         vignette: this.layerManager.masterVignette,
         grain: this.layerManager.masterFilmGrain
       },
@@ -3287,6 +3389,9 @@ export class Controls {
             newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
             newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
             newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+            newLayer.modulations[paramName].spawnJitter = srcMod.spawnJitter !== undefined ? srcMod.spawnJitter : false;
+            if (srcMod.jitterBase !== undefined) newLayer.modulations[paramName].jitterBase = srcMod.jitterBase;
+            if (srcMod.jitterWidth !== undefined) newLayer.modulations[paramName].jitterWidth = srcMod.jitterWidth;
           }
         }
       }
