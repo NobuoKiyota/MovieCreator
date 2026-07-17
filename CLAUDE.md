@@ -77,6 +77,23 @@
 3. **`index.html` へのオプション追加**
    - `#new-layer-type` セレクトボックス（レイヤー追加用UI）に、新しいジェネレーターの `<option value="hologram">Cyber Hologram</option>` を追加。
 
+### トランジション/カットイン系ジェネレーターの作り方
+
+既存ジェネレーターは全て「無限ループのアンビエント素材」前提。インサート/トランジション/カットイン素材（決まった尺で1回だけ展開し、開始・終了ともに完全透明であるべき素材）を追加する場合は、上記3ステップに加えて以下のパターンに従う（`ShockwaveBurstGenerator`が実例）。
+
+- レンダリングパイプライン（`LayerManager.js`/`main.js`/`VideoRecorder.js`）は無改修のまま、**ジェネレーター自身が`cycleDuration`パラメータ（ミリ秒）を持ち、`time`から`progress`と透明度エンベロープを自前で計算する**。
+  ```javascript
+  const progress = (time % this.params.cycleDuration) / this.params.cycleDuration; // 0→1
+  let envelope = 1.0;
+  if (progress < this.params.fadeInFrac) envelope = progress / this.params.fadeInFrac;
+  else if (progress > 1 - this.params.fadeOutFrac) envelope = (1 - progress) / this.params.fadeOutFrac;
+  envelope = Math.max(0, Math.min(1, envelope));
+  if (envelope <= 0.001) return; // 完全透明フレームは描画スキップ
+  // ...描画する全要素のアルファに envelope を掛ける
+  ```
+- ユーザーは書き出し時のDuration設定を`cycleDuration`と一致させれば1回だけの展開になる。`cycleDuration`をDurationより短くすると、その周期で繰り返しパルスする（意図的な柔軟性）。
+- `LayerManager.applyModulations(time, duration)`は`duration`を受け取るが`draw()`系には配線されていない（`generator.draw(ctx, width, height, time)`は`time`のみ）ため、他の手段でDurationを取得することはできない。上記の自己完結パターンを使うこと。
+
 ## 開発ロードマップ ＆ タスク一覧（Claude Code / Antigravity IDE 共通）
 
 プリセット販売へ向けた量産の効率化とバリエーション拡充のため、以下の優先順位で開発・保守を進める。どちらのツールで着手してもよいが、着手・完了時は本リストのチェックを更新し、[TASKLOG.md](TASKLOG.md) に1行追記する。
@@ -95,6 +112,8 @@
   - 1つの教師モデルからLFO Spreadに基づいて一括で数十パターンの変異体を生成し、グリッド状に並べてプレビュー・一括評価できる機能。または、高評価の変異体を自動でWebM（透過）として連続レンダリング・ファイル保存するバッチエクスポート機能。
 
 ### 3. 新規ジェネレーター（プリセット種類）の追加（優先度：中）
+- [x] **Lighthouse Beacon（回転灯台）** — 2026-07-17完了。回転ビーム+色相サイクル。Dry Ice Smokeは新規開発の優先度を下げた代替として追加(コード・presetsは維持)。
+- [x] **Shockwave Burst（衝撃波）** — 2026-07-17完了。インサート/トランジション/カットイン系ジェネレーター第1弾。「トランジション/カットイン系ジェネレーターの作り方」(上記)のパターンを確立。
 - [ ] **販売用として需要の高い新規ジェネレーターの追加**
   - **CyberHologramGenerator**: 回転するサイバーグリッド、同心円のリング、ハニカムシールドなどを組み合わせた、SFホログラム・UI風ジェネレーター。
   - **GlitchSignalGenerator**: 走査線、カラーノイズ、矩形ブレイクブロックなどをプロシージャルに描画し、デジタルノイズ・グリッチエフェクトを作るジェネレーター。

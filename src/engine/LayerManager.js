@@ -18,7 +18,8 @@ import {
   AuroraGenerator,
   DryIceGenerator,
   Shape3DParticlesGenerator,
-  LighthouseGenerator
+  LighthouseGenerator,
+  ShockwaveBurstGenerator
 } from './Generators.js';
 
 import { 
@@ -122,6 +123,7 @@ export class Layer {
       case 'dry-ice': return 'Dry Ice Smoke';
       case 'shape-3d-particles': return '3D Shape Particles';
       case 'lighthouse': return 'Lighthouse Beacon';
+      case 'shockwave-burst': return 'Shockwave Burst';
       default: return 'Custom Layer';
     }
   }
@@ -147,6 +149,7 @@ export class Layer {
       case 'dry-ice': return new DryIceGenerator();
       case 'shape-3d-particles': return new Shape3DParticlesGenerator();
       case 'lighthouse': return new LighthouseGenerator();
+      case 'shockwave-burst': return new ShockwaveBurstGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }

@@ -2053,3 +2053,72 @@ export class LighthouseGenerator extends BaseGenerator {
     ctx.restore();
   }
 }
+
+// 20. Shockwave Burst Generator (transition/cut-in: one-shot, fades to fully
+// transparent at both ends of its own cycleDuration - see CLAUDE.md "トランジション/
+// カットイン系ジェネレーターの作り方" for the cycleDuration/progress/envelope pattern
+// this and future transition-style generators should follow).
+export class ShockwaveBurstGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      cycleDuration: 1500, // ms; match the project's export Duration for a single burst
+      ringCount: 1,
+      maxRadius: 800,
+      ringThickness: 30,
+      fadeInFrac: 0.05,
+      fadeOutFrac: 0.3,
+      color: '#22d3ee',
+      colorLightness: 60
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 5000, step: 100 },
+      { name: 'ringCount', label: 'Ring Count', type: 'range', min: 1, max: 3, step: 1 },
+      { name: 'maxRadius', label: 'Max Radius', type: 'range', min: 200, max: 1500, step: 10 },
+      { name: 'ringThickness', label: 'Ring Thickness', type: 'range', min: 5, max: 100, step: 1 },
+      { name: 'fadeInFrac', label: 'Fade In Fraction', type: 'range', min: 0, max: 0.3, step: 0.01 },
+      { name: 'fadeOutFrac', label: 'Fade Out Fraction', type: 'range', min: 0, max: 0.5, step: 0.01 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    const cycleDuration = this.params.cycleDuration;
+    const progress = (time % cycleDuration) / cycleDuration;
+
+    let envelope = 1.0;
+    if (progress < this.params.fadeInFrac) {
+      envelope = progress / this.params.fadeInFrac;
+    } else if (progress > 1 - this.params.fadeOutFrac) {
+      envelope = (1 - progress) / this.params.fadeOutFrac;
+    }
+    envelope = Math.max(0, Math.min(1, envelope));
+    if (envelope <= 0.001) return; // fully transparent this frame, nothing to draw
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const parsedColor = parseHexToRgb(this.params.color);
+    const ringCount = Math.round(this.params.ringCount);
+
+    ctx.save();
+    for (let i = 0; i < ringCount; i++) {
+      const ringProgress = Math.max(0, progress - i * 0.15);
+      const radius = ringProgress * this.params.maxRadius;
+      if (radius <= 0) continue;
+
+      const grad = ctx.createRadialGradient(cx, cy, Math.max(0, radius - this.params.ringThickness), cx, cy, radius);
+      grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
+      grad.addColorStop(0.5, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, ${0.8 * envelope})`);
+      grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
