@@ -28,7 +28,8 @@ export class VideoRecorder {
       bgMode = 'black',    // Background Mode
       fadeOutDuration = 2.0, // Master fade out duration in seconds
       width = 1920,
-      height = 1080
+      height = 1080,
+      filename = `MovieCreator_Render_${Date.now()}`
     } = options;
 
     const totalFrames = duration * fps;
@@ -45,9 +46,9 @@ export class VideoRecorder {
     try {
       // Use webm-muxer + WebCodecs VP9 for transparent WebM export
       if (bgMode === 'transparent') {
-        await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
+        await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename);
       } else {
-        await this.exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
+        await this.exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename);
       }
     } catch (err) {
       console.error('Export process encountered error:', err);
@@ -67,7 +68,7 @@ export class VideoRecorder {
    * Off-line high-quality MP4 export using WebCodecs (No frame drops, frame-accurate)
    * Falls back through codec profiles automatically if a codec is unsupported.
    */
-  async exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
+  async exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
@@ -111,7 +112,7 @@ export class VideoRecorder {
     if (!chosenCodec) {
       // H.264 not available at all — fall back to real-time WebM export
       console.warn('H.264 not supported. Falling back to WebM (MediaRecorder) export.');
-      await this.exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress);
+      await this.exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename);
       return;
     }
 
@@ -191,7 +192,7 @@ export class VideoRecorder {
 
         const buffer = muxer.target.buffer;
         const blob = new Blob([buffer], { type: chosenCodec.mime });
-        this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.${chosenCodec.ext}`);
+        this.downloadBlob(blob, `${filename}.${chosenCodec.ext}`);
       } else {
         alert('MP4 encoding failed during render. Please try WebM export instead (background mode → Transparent).');
       }
@@ -207,7 +208,7 @@ export class VideoRecorder {
   /**
    * Fallback WebM export using MediaRecorder (used when WebCodecs H.264 is unsupported)
    */
-  async exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
+  async exportWebMFallback(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename) {
     console.log('Using MediaRecorder fallback for WebM export...');
 
     const stream = this.canvas.captureStream(fps);
@@ -224,8 +225,8 @@ export class VideoRecorder {
 
     const recorderPromise = new Promise((resolve) => {
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
+        const blob = new Blob([chunks], { type: 'video/webm' });
+        this.downloadBlob(blob, `${filename}.webm`);
         resolve();
       };
     });
@@ -268,7 +269,7 @@ export class VideoRecorder {
   /**
    * Off-line high-quality transparent WebM export using WebCodecs (VP9) and webm-muxer
    */
-  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress) {
+  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
@@ -353,7 +354,7 @@ export class VideoRecorder {
         const buffer = muxer.finalize();
         if (buffer) {
           const blob = new Blob([buffer], { type: 'video/webm' });
-          this.downloadBlob(blob, `MovieCreator_Render_${Date.now()}.webm`);
+          this.downloadBlob(blob, `${filename}.webm`);
         } else {
           alert('WebM alpha encoding failed (empty buffer).');
         }

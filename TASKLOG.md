@@ -13,6 +13,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-17 16:04 [Antigravity] バッチ書き出し(量産レンダラー)の実装完了
+- 2026-07-17 15:58 [Antigravity] バッチ書き出し(量産レンダラー)の実装に着手
 - 2026-07-17 15:21 [Claude Code] パーティクルシェイプ12種拡充(particleShapes.js新設)+colorVariance+FlameGenerator色ライフサイクル/伸び実装・動作確認・コミット (feat 9fb92df, docs/rules sync e70a5dd)
 - 2026-07-17 12:35 [Antigravity] 共同開発フロー整備: .agents/AGENTS.md を新しいルール（TASKLOG/CLAUDE.md運用）にアップデート
 - 2026-07-17 12:29 [Claude Code] コードベース保守監査→重複・矛盾を修正してコミット (refactor 631ae83, docs 48d7026, chore d7de9a8)

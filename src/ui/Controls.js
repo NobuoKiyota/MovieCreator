@@ -109,6 +109,10 @@ export class Controls {
 
     // feedbackDecay values above this start compounding into runaway feedback loops (see randomizeLayer)
     this.FEEDBACK_DECAY_HARD_CAP = 0.92;
+
+    // Batch generator defaults
+    this.batchCount = 10;
+    this.batchThreshold = 90;
   }
 
   createElement(tagName) {
@@ -1264,6 +1268,54 @@ export class Controls {
 
     this.inspectorContentEl.appendChild(randomizerHeader);
 
+    // 1-A-2. Batch Export Control Header
+    const batchHeader = this.createElement('div');
+    batchHeader.className = 'batch-export-header';
+    batchHeader.style.padding = '0.5rem 0.25rem 0.5rem 0.25rem';
+    batchHeader.style.borderBottom = '1px solid var(--border-color)';
+    batchHeader.style.display = 'flex';
+    batchHeader.style.flexDirection = 'column';
+    batchHeader.style.gap = '0.5rem';
+    batchHeader.style.marginBottom = '0.5rem';
+
+    batchHeader.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-size: 0.75rem; font-weight: bold; color: var(--color-text-dim); text-transform: uppercase; letter-spacing: 0.05em;">Batch Generator</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.25rem;">
+          <span style="font-size: 0.7rem; color: var(--color-text-dim);">Count:</span>
+          <input type="number" class="batch-count" value="${this.batchCount}" min="1" max="50" style="width: 45px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; font-size: 0.75rem; padding: 0.1rem 0.25rem; border-radius: 3px; text-align: center;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.25rem;">
+          <span style="font-size: 0.7rem; color: var(--color-text-dim);">Filter:</span>
+          <input type="number" class="batch-threshold" value="${this.batchThreshold}" min="50" max="99" style="width: 40px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; font-size: 0.75rem; padding: 0.1rem 0.25rem; border-radius: 3px; text-align: center;">
+          <span style="font-size: 0.7rem; color: var(--color-text-dim);">%</span>
+        </div>
+        <button class="btn btn-accent btn-small btn-batch-export" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">🎬 Batch Export (Transparent WebM)</button>
+      </div>
+    `;
+
+    const btnBatchExport = batchHeader.querySelector('.btn-batch-export');
+    const batchCountInput = batchHeader.querySelector('.batch-count');
+    const batchThresholdInput = batchHeader.querySelector('.batch-threshold');
+
+    batchCountInput.addEventListener('input', (e) => {
+      this.batchCount = parseInt(e.target.value, 10) || 10;
+    });
+
+    batchThresholdInput.addEventListener('input', (e) => {
+      this.batchThreshold = parseInt(e.target.value, 10) || 90;
+    });
+
+    btnBatchExport.addEventListener('click', async () => {
+      if (confirm(`Start batch export of ${this.batchCount} variations as transparent WebM?`)) {
+        await this.runBatchExport(layer, this.batchCount, this.batchThreshold);
+      }
+    });
+
+    this.inspectorContentEl.appendChild(batchHeader);
+
     // 1-B. Motion Preset Selection Row
     const presetRow = this.createElement('div');
     presetRow.style.padding = '0rem 0.25rem 1rem 0.25rem';
@@ -2015,6 +2067,230 @@ export class Controls {
         }
       }
     }
+  }
+
+  async runBatchExport(layer, count, thresholdPct) {
+    this.mainApp.pause();
+
+    // 1. Generate variations
+    const threshold = thresholdPct / 100;
+    const variations = this.generateBatchVariations(layer, count, layer.randomSpread !== undefined ? layer.randomSpread : 50, threshold);
+
+    if (variations.length === 0) {
+      alert('Failed to generate any valid variations. Please adjust your criteria or score database.');
+      this.mainApp.play();
+      return;
+    }
+
+    // 2. Hide other layers to render active layer solo
+    const originalVisibilities = this.layerManager.layers.map(l => ({
+      id: l.id,
+      visible: l.visible
+    }));
+
+    this.layerManager.layers.forEach(l => {
+      l.visible = (l.id === layer.id);
+    });
+
+    // Back up original state of the active layer
+    const originalState = {
+      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+      effects: JSON.parse(JSON.stringify(layer.effects || {})),
+      modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
+    };
+
+    // Show Progress Overlay
+    const overlay = this.mainApp.recordingOverlayEl;
+    const statusEl = this.mainApp.recordingStatusEl;
+    const progressEl = this.mainApp.recordingProgressEl;
+
+    overlay.classList.remove('hidden');
+
+    try {
+      const resVal = this.exportResolutionEl ? this.exportResolutionEl.value : '1080p';
+      let w = 1920, h = 1080;
+      if (resVal === '720p') { w = 1280; h = 720; }
+      else if (resVal === '4K') { w = 3840; h = 2160; }
+
+      const fpsVal = this.exportFpsEl ? parseInt(this.exportFpsEl.value, 10) : 60;
+      const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+      const fadeOutVal = parseFloat(this.masterFadeOutEl.value) || 2.0;
+
+      for (let i = 0; i < variations.length; i++) {
+        // Apply parameters for current variation
+        this.restoreLayerState(layer, variations[i]);
+        
+        statusEl.textContent = `Batch rendering: ${i + 1}/${variations.length} (0%)`;
+        progressEl.value = 0;
+
+        const options = {
+          duration: durationVal,
+          fps: fpsVal,
+          width: w,
+          height: h,
+          bgMode: 'transparent',
+          fadeOutDuration: fadeOutVal,
+          filename: `MovieCreator_Batch_${layer.type}_var${i + 1}_${Date.now()}`
+        };
+
+        // Export and wait for completion
+        await new Promise((resolve, reject) => {
+          this.mainApp.recorder.export(
+            options,
+            (percent) => {
+              statusEl.textContent = `Batch rendering: ${i + 1}/${variations.length} (${percent}%)`;
+              progressEl.value = percent;
+            },
+            () => {
+              resolve();
+            }
+          ).catch(err => {
+            console.error(`Error exporting variation ${i + 1}:`, err);
+            reject(err);
+          });
+        });
+
+        // Small delay to allow the browser thread to settle and process downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    } catch (err) {
+      console.error('Batch export failed:', err);
+      alert(`Batch export stopped due to error: ${err.message}`);
+    } finally {
+      // Restore states
+      this.restoreLayerState(layer, originalState);
+      
+      originalVisibilities.forEach(orig => {
+        const l = this.layerManager.layers.find(x => x.id === orig.id);
+        if (l) l.visible = orig.visible;
+      });
+
+      overlay.classList.add('hidden');
+      this.rebuildInspector();
+      this.mainApp.play();
+    }
+  }
+
+  generateBatchVariations(layer, count, spreadPct, minSimilarityThreshold) {
+    const variations = [];
+    
+    const originalState = {
+      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+      effects: JSON.parse(JSON.stringify(layer.effects || {})),
+      modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
+    };
+
+    const genConfigs = layer.generator.getParameterConfig();
+
+    for (let i = 0; i < count; i++) {
+      let candidateState = null;
+      let rerolls = 0;
+      const maxRerolls = 20;
+
+      while (rerolls < maxRerolls) {
+        this.restoreLayerState(layer, originalState);
+        this.randomizeLayer(layer, spreadPct);
+
+        const potentialState = {
+          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+          effects: JSON.parse(JSON.stringify(layer.effects || {})),
+          modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
+        };
+
+        let isTooSimilar = false;
+        for (const existing of variations) {
+          const sim = this.calculateStatesSimilarity(potentialState, existing, genConfigs);
+          if (sim >= minSimilarityThreshold) {
+            isTooSimilar = true;
+            break;
+          }
+        }
+
+        if (!isTooSimilar) {
+          candidateState = potentialState;
+          break;
+        }
+
+        rerolls++;
+      }
+
+      if (!candidateState) {
+        console.warn(`[Batch Generator] Reach max rerolls for variation ${i + 1}. Using last generated candidate.`);
+        candidateState = {
+          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+          effects: JSON.parse(JSON.stringify(layer.effects || {})),
+          modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
+        };
+      }
+
+      variations.push(candidateState);
+    }
+
+    this.restoreLayerState(layer, originalState);
+    return variations;
+  }
+
+  restoreLayerState(layer, state) {
+    for (let key in state.params) {
+      layer.generator.params[key] = state.params[key];
+    }
+    for (let key in state.effects) {
+      layer.effects[key] = state.effects[key];
+    }
+    for (let key in state.modulations) {
+      const targetMod = layer.modulations[key];
+      const srcMod = state.modulations[key];
+      if (targetMod && srcMod) {
+        targetMod.enabled = srcMod.enabled;
+        targetMod.min = srcMod.min;
+        targetMod.max = srcMod.max;
+        targetMod.timePct = srcMod.timePct;
+        targetMod.behavior = srcMod.behavior;
+        targetMod.keyframeEnabled = srcMod.keyframeEnabled;
+        targetMod.keyframes = JSON.parse(JSON.stringify(srcMod.keyframes || []));
+      }
+    }
+  }
+
+  calculateStatesSimilarity(stateA, stateB, genConfigs) {
+    let paramDiffSum = 0;
+    let paramCount = 0;
+
+    genConfigs.forEach(config => {
+      if (config.type === 'range') {
+        const absoluteRange = config.max - config.min;
+        if (absoluteRange <= 0) return;
+
+        const valA = stateA.params[config.name] !== undefined ? stateA.params[config.name] : config.min + absoluteRange / 2;
+        const valB = stateB.params[config.name] !== undefined ? stateB.params[config.name] : config.min + absoluteRange / 2;
+
+        const normA = (valA - config.min) / absoluteRange;
+        const normB = (valB - config.min) / absoluteRange;
+
+        paramDiffSum += Math.abs(normA - normB);
+        paramCount++;
+      }
+    });
+
+    for (let fxName in this.fxConfigs) {
+      const config = this.fxConfigs[fxName];
+      const absoluteRange = config.max - config.min;
+      if (absoluteRange <= 0) continue;
+
+      const valA = stateA.effects[fxName] !== undefined ? stateA.effects[fxName] : config.min + absoluteRange / 2;
+      const valB = stateB.effects[fxName] !== undefined ? stateB.effects[fxName] : config.min + absoluteRange / 2;
+
+      const normA = (valA - config.min) / absoluteRange;
+      const normB = (valB - config.min) / absoluteRange;
+
+      paramDiffSum += Math.abs(normA - normB);
+      paramCount++;
+    }
+
+    if (paramCount > 0) {
+      return 1.0 - (paramDiffSum / paramCount);
+    }
+    return 1.0;
   }
 
   rateLayer(layer, scoreType, buttonEl, reasons = []) {
