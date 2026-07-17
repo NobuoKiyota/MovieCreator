@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-17 16:09 [Claude Code] バッチ書き出し機能をレビュー、exportWebMFallbackのBlob構築バグを修正・コミット (fix 8295f0d)。以後②トランジション/インサート/カットイン新レイヤー種別の設計に着手
 - 2026-07-17 16:04 [Antigravity] バッチ書き出し(量産レンダラー)の実装完了
 - 2026-07-17 15:58 [Antigravity] バッチ書き出し(量産レンダラー)の実装に着手
 - 2026-07-17 15:21 [Claude Code] パーティクルシェイプ12種拡充(particleShapes.js新設)+colorVariance+FlameGenerator色ライフサイクル/伸び実装・動作確認・コミット (feat 9fb92df, docs/rules sync e70a5dd)
