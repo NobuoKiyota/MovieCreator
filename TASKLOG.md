@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-17 12:35 [Antigravity] 共同開発フロー整備: .agents/AGENTS.md を新しいルール（TASKLOG/CLAUDE.md運用）にアップデート
 - 2026-07-17 12:29 [Claude Code] コードベース保守監査→重複・矛盾を修正してコミット (refactor 631ae83, docs 48d7026, chore d7de9a8)
 - 2026-07-17 (午前) [Claude Code] Good指向ランダマイザー(引力アルゴリズム)実装・動作確認・コミット (feat 50b81c1)
 - 2026-07-17 (午前) [Claude Code] Claude Code運用セットアップ: CLAUDE.md作成、liaison.md/ai_archives運用終了、マルチPC/Google Drive方針決定 (docs 7fb6172)
