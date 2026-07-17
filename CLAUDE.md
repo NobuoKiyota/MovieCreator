@@ -14,6 +14,7 @@
 - `src/engine/LayerManager.js` — レイヤー合成・3Dトランスフォーム・描画パイプラインの中核
 - `src/engine/Generators.js` — 各種ジェネレーター(炎・雪結晶・スピログラフ・オーロラ・ドライアイス煙・3Dパーティクル等)
 - `src/engine/particleShapes.js` — 粒子系ジェネレーター(炎/ドライアイス/3Dパーティクル)共通のシェイプ描画ライブラリ(全12種)。新しいシェイプを追加する際はここに1箇所追加すれば3ジェネレーター全てに反映される(個別コピペ禁止)
+- `src/engine/fractalLine.js` — 中点変位法によるフラクタル状ジャグ折れ線の共通生成関数(`generateFractalBranch`)。稲妻(`LightningGenerator`)とガラスのひび割れ(`GlassCrackGenerator`)が共用。分岐方向はコールバック引数で差し替え可能
 - `src/engine/Effects.js` — ポストプロセスFX(万華鏡、色収差、フィードバック等)
 - `src/engine/VideoRecorder.js` — MP4/透過WebMエクスポート(mp4-muxer / webm-muxer + WebCodecs)
 - `src/ui/Controls.js` — インスペクターUI、LFO、キーフレームタイムライン、評価・教師モデル・ランダマイザーロジック
@@ -114,6 +115,7 @@
 ### 3. 新規ジェネレーター（プリセット種類）の追加（優先度：中）
 - [x] **Lighthouse Beacon（回転灯台）** — 2026-07-17完了。回転ビーム+色相サイクル。Dry Ice Smokeは新規開発の優先度を下げた代替として追加(コード・presetsは維持)。
 - [x] **Shockwave Burst（衝撃波）** — 2026-07-17完了。インサート/トランジション/カットイン系ジェネレーター第1弾。「トランジション/カットイン系ジェネレーターの作り方」(上記)のパターンを確立。
+- [x] **Glass Crack（ガラスのひび割れ/銃痕）** — 2026-07-17完了。`holeRadius`パラメータで単純ひび割れ⇔銃痕(穴あり)を切り替え可能。`LightningGenerator`のフラクタル折れ線生成を`src/engine/fractalLine.js`に共通化して再利用。
 - [ ] **販売用として需要の高い新規ジェネレーターの追加**
   - **CyberHologramGenerator**: 回転するサイバーグリッド、同心円のリング、ハニカムシールドなどを組み合わせた、SFホログラム・UI風ジェネレーター。
   - **GlitchSignalGenerator**: 走査線、カラーノイズ、矩形ブレイクブロックなどをプロシージャルに描画し、デジタルノイズ・グリッチエフェクトを作るジェネレーター。
