@@ -1990,6 +1990,10 @@ export class LighthouseGenerator extends BaseGenerator {
       beamWidth: 12,
       beamLength: 600,
       hueCycleSpeed: 0, // 0 = static color (color/colorLightness as-is), >0 = hue cycles over time
+      fogIntensity: 40, // 0 = perfectly clean beam (legacy look); >0 = patchy density + slight angular warp
+      occluderCount: 2, // fixed dark bands the beam dims as it sweeps through (0 = none)
+      occluderWidth: 20, // degrees
+      occluderStrength: 70, // 0-100: how much an occluder dims the beam at its center
       color: '#fbbf24',
       colorLightness: 60
     };
@@ -2002,9 +2006,30 @@ export class LighthouseGenerator extends BaseGenerator {
       { name: 'beamWidth', label: 'Beam Width (deg)', type: 'range', min: 2, max: 60, step: 1 },
       { name: 'beamLength', label: 'Beam Length', type: 'range', min: 100, max: 1500, step: 10 },
       { name: 'hueCycleSpeed', label: 'Hue Cycle Speed', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'fogIntensity', label: 'Fog / Distortion', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'occluderCount', label: 'Occluder Count', type: 'range', min: 0, max: 3, step: 1 },
+      { name: 'occluderWidth', label: 'Occluder Width (deg)', type: 'range', min: 5, max: 60, step: 1 },
+      { name: 'occluderStrength', label: 'Occluder Strength', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
+  }
+
+  // Fixed-in-world-space dimming zones the beam sweeps through, simulating a distant
+  // obstruction (terrain, structure) partially blocking the light - independent of the
+  // natural "flash" a viewer sees when a narrow beam points at them.
+  occlusionAt(absAngle, occluderCount, occluderWidthRad, occluderStrength) {
+    if (occluderCount <= 0) return 1.0;
+    let minDist = Infinity;
+    for (let k = 0; k < occluderCount; k++) {
+      const occAngle = (k / occluderCount) * Math.PI * 2;
+      let d = Math.abs(absAngle - occAngle) % (Math.PI * 2);
+      if (d > Math.PI) d = Math.PI * 2 - d;
+      if (d < minDist) minDist = d;
+    }
+    if (minDist > occluderWidthRad) return 1.0;
+    const t = minDist / occluderWidthRad; // 0 at occluder center, 1 at its edge
+    return 1 - (1 - t) * occluderStrength;
   }
 
   draw(ctx, width, height, time) {
@@ -2017,10 +2042,15 @@ export class LighthouseGenerator extends BaseGenerator {
     const beamColor = jitterHue(this.params.color, this.params.colorLightness, hueOffset);
     const halfWidthRad = (this.params.beamWidth * Math.PI / 180) / 2;
     const beamCount = Math.round(this.params.beamCount);
+    const fogAmt = this.params.fogIntensity / 100;
+    const occluderCount = Math.round(this.params.occluderCount);
+    const occluderWidthRad = this.params.occluderWidth * Math.PI / 180;
+    const occluderStrength = this.params.occluderStrength / 100;
 
     ctx.save();
 
-    // Lamp housing: a small always-lit core at the pivot.
+    // Lamp housing: a small always-lit core at the pivot (the source itself isn't fogged,
+    // only the beam travelling through the air is).
     const coreR = this.params.beamLength * 0.08;
     const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
     coreGrad.addColorStop(0, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 1)`);
@@ -2030,24 +2060,41 @@ export class LighthouseGenerator extends BaseGenerator {
     ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
     ctx.fill();
 
+    // Each beam is drawn as a series of thin annular (ring) segments along its length
+    // rather than one smooth gradient sector, so density/angle can vary per segment for
+    // the fog-patch and distortion effect.
+    const SEGMENTS = 18;
+
     for (let i = 0; i < beamCount; i++) {
-      const angle = rotation + (i / beamCount) * Math.PI * 2;
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(angle);
+      const beamAngle = rotation + (i / beamCount) * Math.PI * 2;
 
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.params.beamLength);
-      grad.addColorStop(0, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0.9)`);
-      grad.addColorStop(0.6, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0.35)`);
-      grad.addColorStop(1, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0)`);
+      for (let s = 0; s < SEGMENTS; s++) {
+        const r0 = (s / SEGMENTS) * this.params.beamLength;
+        const r1 = ((s + 1) / SEGMENTS) * this.params.beamLength;
+        const rMid = (r0 + r1) / 2;
 
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, this.params.beamLength, -halfWidthRad, halfWidthRad);
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.restore();
+        const falloff = Math.pow(1 - rMid / this.params.beamLength, 1.3);
+
+        // Patchy fog density: slowly drifting noise sampled along the beam's length/angle.
+        const fogNoise = noiseInst.noise2D(rMid * 0.008, beamAngle * 3 + time * 0.0002 + i * 11);
+        const fogFactor = 1 - fogAmt * Math.max(0, -fogNoise) * 0.9;
+
+        // Slight angular warp of this segment, as if refracted by uneven mist.
+        const warpNoise = noiseInst.noise2D(rMid * 0.015, time * 0.0003 + i * 7.3);
+        const segAngle = beamAngle + warpNoise * fogAmt * halfWidthRad * 0.6;
+
+        const occlusion = this.occlusionAt(segAngle, occluderCount, occluderWidthRad, occluderStrength);
+
+        const alpha = 0.85 * falloff * fogFactor * occlusion;
+        if (alpha <= 0.01) continue;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r1, segAngle - halfWidthRad, segAngle + halfWidthRad);
+        ctx.arc(cx, cy, r0, segAngle + halfWidthRad, segAngle - halfWidthRad, true);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, ${alpha})`;
+        ctx.fill();
+      }
     }
 
     ctx.restore();
