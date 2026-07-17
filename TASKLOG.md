@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-17 18:24 [Claude Code] ヘッダーツールバーが横に広すぎる問題を修正(プロジェクト管理ボタンをアイコンのみ化、セレクトの幅固定、余白圧縮) (fix 5d1cfea)
 - 2026-07-17 16:30 [Claude Code] トランジション/カットイン系ジェネレーター第1弾 Shockwave Burst 実装・動作確認・コミット (feat bcf4951)。cycleDuration/progress/envelopeパターンをCLAUDE.mdに明文化
 - 2026-07-17 16:09 [Claude Code] バッチ書き出し機能をレビュー、exportWebMFallbackのBlob構築バグを修正・コミット (fix 8295f0d)。以後②トランジション/インサート/カットイン新レイヤー種別の設計に着手
 - 2026-07-17 16:04 [Antigravity] バッチ書き出し(量産レンダラー)の実装完了
