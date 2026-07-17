@@ -1,4 +1,5 @@
 import { drawParticleShape, PARTICLE_SHAPE_COUNT } from './particleShapes.js';
+import { generateFractalBranch } from './fractalLine.js';
 
 // Simple Noise Generator helper (Value Noise)
 class SimpleNoise {
@@ -1046,41 +1047,16 @@ export class LightningGenerator extends BaseGenerator {
     ];
   }
 
-  // Generates recursive segments of lightning main path, collects branches in branchesList
+  // Generates recursive segments of lightning main path, collects branches in branchesList.
+  // Delegates the fractal midpoint-displacement math to the shared fractalLine.js helper,
+  // passing a "grow downwards" branch-target callback to preserve lightning's original look.
   generateLightningBranch(x1, y1, x2, y2, displace, depth, branchesList = []) {
-    if (depth <= 0) {
-      return [{ x: x1, y: y1 }, { x: x2, y: y2 }];
-    }
-
-    const midX = (x1 + x2) / 2;
-    const midY = (y1 + y2) / 2;
-
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.sqrt(dx * dx + dy * dy);
-
-    // Compute normal vector to offset perpendicular to path
-    const nx = -dy / len;
-    const ny = dx / len;
-
-    const offset = (Math.random() - 0.5) * displace;
-    const cx = midX + nx * offset;
-    const cy = midY + ny * offset;
-
-    const left = this.generateLightningBranch(x1, y1, cx, cy, displace / 2, depth - 1, branchesList);
-    const right = this.generateLightningBranch(cx, cy, x2, y2, displace / 2, depth - 1, branchesList);
-
-    const segments = left.slice(0, -1).concat(right);
-
-    // Generate secondary branch with probability, pushing it to branchesList
-    if (Math.random() < this.params.branchChance && depth > 2) {
-      const bx = cx + (Math.random() - 0.5) * displace * 2;
-      const by = cy + (Math.random() * 0.4 + 0.6) * (y2 - cy); // Grow downwards
-      const branchSegments = this.generateLightningBranch(cx, cy, bx, by, displace / 2.5, depth - 2, branchesList);
-      branchesList.push(branchSegments);
-    }
-
-    return segments;
+    return generateFractalBranch(x1, y1, x2, y2, displace, depth, this.params.branchChance, branchesList,
+      (cx, cy, d, ex, ey) => ({
+        bx: cx + (Math.random() - 0.5) * d * 2,
+        by: cy + (Math.random() * 0.4 + 0.6) * (ey - cy)
+      })
+    );
   }
 
   update(time, frameCount, width, height) {
@@ -2166,6 +2142,173 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
+  }
+}
+
+// 21. Glass Crack Generator (transition/cut-in: one-shot impact effect, holeRadius=0 for a
+// plain crack or >0 for a bullet-hole-style punch-through - see CLAUDE.md "トランジション/
+// カットイン系ジェネレーターの作り方" for the cycleDuration/progress/envelope pattern).
+export class GlassCrackGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.lastCycleIndex = -1;
+    this.cracks = [];
+    this.rings = [];
+    this.holePoly = null;
+  }
+
+  defaultParams() {
+    return {
+      cycleDuration: 1200,
+      crackCount: 10,
+      crackLength: 500,
+      complexity: 4,
+      displace: 30,
+      branchChance: 0.2,
+      ringCount: 3,
+      holeRadius: 0, // 0 = plain crack, >0 = bullet-hole-style punch-through at center
+      growFrac: 0.15,
+      fadeOutFrac: 0.35,
+      color: '#e0f2fe',
+      colorLightness: 85
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 4000, step: 100 },
+      { name: 'crackCount', label: 'Crack Count', type: 'range', min: 4, max: 24, step: 1 },
+      { name: 'crackLength', label: 'Crack Length', type: 'range', min: 100, max: 1200, step: 10 },
+      { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 6, step: 1 },
+      { name: 'displace', label: 'Jaggedness', type: 'range', min: 5, max: 80, step: 1 },
+      { name: 'branchChance', label: 'Branching Chance', type: 'range', min: 0, max: 0.6, step: 0.05 },
+      { name: 'ringCount', label: 'Web Ring Count', type: 'range', min: 0, max: 5, step: 1 },
+      { name: 'holeRadius', label: 'Hole Radius (Bullet Hole)', type: 'range', min: 0, max: 150, step: 1 },
+      { name: 'growFrac', label: 'Grow Fraction', type: 'range', min: 0.05, max: 0.5, step: 0.01 },
+      { name: 'fadeOutFrac', label: 'Fade Out Fraction', type: 'range', min: 0, max: 0.6, step: 0.01 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  // Builds one fresh randomized crack pattern (radial fractal cracks, connecting web rings,
+  // optional impact hole). Called once per cycle, not per frame, so the pattern stays stable
+  // for the life of a single playthrough.
+  generateCrackGeometry() {
+    const crackCount = Math.round(this.params.crackCount);
+    const complexity = Math.round(this.params.complexity);
+    const startR = this.params.holeRadius > 0 ? this.params.holeRadius : 0;
+
+    const cracks = [];
+    for (let i = 0; i < crackCount; i++) {
+      const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * (Math.PI * 2 / crackCount) * 0.6;
+      const len = this.params.crackLength * (0.6 + Math.random() * 0.4);
+      const x1 = Math.cos(angle) * startR;
+      const y1 = Math.sin(angle) * startR;
+      const x2 = Math.cos(angle) * len;
+      const y2 = Math.sin(angle) * len;
+      const branches = [];
+      const main = generateFractalBranch(x1, y1, x2, y2, this.params.displace, complexity, this.params.branchChance, branches);
+      cracks.push({ main, branches });
+    }
+
+    const ringCount = Math.round(this.params.ringCount);
+    const rings = [];
+    for (let r = 0; r < ringCount; r++) {
+      const baseRadius = this.params.crackLength * ((r + 1) / (ringCount + 1));
+      const ringPath = [];
+      for (let i = 0; i <= crackCount; i++) {
+        const angle = (i % crackCount / crackCount) * Math.PI * 2;
+        const jr = baseRadius * (0.85 + Math.random() * 0.3);
+        const ja = angle + (Math.random() - 0.5) * 0.15;
+        ringPath.push({ x: Math.cos(ja) * jr, y: Math.sin(ja) * jr });
+      }
+      rings.push(ringPath);
+    }
+
+    let holePoly = null;
+    if (this.params.holeRadius > 0) {
+      holePoly = [];
+      const holePoints = 10;
+      for (let i = 0; i < holePoints; i++) {
+        const a = (i / holePoints) * Math.PI * 2;
+        const r = this.params.holeRadius * (0.7 + Math.random() * 0.5);
+        holePoly.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+      }
+    }
+
+    this.cracks = cracks;
+    this.rings = rings;
+    this.holePoly = holePoly;
+  }
+
+  drawPolyline(ctx, points, revealFrac, parsedColor) {
+    if (!points || points.length < 2 || revealFrac <= 0) return;
+    const revealCount = Math.max(1, Math.floor((points.length - 1) * revealFrac));
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i <= revealCount; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.9)`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i <= revealCount; i++) ctx.lineTo(points[i].x, points[i].y);
+    ctx.stroke();
+  }
+
+  draw(ctx, width, height, time) {
+    const cycleDuration = this.params.cycleDuration;
+    const cycleIndex = Math.floor(time / cycleDuration);
+    if (cycleIndex !== this.lastCycleIndex) {
+      this.lastCycleIndex = cycleIndex;
+      this.generateCrackGeometry();
+    }
+
+    const progress = (time % cycleDuration) / cycleDuration;
+
+    let envelope = 1.0;
+    if (progress > 1 - this.params.fadeOutFrac) {
+      envelope = (1 - progress) / this.params.fadeOutFrac;
+    }
+    envelope = Math.max(0, Math.min(1, envelope));
+    if (envelope <= 0.001) return;
+
+    const growProgress = Math.min(1, progress / this.params.growFrac);
+    const ringGrowProgress = Math.max(0, Math.min(1, (progress - this.params.growFrac * 0.3) / this.params.growFrac));
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const parsedColor = parseHexToRgb(this.params.color);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha = envelope;
+
+    if (this.holePoly && growProgress > 0) {
+      ctx.beginPath();
+      this.holePoly.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fill();
+    }
+
+    for (const crack of this.cracks) {
+      this.drawPolyline(ctx, crack.main, growProgress, parsedColor);
+      for (const branch of crack.branches) {
+        this.drawPolyline(ctx, branch, growProgress, parsedColor);
+      }
+    }
+
+    for (const ring of this.rings) {
+      this.drawPolyline(ctx, ring, ringGrowProgress, parsedColor);
+    }
+
     ctx.restore();
   }
 }
