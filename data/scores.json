@@ -45673,5 +45673,1447 @@
       "aspect_break",
       "too_chaotic"
     ]
+  },
+  {
+    "id": "1784303758301nl9w3",
+    "timestamp": "2026-07-17T15:55:58.301Z",
+    "layerType": "particles",
+    "params": {
+      "count": 147.06162574698664,
+      "minSize": 2.0129983073695765,
+      "maxSize": 11.157863988810409,
+      "speed": 2.9230872468125035,
+      "color": "#0ce947",
+      "colorLightness": 61.95254227149162,
+      "glow": 18.464510977196454
+    },
+    "effects": {
+      "positionX": 0.14803476017911496,
+      "positionY": -0.08018396764790856,
+      "rotation": -35.06264798394828,
+      "scale": 1.9093338454458113,
+      "strobe": 0,
+      "glowIntensity": 14.372616059576142,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.5993768163363247,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.01919097070832474,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -35.83744201518647,
+      "rotateY": -0.4091012730436354,
+      "rotateZ": -7.663873005438959,
+      "translateZ": 53.8334286399566,
+      "kaleidoscope": 7.380748259235354,
+      "chromatic": 11.968808464027088
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "aspect_break",
+      "too_chaotic",
+      "noise_warp_excess"
+    ]
+  },
+  {
+    "id": "1784303770436al16d",
+    "timestamp": "2026-07-17T15:56:10.436Z",
+    "layerType": "particles",
+    "params": {
+      "count": 175.29135673603642,
+      "minSize": 1.9503531945645585,
+      "maxSize": 10.362884762792827,
+      "speed": 3.62396674598979,
+      "color": "#0978f6",
+      "colorLightness": 75.41802024763317,
+      "glow": 21.56763293298509
+    },
+    "effects": {
+      "positionX": 0.12882525766819827,
+      "positionY": -0.17622342651672038,
+      "rotation": -7.289700069423887,
+      "scale": 1.5963454092067417,
+      "strobe": 0,
+      "glowIntensity": 11.97938249149313,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.5063813010220575,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.005015927204461572,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -25.748619620537845,
+      "rotateY": -31.54514120963981,
+      "rotateZ": 28.640532049791865,
+      "translateZ": -95.52420510113738,
+      "kaleidoscope": 7.2978553270152435,
+      "chromatic": 14.362763176115568
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "too_chaotic"
+    ]
+  },
+  {
+    "id": "17843037758800g47y",
+    "timestamp": "2026-07-17T15:56:15.880Z",
+    "layerType": "particles",
+    "params": {
+      "count": 162.97113072472763,
+      "minSize": 2.6619381140885423,
+      "maxSize": 11.930660944170258,
+      "speed": 3.9737488310223097,
+      "color": "#f2441c",
+      "colorLightness": 68.51178817749843,
+      "glow": 24.2675251017475
+    },
+    "effects": {
+      "positionX": 0.21931602135965103,
+      "positionY": -0.0484270106171831,
+      "rotation": 32.683123979857136,
+      "scale": 1.9106253513070852,
+      "strobe": 0,
+      "glowIntensity": 7.599072198879721,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.4784904079885501,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.007943488084570146,
+      "distortionIntensity": 3.118519855949625,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 6.522068954582423,
+      "rotateY": 2.4720230988900482,
+      "rotateZ": 48.65827197732271,
+      "translateZ": -163.3622144732939,
+      "kaleidoscope": 7.093583714375888,
+      "chromatic": 12.291650943698007
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "too_chaotic",
+      "noise_warp_excess"
+    ]
+  },
+  {
+    "id": "1784303780906ailq7",
+    "timestamp": "2026-07-17T15:56:20.906Z",
+    "layerType": "particles",
+    "params": {
+      "count": 188.109943598437,
+      "minSize": 3.3023525521643102,
+      "maxSize": 14.112766369540534,
+      "speed": 3.7412671861865516,
+      "color": "#1c03fc",
+      "colorLightness": 61.65443226170279,
+      "glow": 20.34330459487884
+    },
+    "effects": {
+      "positionX": 0.35245657996216606,
+      "positionY": 0.04553988795162976,
+      "rotation": 55.41074226606082,
+      "scale": 1.6709527545201113,
+      "strobe": 0,
+      "glowIntensity": 8.316674014118995,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.40256530122648376,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.0008225377229003203,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 18.64357347293768,
+      "rotateY": 24.41506874471805,
+      "rotateZ": 18.33334230198229,
+      "translateZ": -139.00881159984982,
+      "kaleidoscope": 6.752183266558074,
+      "chromatic": 14.25942824299606
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "too_chaotic",
+      "noise_warp_excess"
+    ]
+  },
+  {
+    "id": "1784303789492xs0jt",
+    "timestamp": "2026-07-17T15:56:29.492Z",
+    "layerType": "particles",
+    "params": {
+      "count": 193.3666564121317,
+      "minSize": 2.3779681996763475,
+      "maxSize": 12.97969515854285,
+      "speed": 3.559022143509675,
+      "color": "#59fe06",
+      "colorLightness": 60.98103909819392,
+      "glow": 24.995024268445885
+    },
+    "effects": {
+      "positionX": 0.5271235869484229,
+      "positionY": -0.11133383324952566,
+      "rotation": 105.920914459033,
+      "scale": 1.6281537878976355,
+      "strobe": 0,
+      "glowIntensity": 6.626446279026391,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.4767206600248619,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.007778405932233756,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -32.70533639081836,
+      "rotateY": 26.623279681323602,
+      "rotateZ": -13.439765396281075,
+      "translateZ": -162.29929412397487,
+      "kaleidoscope": 7.829601546668376,
+      "chromatic": 16.73477042635824
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "scale_too_large",
+      "aspect_break"
+    ]
+  },
+  {
+    "id": "1784303794412yocut",
+    "timestamp": "2026-07-17T15:56:34.412Z",
+    "layerType": "particles",
+    "params": {
+      "count": 185.59611348325123,
+      "minSize": 1.7282339895452905,
+      "maxSize": 12.454116745635394,
+      "speed": 4.253738035948002,
+      "color": "#01e905",
+      "colorLightness": 55.89708615500144,
+      "glow": 24.38554480544389
+    },
+    "effects": {
+      "positionX": 0.6814513535057922,
+      "positionY": 0.018497337989701004,
+      "rotation": 45.3813829319053,
+      "scale": 1.7379081168281019,
+      "strobe": 0,
+      "glowIntensity": 8.146643535456805,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.48206786144839275,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.014788000057444645,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -32.561607359524515,
+      "rotateY": 36.50295935771944,
+      "rotateZ": -23.04495084444644,
+      "translateZ": -96.89926384081073,
+      "kaleidoscope": 6.373712728011234,
+      "chromatic": 13.363388672403445
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "scale_too_large",
+      "aspect_break"
+    ]
+  },
+  {
+    "id": "1784303799058hpdxz",
+    "timestamp": "2026-07-17T15:56:39.058Z",
+    "layerType": "particles",
+    "params": {
+      "count": 153.74181492539287,
+      "minSize": 2.093865475114804,
+      "maxSize": 14.075621035673985,
+      "speed": 4.169954286458198,
+      "color": "#f13bee",
+      "colorLightness": 68.0658979498338,
+      "glow": 19.19994258882977
+    },
+    "effects": {
+      "positionX": 0.7915361113966308,
+      "positionY": 0.1983960951988477,
+      "rotation": 95.37301477217652,
+      "scale": 1.7969320341958122,
+      "strobe": 0,
+      "glowIntensity": 8.09072948341019,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.4091621543035725,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.01694991947329484,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -5.398586486271697,
+      "rotateY": 15.462920366668367,
+      "rotateZ": -3.813606756853427,
+      "translateZ": -17.22298455068338,
+      "kaleidoscope": 7.388123520213528,
+      "chromatic": 13.393429923979326
+    },
+    "modulations": {
+      "count": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "minSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxSize": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "scale_too_large",
+      "aspect_break"
+    ]
+  },
+  {
+    "id": "1784304078279cai56",
+    "timestamp": "2026-07-17T16:01:18.279Z",
+    "layerType": "flame",
+    "params": {
+      "density": 185.1869001855078,
+      "speed": 12.820871823786897,
+      "wiggle": 4.4007235837352185,
+      "height": 465.21555247723154,
+      "strokeWidth": 23.637443463056695,
+      "shapeType": 8.215290821040464,
+      "colorVariance": 1.7093482126131416,
+      "color": "#05e68c",
+      "colorLightness": 80.39349469608418
+    },
+    "effects": {
+      "positionX": 0.20617932072132197,
+      "positionY": -0.7114008989721884,
+      "rotation": -88.75512328986055,
+      "scale": 3.669270992360288,
+      "strobe": 0,
+      "glowIntensity": 13.197382947703506,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.4937455353543314,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.026355429699129025,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -71.88662439356715,
+      "rotateY": 164.98842903093708,
+      "rotateZ": -14.085604716303786,
+      "translateZ": 160.75190390535104,
+      "kaleidoscope": 0.0452020298130531,
+      "chromatic": 15.15962941527357
+    },
+    "modulations": {
+      "density": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "wiggle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "height": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strokeWidth": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeType": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorVariance": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "aspect_break"
+    ]
+  },
+  {
+    "id": "1784304087559935sw",
+    "timestamp": "2026-07-17T16:01:27.559Z",
+    "layerType": "flame",
+    "params": {
+      "density": 183.660102163989,
+      "speed": 12.892508644777452,
+      "wiggle": 4.167534603441326,
+      "height": 471.1046898287973,
+      "strokeWidth": 26.087018313152587,
+      "shapeType": 7.660079467748973,
+      "colorVariance": 12.518560869377033,
+      "color": "#f88520",
+      "colorLightness": 87.86827375275006
+    },
+    "effects": {
+      "positionX": 0.07058188043996436,
+      "positionY": -0.539705484279736,
+      "rotation": -162.4516785622566,
+      "scale": 4.454209096555137,
+      "strobe": 0,
+      "glowIntensity": 17.740899227368082,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.6037857358559034,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.00986859077534109,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -28.23431787208689,
+      "rotateY": 169.69625787157935,
+      "rotateZ": 9.362303784086011,
+      "translateZ": 201.3896713412833,
+      "kaleidoscope": 0.5899109613849962,
+      "chromatic": 13.37816234611624
+    },
+    "modulations": {
+      "density": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "speed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "wiggle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "height": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strokeWidth": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeType": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorVariance": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784304666141cljj7",
+    "timestamp": "2026-07-17T16:11:06.141Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 1717.9870922307778,
+      "ringCount": 1.1444999868641599,
+      "maxRadius": 723.0769802004465,
+      "ringThickness": 62.74561451139477,
+      "fadeInFrac": 0.05204080879549415,
+      "fadeOutFrac": 0.28495817992173,
+      "color": "#fc5527",
+      "colorLightness": 51.31529133308778
+    },
+    "effects": {
+      "positionX": -0.07077415077479676,
+      "positionY": -0.17436227318802844,
+      "rotation": 16.059527339119565,
+      "scale": 0.6069965445287696,
+      "strobe": 0.31085655431310233,
+      "glowIntensity": 13.085832305163276,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.030635069842521897,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.002754804022174321,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -8.343738546237667,
+      "rotateY": 28.014728838606764,
+      "rotateZ": 0.5764342973580368,
+      "translateZ": -86.31789899989356,
+      "kaleidoscope": 5.986539275173442,
+      "chromatic": 16.595868392857966
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "aspect_break"
+    ]
+  },
+  {
+    "id": "1784305163590g4arb",
+    "timestamp": "2026-07-17T16:19:23.590Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 1739.3695957759207,
+      "ringCount": 1,
+      "maxRadius": 871.8343394477155,
+      "ringThickness": 31.967388405797465,
+      "jaggedness": 0.32214412382270347,
+      "windupFrac": 0.09746717595815493,
+      "fadeInFrac": 0.02855563422780075,
+      "fadeOutFrac": 0.2866657770203076,
+      "color": "#f00f74",
+      "colorLightness": 62.282302835954376
+    },
+    "effects": {
+      "positionX": -0.08952146079744945,
+      "positionY": 0.11295901363639699,
+      "rotation": -24.69514156295263,
+      "scale": 1.42,
+      "strobe": 0.5366989624076828,
+      "glowIntensity": 19.28998005583538,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.07866714147103875,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.003269310183281255,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.02,
+      "distortionSpeed": 3,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -32.905553283594806,
+      "rotateY": -31.469563459306283,
+      "rotateZ": 33.88505588153168,
+      "translateZ": -110.44315217130729,
+      "kaleidoscope": 4.9781908219473605,
+      "chromatic": 12.316218175165085
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "bad",
+    "reasons": [
+      "too_simple"
+    ]
   }
 ]
