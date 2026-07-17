@@ -1,3 +1,5 @@
+import { drawParticleShape, PARTICLE_SHAPE_COUNT } from './particleShapes.js';
+
 // Simple Noise Generator helper (Value Noise)
 class SimpleNoise {
   constructor() {
@@ -46,13 +48,11 @@ class SimpleNoise {
 const noiseInst = new SimpleNoise();
 
 /**
- * Converts Hex to HSL, replaces the L (Lightness) component, and returns an HSL string.
- * This enables modulating the brightness of a color dynamically via LFO!
+ * Converts Hex to {h, s, l} (0-360 / 0-100 / 0-100).
  */
-function adjustColorLightness(hex, lightness) {
-  // Safe hex check
-  if (!hex || hex.charAt(0) !== '#') return hex;
-  
+function hexToHsl(hex) {
+  if (!hex || hex.charAt(0) !== '#') return { h: 0, s: 0, l: 50 };
+
   let r = parseInt(hex.slice(1, 3), 16);
   let g = parseInt(hex.slice(3, 5), 16);
   let b = parseInt(hex.slice(5, 7), 16);
@@ -74,11 +74,53 @@ function adjustColorLightness(hex, lightness) {
     h /= 6;
   }
 
-  h = Math.round(h * 360);
-  s = Math.round(s * 100);
-  l = Math.round(lightness); // override lightness (0-100)
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
 
-  return `hsl(${h}, ${s}%, ${l}%)`;
+function hslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r1 = 0, g1 = 0, b1 = 0;
+  if (h < 60) { r1 = c; g1 = x; b1 = 0; }
+  else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
+  else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
+  else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
+  else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
+  else { r1 = c; g1 = 0; b1 = x; }
+  return {
+    r: Math.round((r1 + m) * 255),
+    g: Math.round((g1 + m) * 255),
+    b: Math.round((b1 + m) * 255)
+  };
+}
+
+/**
+ * Replaces the L (Lightness) component of hex and returns an HSL string.
+ * This enables modulating the brightness of a color dynamically via LFO!
+ */
+function adjustColorLightness(hex, lightness) {
+  if (!hex || hex.charAt(0) !== '#') return hex;
+  const { h, s } = hexToHsl(hex);
+  return `hsl(${h}, ${s}%, ${Math.round(lightness)}%)`;
+}
+
+/**
+ * Like adjustColorLightness, but also rotates the hue by hueOffsetDeg - used for
+ * per-particle color variance (colorVariance param). Returns both the CSS string (for
+ * fillStyle) and the parsed RGB ints (for gradients built from parsedColor), kept in sync
+ * so glow/shading never mismatches the fill hue.
+ */
+function jitterHue(hex, lightness, hueOffsetDeg) {
+  const { h, s } = hexToHsl(hex);
+  const jitteredH = h + hueOffsetDeg;
+  const l = Math.max(0, Math.min(100, Math.round(lightness)));
+  return {
+    css: `hsl(${jitteredH}, ${s}%, ${l}%)`,
+    rgb: hslToRgb(jitteredH, s, l)
+  };
 }
 
 function hexToRgba(hex, opacity) {
@@ -1296,7 +1338,8 @@ export class FlameGenerator extends BaseGenerator {
       wiggle: 1.5,
       height: 250,
       strokeWidth: 15,
-      shapeType: 0, // 0=Soft Circle(ぼかし円), 1=Circle(くっきり円), 2=Square, 3=Hexagon, 4=Star
+      shapeType: 0, // See particleShapes.js PARTICLE_SHAPE_TYPES for the full list (0-11)
+      colorVariance: 0, // 0-100: per-particle hue jitter, 0 = uniform color (legacy behavior)
       color: '#ef4444',
       colorLightness: 50
     };
@@ -1309,7 +1352,8 @@ export class FlameGenerator extends BaseGenerator {
       { name: 'wiggle', label: 'Wiggle Intensity', type: 'range', min: 0.1, max: 5.0, step: 0.1 },
       { name: 'height', label: 'Flame Height', type: 'range', min: 50, max: 500, step: 10 },
       { name: 'strokeWidth', label: 'Particle Size', type: 'range', min: 1, max: 30, step: 1 },
-      { name: 'shapeType', label: 'Shape Type (0-4)', type: 'range', min: 0, max: 4, step: 1 },
+      { name: 'shapeType', label: `Shape Type (0-${PARTICLE_SHAPE_COUNT - 1})`, type: 'range', min: 0, max: PARTICLE_SHAPE_COUNT - 1, step: 1 },
+      { name: 'colorVariance', label: 'Color Variance', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -1328,6 +1372,7 @@ export class FlameGenerator extends BaseGenerator {
           life: 1.0,
           decay: 0.01 + Math.random() * 0.02 * (200 / this.params.height),
           seed: Math.random() * 100,
+          varietySeed: Math.random(),
           // 3D angles
           angleX: Math.random() * Math.PI * 2,
           angleY: Math.random() * Math.PI * 2,
@@ -1360,8 +1405,6 @@ export class FlameGenerator extends BaseGenerator {
 
   draw(ctx, width, height, time) {
     ctx.save();
-    const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
-    const parsedColor = parseHexToRgb(this.params.color);
 
     for (let p of this.particles) {
       const size = this.params.strokeWidth * p.life;
@@ -1370,60 +1413,42 @@ export class FlameGenerator extends BaseGenerator {
 
       ctx.save();
       ctx.translate(p.x, p.y);
+
+      // Stretch along the particle's actual rise/wiggle direction for a flame-tongue look,
+      // using the stored base velocity (not the per-frame noise offset) so the stretch axis
+      // doesn't flicker. Rotate to align local Y with velocity, scale, rotate back so the
+      // pseudo-3D transform below still operates in the particle's original local frame.
+      const speed = Math.hypot(p.vx, p.vy);
+      if (speed > 0.01) {
+        const velAngle = Math.atan2(p.vy, p.vx) + Math.PI / 2;
+        const stretch = 1 + Math.min(1.5, speed * 0.12);
+        ctx.rotate(velAngle);
+        ctx.scale(1, stretch);
+        ctx.rotate(-velAngle);
+      }
+
       ctx.rotate(p.angleZ);
       ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
 
       ctx.globalAlpha = alpha;
 
-      const type = Math.round(this.params.shapeType);
-      ctx.beginPath();
-      if (type === 0) {
-        // Soft Circle (ぼかし円)
-        const grad = ctx.createRadialGradient(0, 0, size * 0.1, 0, 0, size);
-        grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 1)`);
-        grad.addColorStop(0.3, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.5)`);
-        grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
-        ctx.fillStyle = grad;
-        ctx.arc(0, 0, size, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (type === 1) {
-        // Circle (くっきり円)
-        ctx.fillStyle = themeColor;
-        ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (type === 2) {
-        // Square
-        ctx.fillStyle = themeColor;
-        ctx.rect(-size / 2, -size / 2, size, size);
-        ctx.fill();
-      } else if (type === 3) {
-        // Hexagon
-        ctx.fillStyle = themeColor;
-        for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2;
-          const x = Math.cos(angle) * (size / 2);
-          const y = Math.sin(angle) * (size / 2);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-      } else if (type === 4) {
-        // Star
-        ctx.fillStyle = themeColor;
-        const outerR = size / 2;
-        const innerR = size / 4;
-        for (let i = 0; i < 10; i++) {
-          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-          const r = i % 2 === 0 ? outerR : innerR;
-          const x = Math.cos(angle) * r;
-          const y = Math.sin(angle) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-      }
+      // Life-based color: bright/hot near spawn (life close to 1, near the flame base),
+      // cooling toward dark embers as the particle ages and rises (life -> 0). Only the
+      // lightness is modulated so the user's chosen hue (color param) is always respected.
+      const baseLightness = this.params.colorLightness;
+      const lifeLightness = p.life > 0.7
+        ? baseLightness + (96 - baseLightness) * ((p.life - 0.7) / 0.3)
+        : baseLightness * (0.15 + 0.85 * (p.life / 0.7));
+      const hueOffset = this.params.colorVariance > 0
+        ? (p.varietySeed - 0.5) * 2 * this.params.colorVariance * 1.8
+        : 0;
+      const particleColor = jitterHue(this.params.color, lifeLightness, hueOffset);
+
+      drawParticleShape(ctx, this.params.shapeType, size, {
+        themeColor: particleColor.css,
+        parsedColor: particleColor.rgb,
+        seed: p.varietySeed * 1000
+      });
       ctx.restore();
     }
     ctx.restore();
@@ -1723,7 +1748,8 @@ export class DryIceGenerator extends BaseGenerator {
       fallSpeed: 2.5,
       diffusion: 1.5,
       maxSize: 40,
-      shapeType: 0, // 0=Soft Circle(ぼかし円), 1=Circle(くっきり円), 2=Square, 3=Hexagon, 4=Star
+      shapeType: 0, // See particleShapes.js PARTICLE_SHAPE_TYPES for the full list (0-11)
+      colorVariance: 0, // 0-100: per-particle hue jitter, 0 = uniform color (legacy behavior)
       color: '#ffffff',
       colorLightness: 80
     };
@@ -1735,7 +1761,8 @@ export class DryIceGenerator extends BaseGenerator {
       { name: 'fallSpeed', label: 'Fall Speed', type: 'range', min: 0.5, max: 8.0, step: 0.1 },
       { name: 'diffusion', label: 'Horizontal Wind', type: 'range', min: 0.1, max: 4.0, step: 0.1 },
       { name: 'maxSize', label: 'Max Smoke Size', type: 'range', min: 5, max: 80, step: 1 },
-      { name: 'shapeType', label: 'Shape Type (0-4)', type: 'range', min: 0, max: 4, step: 1 },
+      { name: 'shapeType', label: `Shape Type (0-${PARTICLE_SHAPE_COUNT - 1})`, type: 'range', min: 0, max: PARTICLE_SHAPE_COUNT - 1, step: 1 },
+      { name: 'colorVariance', label: 'Color Variance', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -1756,6 +1783,7 @@ export class DryIceGenerator extends BaseGenerator {
           decay: 0.005 + Math.random() * 0.015,
           size: Math.random() * (this.params.maxSize * 0.5) + this.params.maxSize * 0.5,
           seed: Math.random() * 200,
+          varietySeed: Math.random(),
           // 3D angles
           angleX: Math.random() * Math.PI * 2,
           angleY: Math.random() * Math.PI * 2,
@@ -1803,55 +1831,20 @@ export class DryIceGenerator extends BaseGenerator {
 
       ctx.globalAlpha = alpha;
 
-      const type = Math.round(this.params.shapeType);
-      ctx.beginPath();
-      if (type === 0) {
-        // Soft Circle (ぼかし円)
-        const grad = ctx.createRadialGradient(0, 0, currentSize * 0.1, 0, 0, currentSize);
-        grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 1)`);
-        grad.addColorStop(0.3, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.5)`);
-        grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
-        ctx.fillStyle = grad;
-        ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (type === 1) {
-        // Circle (くっきり円)
-        ctx.fillStyle = themeColor;
-        ctx.arc(0, 0, currentSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (type === 2) {
-        // Square
-        ctx.fillStyle = themeColor;
-        ctx.rect(-currentSize / 2, -currentSize / 2, currentSize, currentSize);
-        ctx.fill();
-      } else if (type === 3) {
-        // Hexagon
-        ctx.fillStyle = themeColor;
-        for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2;
-          const x = Math.cos(angle) * (currentSize / 2);
-          const y = Math.sin(angle) * (currentSize / 2);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-      } else if (type === 4) {
-        // Star
-        ctx.fillStyle = themeColor;
-        const outerR = currentSize / 2;
-        const innerR = currentSize / 4;
-        for (let i = 0; i < 10; i++) {
-          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-          const r = i % 2 === 0 ? outerR : innerR;
-          const x = Math.cos(angle) * r;
-          const y = Math.sin(angle) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
+      let particleThemeColor = themeColor;
+      let particleParsedColor = parsedColor;
+      if (this.params.colorVariance > 0) {
+        const hueOffset = (p.varietySeed - 0.5) * 2 * this.params.colorVariance * 1.8;
+        const jittered = jitterHue(this.params.color, this.params.colorLightness, hueOffset);
+        particleThemeColor = jittered.css;
+        particleParsedColor = jittered.rgb;
       }
+
+      drawParticleShape(ctx, this.params.shapeType, currentSize, {
+        themeColor: particleThemeColor,
+        parsedColor: particleParsedColor,
+        seed: p.varietySeed * 1000
+      });
       ctx.restore();
     }
     ctx.restore();
@@ -1868,7 +1861,8 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
   defaultParams() {
     return {
       count: 80,
-      shapeType: 0, // 0=Circle, 1=Square, 2=Hexagon, 3=Star
+      shapeType: 0, // See particleShapes.js PARTICLE_SHAPE_TYPES for the full list (0-11)
+      colorVariance: 0, // 0-100: per-particle hue jitter, 0 = uniform color (legacy behavior)
       speed: 2.0,
       rotSpeedX: 0.02,
       rotSpeedY: 0.03,
@@ -1883,13 +1877,14 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
   getParameterConfig() {
     return [
       { name: 'count', label: 'Particle Count', type: 'range', min: 10, max: 250, step: 5 },
-      { name: 'shapeType', label: 'Shape (0-3)', type: 'range', min: 0, max: 3, step: 1 },
+      { name: 'shapeType', label: `Shape Type (0-${PARTICLE_SHAPE_COUNT - 1})`, type: 'range', min: 0, max: PARTICLE_SHAPE_COUNT - 1, step: 1 },
       { name: 'speed', label: 'Max Speed', type: 'range', min: 0.5, max: 10.0, step: 0.1 },
       { name: 'rotSpeedX', label: 'Rot Speed X', type: 'range', min: 0.0, max: 0.1, step: 0.005 },
       { name: 'rotSpeedY', label: 'Rot Speed Y', type: 'range', min: 0.0, max: 0.1, step: 0.005 },
       { name: 'rotSpeedZ', label: 'Rot Speed Z', type: 'range', min: 0.0, max: 0.2, step: 0.005 },
       { name: 'minSize', label: 'Min Size', type: 'range', min: 2, max: 10, step: 0.5 },
       { name: 'maxSize', label: 'Max Size', type: 'range', min: 5, max: 40, step: 0.5 },
+      { name: 'colorVariance', label: 'Color Variance', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -1903,6 +1898,7 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
       vy: (Math.random() - 0.5) * this.params.speed,
       size: Math.random() * (this.params.maxSize - this.params.minSize) + this.params.minSize,
       alpha: Math.random() * 0.5 + 0.5,
+      varietySeed: Math.random(),
       // 3D Angles
       angleX: Math.random() * Math.PI * 2,
       angleY: Math.random() * Math.PI * 2,
@@ -1953,53 +1949,32 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
 
     ctx.save();
     const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+    const parsedColor = parseHexToRgb(this.params.color);
 
     for (let p of this.particles) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      
+
       // Rotate on Z, scale on X/Y to emulate 3D rotation (2.5D)
       ctx.rotate(p.angleZ);
       ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
 
-      ctx.fillStyle = themeColor;
       ctx.globalAlpha = p.alpha;
 
-      const type = Math.round(this.params.shapeType);
-      const size = p.size;
-
-      ctx.beginPath();
-      if (type === 0) {
-        // Circle
-        ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
-      } else if (type === 1) {
-        // Square
-        ctx.rect(-size / 2, -size / 2, size, size);
-      } else if (type === 2) {
-        // Hexagon
-        for (let i = 0; i < 6; i++) {
-          const angle = (i / 6) * Math.PI * 2;
-          const x = Math.cos(angle) * (size / 2);
-          const y = Math.sin(angle) * (size / 2);
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-      } else if (type === 3) {
-        // Star (5-pointed)
-        const outerR = size / 2;
-        const innerR = size / 4;
-        for (let i = 0; i < 10; i++) {
-          const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-          const r = i % 2 === 0 ? outerR : innerR;
-          const x = Math.cos(angle) * r;
-          const y = Math.sin(angle) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
+      let particleThemeColor = themeColor;
+      let particleParsedColor = parsedColor;
+      if (this.params.colorVariance > 0) {
+        const hueOffset = (p.varietySeed - 0.5) * 2 * this.params.colorVariance * 1.8;
+        const jittered = jitterHue(this.params.color, this.params.colorLightness, hueOffset);
+        particleThemeColor = jittered.css;
+        particleParsedColor = jittered.rgb;
       }
-      ctx.fill();
+
+      drawParticleShape(ctx, this.params.shapeType, p.size, {
+        themeColor: particleThemeColor,
+        parsedColor: particleParsedColor,
+        seed: p.varietySeed * 1000
+      });
       ctx.restore();
     }
     ctx.restore();
