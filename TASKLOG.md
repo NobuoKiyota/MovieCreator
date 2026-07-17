@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-17 21:12 [Claude Code] Glass Crackの描画クオリティを刷新(先細りライン・中心の微細ひび密集・星形の欠け穴+破片フレーク・不規則な連結リング)、参照画像相当まで改善・動作確認済み・未コミット
 - 2026-07-17 20:45 [Claude Code] Glass Crackジェネレーター(ひび割れ/銃痕)新設、LightningGeneratorのフラクタル折れ線をfractalLine.jsに共通化・動作確認・コミット (feat 1cc899a, docs 3d7aae5)
 - 2026-07-17 20:18 [Claude Code] 他PC再開用セットアップ手順をCLAUDE.mdに整備。data/scores.jsonをgit追跡化(教師データ同期の欠落を修正)、ユーザー作成プリセット取り込み (chore c4efa8f, docs dbdec60, ほか)
 - 2026-07-17 19:33 [Claude Code] Lighthouse Beaconにフォグ濃淡・角度歪み・遮光帯を追加(セグメント分割描画に変更)、動作確認・コミット (feat 2da98fe)

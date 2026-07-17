@@ -2154,8 +2154,10 @@ export class GlassCrackGenerator extends BaseGenerator {
     super(params);
     this.lastCycleIndex = -1;
     this.cracks = [];
+    this.microCracks = [];
     this.rings = [];
     this.holePoly = null;
+    this.holeFlakes = [];
   }
 
   defaultParams() {
@@ -2192,74 +2194,168 @@ export class GlassCrackGenerator extends BaseGenerator {
     ];
   }
 
-  // Builds one fresh randomized crack pattern (radial fractal cracks, connecting web rings,
-  // optional impact hole). Called once per cycle, not per frame, so the pattern stays stable
-  // for the life of a single playthrough.
+  // Builds a mostly-straight crack line with a few sharp kinks - real glass fractures follow
+  // stress lines and only bend at flaws, unlike the fine all-scale zigzag of a lightning bolt's
+  // midpoint-displacement path. Optionally forks into a thin Y-split near its tip.
+  buildShardLine(x1, y1, angle, length, kinkCount, kinkJitterDeg, forkChance) {
+    const segCount = Math.max(1, Math.round(kinkCount) + 1);
+    const weights = [];
+    let wSum = 0;
+    for (let i = 0; i < segCount; i++) {
+      const w = 0.7 + Math.random() * 0.6;
+      weights.push(w);
+      wSum += w;
+    }
+
+    const points = [{ x: x1, y: y1 }];
+    let curX = x1, curY = y1, curAngle = angle;
+    for (let i = 0; i < segCount; i++) {
+      if (i > 0) curAngle += (Math.random() - 0.5) * 2 * (kinkJitterDeg * Math.PI / 180);
+      const segLen = length * (weights[i] / wSum);
+      curX += Math.cos(curAngle) * segLen;
+      curY += Math.sin(curAngle) * segLen;
+      points.push({ x: curX, y: curY });
+    }
+
+    let forkPoints = null;
+    if (Math.random() < forkChance && points.length >= 2) {
+      const branchStart = points[points.length - 2];
+      const forkAngle = curAngle + (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 22) * Math.PI / 180;
+      const forkLen = length * (0.15 + Math.random() * 0.15);
+      forkPoints = [
+        { x: branchStart.x, y: branchStart.y },
+        { x: branchStart.x + Math.cos(forkAngle) * forkLen, y: branchStart.y + Math.sin(forkAngle) * forkLen }
+      ];
+    }
+
+    return { points, forkPoints };
+  }
+
+  // Builds one fresh randomized crack pattern (radial shard cracks with tip forks, a dense
+  // cluster of short "hackle" micro-cracks around the impact point, irregular partially-broken
+  // connecting web rings, and an optional star-shaped shattered hole). Called once per cycle,
+  // not per frame, so the pattern stays stable for the life of a single playthrough.
   generateCrackGeometry() {
-    const crackCount = Math.round(this.params.crackCount);
-    const complexity = Math.round(this.params.complexity);
-    const startR = this.params.holeRadius > 0 ? this.params.holeRadius : 0;
+    const crackCount = Math.max(1, Math.round(this.params.crackCount));
+    const kinkCount = Math.max(1, Math.round(this.params.complexity));
+    const kinkJitterDeg = 10 + this.params.displace * 0.4;
+    const holeR = this.params.holeRadius > 0 ? this.params.holeRadius : 0;
 
     const cracks = [];
     for (let i = 0; i < crackCount; i++) {
       const angle = (i / crackCount) * Math.PI * 2 + (Math.random() - 0.5) * (Math.PI * 2 / crackCount) * 0.6;
       const len = this.params.crackLength * (0.6 + Math.random() * 0.4);
+      const startR = holeR > 0 ? holeR * (0.9 + Math.random() * 0.2) : 0;
       const x1 = Math.cos(angle) * startR;
       const y1 = Math.sin(angle) * startR;
-      const x2 = Math.cos(angle) * len;
-      const y2 = Math.sin(angle) * len;
-      const branches = [];
-      const main = generateFractalBranch(x1, y1, x2, y2, this.params.displace, complexity, this.params.branchChance, branches);
-      cracks.push({ main, branches });
+      const { points, forkPoints } = this.buildShardLine(x1, y1, angle, len, kinkCount, kinkJitterDeg, this.params.branchChance);
+      cracks.push({ main: points, fork: forkPoints });
     }
 
+    // Dense cluster of short micro-cracks around the impact point (hackle marks) - this is
+    // what gives a fresh break its "shattered" look right at the point of impact.
+    const microCount = Math.max(8, Math.ceil(crackCount * 1.5));
+    const microCracks = [];
+    for (let i = 0; i < microCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const len = this.params.crackLength * (0.08 + Math.random() * 0.10);
+      const startR = holeR > 0 ? holeR * (0.85 + Math.random() * 0.35) : Math.random() * this.params.crackLength * 0.02;
+      const x1 = Math.cos(angle) * startR;
+      const y1 = Math.sin(angle) * startR;
+      const { points } = this.buildShardLine(x1, y1, angle, len, 1 + Math.round(Math.random()), kinkJitterDeg * 1.4, 0);
+      microCracks.push(points);
+    }
+
+    // Irregular, partially-broken connecting web rings between neighboring radial cracks.
     const ringCount = Math.round(this.params.ringCount);
     const rings = [];
     for (let r = 0; r < ringCount; r++) {
-      const baseRadius = this.params.crackLength * ((r + 1) / (ringCount + 1));
-      const ringPath = [];
-      for (let i = 0; i <= crackCount; i++) {
-        const angle = (i % crackCount / crackCount) * Math.PI * 2;
-        const jr = baseRadius * (0.85 + Math.random() * 0.3);
-        const ja = angle + (Math.random() - 0.5) * 0.15;
-        ringPath.push({ x: Math.cos(ja) * jr, y: Math.sin(ja) * jr });
+      const baseRadius = (holeR > 0 ? holeR : this.params.crackLength * 0.08) +
+        (this.params.crackLength - (holeR > 0 ? holeR : 0)) * ((r + 1) / (ringCount + 1));
+      for (let i = 0; i < crackCount; i++) {
+        if (Math.random() < 0.2) continue; // leave some segments broken/missing, not a full ring
+        const a1 = (i / crackCount) * Math.PI * 2;
+        const a2 = ((i + 1) / crackCount) * Math.PI * 2;
+        const jr1 = baseRadius * (0.85 + Math.random() * 0.3);
+        const jr2 = baseRadius * (0.85 + Math.random() * 0.3);
+        const midA = (a1 + a2) / 2 + (Math.random() - 0.5) * 0.15;
+        const midR = (jr1 + jr2) / 2 * (0.85 + Math.random() * 0.3);
+        rings.push([
+          { x: Math.cos(a1) * jr1, y: Math.sin(a1) * jr1 },
+          { x: Math.cos(midA) * midR, y: Math.sin(midA) * midR },
+          { x: Math.cos(a2) * jr2, y: Math.sin(a2) * jr2 }
+        ]);
       }
-      rings.push(ringPath);
     }
 
+    // Star-shaped shattered hole (bullet-hole mode only), with a few jutting shard flakes
+    // around its rim so it reads as missing glass rather than a clean-edged circle.
     let holePoly = null;
-    if (this.params.holeRadius > 0) {
+    let holeFlakes = [];
+    if (holeR > 0) {
+      const n = 10 + 2 * Math.floor(Math.random() * 3); // 10, 12, or 14 - even, for alternation
       holePoly = [];
-      const holePoints = 10;
-      for (let i = 0; i < holePoints; i++) {
-        const a = (i / holePoints) * Math.PI * 2;
-        const r = this.params.holeRadius * (0.7 + Math.random() * 0.5);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const r = (i % 2 === 0)
+          ? holeR * (0.9 + Math.random() * 0.25)
+          : holeR * (0.35 + Math.random() * 0.2);
         holePoly.push({ x: Math.cos(a) * r, y: Math.sin(a) * r });
+      }
+      const flakeCount = 2 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < flakeCount; i++) {
+        const base = holePoly[Math.floor(Math.random() * holePoly.length)];
+        const ang = Math.atan2(base.y, base.x);
+        const flakeLen = holeR * (0.2 + Math.random() * 0.3);
+        const spread = 0.2 + Math.random() * 0.15;
+        holeFlakes.push([
+          { x: base.x, y: base.y },
+          { x: base.x + Math.cos(ang - spread) * flakeLen, y: base.y + Math.sin(ang - spread) * flakeLen },
+          { x: base.x + Math.cos(ang + spread) * flakeLen, y: base.y + Math.sin(ang + spread) * flakeLen }
+        ]);
       }
     }
 
     this.cracks = cracks;
+    this.microCracks = microCracks;
     this.rings = rings;
     this.holePoly = holePoly;
+    this.holeFlakes = holeFlakes;
   }
 
-  drawPolyline(ctx, points, revealFrac, parsedColor) {
+  // Fills a series of per-segment quads (all in a single fill call) whose half-width is
+  // linearly interpolated between widthStart and widthEnd - the cheapest way to get a
+  // tapering line out of Canvas 2D, which has no native variable-width stroke.
+  fillTaperedLine(ctx, points, widthStart, widthEnd, revealFrac, fillStyle) {
     if (!points || points.length < 2 || revealFrac <= 0) return;
-    const revealCount = Math.max(1, Math.floor((points.length - 1) * revealFrac));
+    const total = points.length - 1;
+    const revealCount = Math.max(1, Math.floor(total * revealFrac));
 
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.lineWidth = 2.5;
+    ctx.fillStyle = fillStyle;
     ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i <= revealCount; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.stroke();
+    for (let i = 0; i < revealCount; i++) {
+      const p1 = points[i], p2 = points[i + 1];
+      const w1 = widthStart + (widthEnd - widthStart) * (i / total);
+      const w2 = widthStart + (widthEnd - widthStart) * ((i + 1) / total);
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const nx = -dy / len, ny = dx / len;
+      const h1 = w1 / 2, h2 = w2 / 2;
+      ctx.moveTo(p1.x + nx * h1, p1.y + ny * h1);
+      ctx.lineTo(p2.x + nx * h2, p2.y + ny * h2);
+      ctx.lineTo(p2.x - nx * h2, p2.y - ny * h2);
+      ctx.lineTo(p1.x - nx * h1, p1.y - ny * h1);
+      ctx.closePath();
+    }
+    ctx.fill();
+  }
 
-    ctx.strokeStyle = `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0.9)`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i <= revealCount; i++) ctx.lineTo(points[i].x, points[i].y);
-    ctx.stroke();
+  // Draws one crack segment as a dark tapered "shadow" fill plus a slimmer, brighter tapered
+  // "highlight" fill down its center - approximates the beveled look of light catching the
+  // fracture's cut edge without needing a real offset light source.
+  drawCrackLine(ctx, points, revealFrac, hueSat, lightness, baseWidth) {
+    this.fillTaperedLine(ctx, points, baseWidth, baseWidth * 0.12, revealFrac, 'rgba(8, 8, 12, 0.55)');
+    this.fillTaperedLine(ctx, points, baseWidth * 0.4, baseWidth * 0.05, revealFrac, `hsla(${hueSat.h}, ${hueSat.s}%, ${lightness}%, 0.85)`);
   }
 
   draw(ctx, width, height, time) {
@@ -2280,33 +2376,61 @@ export class GlassCrackGenerator extends BaseGenerator {
     if (envelope <= 0.001) return;
 
     const growProgress = Math.min(1, progress / this.params.growFrac);
+    const microRampFrac = Math.max(0.01, this.params.growFrac * 0.15);
+    const microProgress = Math.min(1, progress / microRampFrac);
     const ringGrowProgress = Math.max(0, Math.min(1, (progress - this.params.growFrac * 0.3) / this.params.growFrac));
 
     const cx = width / 2;
     const cy = height / 2;
-    const parsedColor = parseHexToRgb(this.params.color);
+    const hueSat = hexToHsl(this.params.color);
+    const lightness = this.params.colorLightness;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.globalAlpha = envelope;
 
-    if (this.holePoly && growProgress > 0) {
+    if (this.holePoly && microProgress > 0) {
+      ctx.globalAlpha = envelope * microProgress;
+
+      const R = this.params.holeRadius;
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 1.2);
+      grad.addColorStop(0, 'rgba(8, 8, 12, 0.95)');
+      grad.addColorStop(0.7, 'rgba(15, 15, 20, 0.85)');
+      grad.addColorStop(1, 'rgba(20, 20, 25, 0.4)');
       ctx.beginPath();
       this.holePoly.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.closePath();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.fillStyle = grad;
       ctx.fill();
+
+      ctx.fillStyle = 'rgba(8, 8, 12, 0.85)';
+      for (const flake of this.holeFlakes) {
+        ctx.beginPath();
+        flake.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = envelope;
     }
 
-    for (const crack of this.cracks) {
-      this.drawPolyline(ctx, crack.main, growProgress, parsedColor);
-      for (const branch of crack.branches) {
-        this.drawPolyline(ctx, branch, growProgress, parsedColor);
+    if (microProgress > 0) {
+      for (const mc of this.microCracks) {
+        this.drawCrackLine(ctx, mc, microProgress, hueSat, lightness, 1.8);
       }
     }
 
-    for (const ring of this.rings) {
-      this.drawPolyline(ctx, ring, ringGrowProgress, parsedColor);
+    for (const crack of this.cracks) {
+      this.drawCrackLine(ctx, crack.main, growProgress, hueSat, lightness, 4.5);
+      if (crack.fork) {
+        this.drawCrackLine(ctx, crack.fork, growProgress, hueSat, lightness, 2.4);
+      }
+    }
+
+    if (ringGrowProgress > 0) {
+      for (const ring of this.rings) {
+        this.drawCrackLine(ctx, ring, ringGrowProgress, hueSat, lightness, 1.6);
+      }
     }
 
     ctx.restore();
