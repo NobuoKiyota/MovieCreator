@@ -1980,3 +1980,76 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
     ctx.restore();
   }
 }
+
+// 19. Lighthouse Beacon Generator
+export class LighthouseGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      beamCount: 2,
+      rotationSpeed: 1.0,
+      beamWidth: 12,
+      beamLength: 600,
+      hueCycleSpeed: 0, // 0 = static color (color/colorLightness as-is), >0 = hue cycles over time
+      color: '#fbbf24',
+      colorLightness: 60
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'beamCount', label: 'Beam Count', type: 'range', min: 1, max: 4, step: 1 },
+      { name: 'rotationSpeed', label: 'Rotation Speed', type: 'range', min: 0.2, max: 4.0, step: 0.1 },
+      { name: 'beamWidth', label: 'Beam Width (deg)', type: 'range', min: 2, max: 60, step: 1 },
+      { name: 'beamLength', label: 'Beam Length', type: 'range', min: 100, max: 1500, step: 10 },
+      { name: 'hueCycleSpeed', label: 'Hue Cycle Speed', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    const cx = width / 2;
+    const cy = height / 2;
+    const rotation = time * 0.001 * this.params.rotationSpeed;
+    const hueOffset = this.params.hueCycleSpeed > 0
+      ? (time * 0.001 * this.params.hueCycleSpeed * 36) % 360
+      : 0;
+    const beamColor = jitterHue(this.params.color, this.params.colorLightness, hueOffset);
+    const halfWidthRad = (this.params.beamWidth * Math.PI / 180) / 2;
+    const beamCount = Math.round(this.params.beamCount);
+
+    ctx.save();
+
+    // Lamp housing: a small always-lit core at the pivot.
+    const coreR = this.params.beamLength * 0.08;
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR);
+    coreGrad.addColorStop(0, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 1)`);
+    coreGrad.addColorStop(1, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0)`);
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < beamCount; i++) {
+      const angle = rotation + (i / beamCount) * Math.PI * 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, this.params.beamLength);
+      grad.addColorStop(0, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0.9)`);
+      grad.addColorStop(0.6, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0.35)`);
+      grad.addColorStop(1, `rgba(${beamColor.rgb.r}, ${beamColor.rgb.g}, ${beamColor.rgb.b}, 0)`);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, this.params.beamLength, -halfWidthRad, halfWidthRad);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+}
