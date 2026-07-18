@@ -2,8 +2,11 @@ import openpyxl
 import json
 import os
 
-excel_file = r"Z:\MovieCreator\Excels\PresetLayerOpinionSheet.xlsx"
-out_json = r"Z:\MovieCreator\data\motion_mapping.json"
+# Paths are relative to this script's own location, not a hardcoded drive letter, so this runs
+# unmodified on any PC regardless of where the repo is checked out (see CLAUDE.md multi-PC rules).
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+excel_file = os.path.join(PROJECT_ROOT, "Excels", "PresetLayerOpinionSheet.xlsx")
+out_json = os.path.join(PROJECT_ROOT, "data", "motion_mapping.json")
 
 if not os.path.exists(excel_file):
     print(f"Error: Excel file does not exist at {excel_file}!")

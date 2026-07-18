@@ -45,6 +45,10 @@ const BASE_TEMPLATES = {
     { time: 0.0, value: 1.0, easing: 'ease-in' },
     { time: 1.0, value: 0.0, easing: 'ease-in' }
   ],
+  "2P_StepHold": [
+    { time: 0.0, value: 0.0, easing: 'step' },
+    { time: 1.0, value: 1.0, easing: 'step' }
+  ],
 
   // --- 3-Point Curves (1-cycle PingPong, ADSR Pulse/Decay) ---
   "3P_PingPong": [
@@ -223,3 +227,17 @@ for (const [key, kfs] of Object.entries(BASE_TEMPLATES)) {
     value: kf.value * 0.25
   }));
 }
+
+// The Opinion Sheet Excel's "Motion Mapping" tab (see export_motion_mapping.py) marks each
+// parameter with one of these 6 coarse category names rather than an exact template key - they
+// predate the NP_-prefixed point-count naming scheme above and never matched a real key.
+// applyMotionTemplate() in Controls.js resolves a category name through this table (picking a
+// random family member) before falling back to a direct MOTION_TEMPLATES lookup.
+export const LEGACY_CATEGORY_KEYS = {
+  SlowDriftUp: ['2P_DriftUp1', '2P_DriftUp2', '2P_DriftUp3'],
+  SlowDriftDown: ['2P_DriftDown1', '2P_DriftDown2', '2P_DriftDown3'],
+  PingPong: ['3P_PingPong', '5P_DoublePingPong', '7P_TriplePingPong'],
+  PulseDecay: ['3P_PulseDecay'],
+  SineLFO: ['6P_SineLFO_2.5x', '7P_SineLFO_3x', '8P_SineLFO_3.5x', '9P_SineLFO_4x'],
+  StepHold: ['2P_StepHold', '4P_Step3']
+};

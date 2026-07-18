@@ -5,7 +5,8 @@
  * Right Lower: Inspector Panel (Detailed parameter tuning & LFO settings for the ACTIVE layer only)
  */
 import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
-import { MOTION_TEMPLATES } from '../engine/motionTemplates.js';
+import { MOTION_TEMPLATES, LEGACY_CATEGORY_KEYS } from '../engine/motionTemplates.js';
+import { hexToHsl } from '../engine/Generators.js';
 
 export class Controls {
   constructor(layerManager, mainApp) {
@@ -2061,7 +2062,17 @@ export class Controls {
    * Applies a normalized motion template (normalized keyframes) to a modulation config
    */
   applyMotionTemplate(candidateMod, templateName, localMin, localMax, durationVal) {
-    const template = MOTION_TEMPLATES[templateName];
+    let template = MOTION_TEMPLATES[templateName];
+    if (!template) {
+      // Not a direct key - the Excel Motion Mapping tab uses 6 legacy category names that never
+      // matched the real NP_-prefixed keys (see LEGACY_CATEGORY_KEYS). Resolve to a random member
+      // of the matching family instead of silently failing.
+      const family = LEGACY_CATEGORY_KEYS[templateName];
+      if (family && family.length > 0) {
+        const resolvedKey = family[Math.floor(Math.random() * family.length)];
+        template = MOTION_TEMPLATES[resolvedKey];
+      }
+    }
     if (!template) return false;
 
     candidateMod.keyframeEnabled = true;
@@ -2119,39 +2130,11 @@ export class Controls {
     const hasNoiseWarpExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('noise_warp_excess'));
     const hasNothingVisible = badEvaluations.some(e => e.reasons && e.reasons.includes('nothing_visible'));
 
-    // Normalized-diff similarity between a candidate and one past evaluation (1.0 = identical,
-    // 0.0 = as different as the parameter ranges allow). Shared by both the Bad-avoidance check
-    // and the Good-closeness check below so the two use exactly the same metric.
-    const calcSimilarityToEval = (evalItem, candidateParams, candidateEffects, genConfigs) => {
-      let paramDiffSum = 0;
-      let paramCount = 0;
-
-      genConfigs.forEach(config => {
-        if (config.type !== 'range') return;
-        const absoluteRange = config.max - config.min;
-        if (absoluteRange <= 0) return;
-        const val = (evalItem.params && evalItem.params[config.name] !== undefined)
-          ? evalItem.params[config.name] : config.min + absoluteRange / 2;
-        const normEval = (val - config.min) / absoluteRange;
-        const normCurrent = (candidateParams[config.name] - config.min) / absoluteRange;
-        paramDiffSum += Math.abs(normCurrent - normEval);
-        paramCount++;
-      });
-
-      for (let fxName in this.fxConfigs) {
-        const config = this.fxConfigs[fxName];
-        const absoluteRange = config.max - config.min;
-        if (absoluteRange <= 0) continue;
-        const val = (evalItem.effects && evalItem.effects[fxName] !== undefined)
-          ? evalItem.effects[fxName] : config.min + absoluteRange / 2;
-        const normEval = (val - config.min) / absoluteRange;
-        const normCurrent = (candidateEffects[fxName] - config.min) / absoluteRange;
-        paramDiffSum += Math.abs(normCurrent - normEval);
-        paramCount++;
-      }
-
-      return paramCount > 0 ? 1.0 - (paramDiffSum / paramCount) : 0;
-    };
+    // Similarity between a candidate and one past evaluation - delegates to the shared weighted
+    // metric (calculateStatesSimilarity) so the Bad-avoidance check, the Good-closeness check
+    // below, and batch-diversity filtering all agree on exactly the same notion of "similar".
+    const calcSimilarityToEval = (evalItem, candidateParams, candidateEffects, genConfigs) =>
+      this.calculateStatesSimilarity({ params: candidateParams, effects: candidateEffects }, evalItem, genConfigs, layer.type);
 
     const maxSimilarityAmong = (evalList, candidateParams, candidateEffects, genConfigs) => {
       let max = 0;
@@ -2959,7 +2942,7 @@ export class Controls {
 
         let isTooSimilar = false;
         for (const existing of variations) {
-          const sim = this.calculateStatesSimilarity(potentialState, existing, genConfigs);
+          const sim = this.calculateStatesSimilarity(potentialState, existing, genConfigs, layer.type);
           if (sim >= minSimilarityThreshold) {
             isTooSimilar = true;
             break;
@@ -3015,23 +2998,71 @@ export class Controls {
     }
   }
 
-  calculateStatesSimilarity(stateA, stateB, genConfigs) {
-    let paramDiffSum = 0;
-    let paramCount = 0;
+  // Circular hue distance between two hex colors, normalized to 0 (same hue) .. 1 (opposite hue,
+  // 180deg apart). Falls back to 0 if either value isn't a real hex color (nothing to compare).
+  hueDiff(hexA, hexB) {
+    if (typeof hexA !== 'string' || typeof hexB !== 'string') return 0;
+    const hA = hexToHsl(hexA).h;
+    const hB = hexToHsl(hexB).h;
+    const raw = Math.abs(hA - hB) % 360;
+    return (raw > 180 ? 360 - raw : raw) / 180;
+  }
+
+  // How much a given parameter's value should weigh in a similarity score, on top of the flat
+  // per-parameter average every param used to get equally. Two heuristics from the roadmap
+  // ("色相の差、モジュレーションの有無、物量パラメータなど") plus a real signal already on hand:
+  // hue/count-shaped param names get a fixed boost, and the rest is scaled by how much past
+  // evaluators judged animating that parameter to matter (Move score, 0-5, from the Opinion
+  // Sheet) - a rough but concrete stand-in for "how much this parameter shapes the look", since
+  // params worth animating tend to also be params whose static value is visually significant.
+  getParamSimilarityWeight(layerType, paramName, config) {
+    let weight = 1.0;
+
+    if (config.type === 'color' || /color|hue/i.test(paramName)) {
+      weight *= 2.2;
+    }
+    if (/count|density|particleCount|lineCount|bandCount|spawnRate|ringCount|spikeCount/i.test(paramName)) {
+      weight *= 1.6;
+    }
+
+    const moveScore = this.moveScores && layerType && this.moveScores[layerType]
+      ? this.moveScores[layerType][paramName] : undefined;
+    if (moveScore !== undefined) {
+      weight *= (0.6 + moveScore / 5); // 0.6x at Move=0 up to 1.6x at Move=5
+    }
+
+    return weight;
+  }
+
+  // Weighted normalized-diff similarity between two {params, effects} states (1.0 = identical,
+  // 0.0 = as different as every parameter's range/weight allows). Shared by the batch-diversity
+  // check (generateBatchVariations) and the Bad/Good closeness scoring in randomizeLayer, so all
+  // three use exactly the same metric. layerType is optional - omitting it just skips the
+  // Move-score weighting term (falls back to the heuristic-only weight).
+  calculateStatesSimilarity(stateA, stateB, genConfigs, layerType) {
+    let weightedDiffSum = 0;
+    let weightSum = 0;
 
     genConfigs.forEach(config => {
       if (config.type === 'range') {
         const absoluteRange = config.max - config.min;
         if (absoluteRange <= 0) return;
 
-        const valA = stateA.params[config.name] !== undefined ? stateA.params[config.name] : config.min + absoluteRange / 2;
-        const valB = stateB.params[config.name] !== undefined ? stateB.params[config.name] : config.min + absoluteRange / 2;
+        const valA = stateA.params && stateA.params[config.name] !== undefined ? stateA.params[config.name] : config.min + absoluteRange / 2;
+        const valB = stateB.params && stateB.params[config.name] !== undefined ? stateB.params[config.name] : config.min + absoluteRange / 2;
 
         const normA = (valA - config.min) / absoluteRange;
         const normB = (valB - config.min) / absoluteRange;
 
-        paramDiffSum += Math.abs(normA - normB);
-        paramCount++;
+        const w = this.getParamSimilarityWeight(layerType, config.name, config);
+        weightedDiffSum += w * Math.abs(normA - normB);
+        weightSum += w;
+      } else if (config.type === 'color') {
+        const colorA = stateA.params && stateA.params[config.name];
+        const colorB = stateB.params && stateB.params[config.name];
+        const w = this.getParamSimilarityWeight(layerType, config.name, config);
+        weightedDiffSum += w * this.hueDiff(colorA, colorB);
+        weightSum += w;
       }
     });
 
@@ -3040,18 +3071,19 @@ export class Controls {
       const absoluteRange = config.max - config.min;
       if (absoluteRange <= 0) continue;
 
-      const valA = stateA.effects[fxName] !== undefined ? stateA.effects[fxName] : config.min + absoluteRange / 2;
-      const valB = stateB.effects[fxName] !== undefined ? stateB.effects[fxName] : config.min + absoluteRange / 2;
+      const valA = stateA.effects && stateA.effects[fxName] !== undefined ? stateA.effects[fxName] : config.min + absoluteRange / 2;
+      const valB = stateB.effects && stateB.effects[fxName] !== undefined ? stateB.effects[fxName] : config.min + absoluteRange / 2;
 
       const normA = (valA - config.min) / absoluteRange;
       const normB = (valB - config.min) / absoluteRange;
 
-      paramDiffSum += Math.abs(normA - normB);
-      paramCount++;
+      const w = this.getParamSimilarityWeight(layerType, fxName, config);
+      weightedDiffSum += w * Math.abs(normA - normB);
+      weightSum += w;
     }
 
-    if (paramCount > 0) {
-      return 1.0 - (paramDiffSum / paramCount);
+    if (weightSum > 0) {
+      return 1.0 - (weightedDiffSum / weightSum);
     }
     return 1.0;
   }

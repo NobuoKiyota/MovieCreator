@@ -51,7 +51,7 @@ const noiseInst = new SimpleNoise();
 /**
  * Converts Hex to {h, s, l} (0-360 / 0-100 / 0-100).
  */
-function hexToHsl(hex) {
+export function hexToHsl(hex) {
   if (!hex || hex.charAt(0) !== '#') return { h: 0, s: 0, l: 50 };
 
   let r = parseInt(hex.slice(1, 3), 16);
