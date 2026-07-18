@@ -1532,8 +1532,8 @@ export class Controls {
       };
 
       const onJitterDragEnd = () => {
-        document.removeEventListener('mousemove', onJitterDragMove);
-        document.removeEventListener('mouseup', onJitterDragEnd);
+        (this.activeDocument || document).removeEventListener('mousemove', onJitterDragMove);
+        (this.activeDocument || document).removeEventListener('mouseup', onJitterDragEnd);
 
         if (!jitterDragMoved) {
           // Plain click (no drag): toggle on/off.
@@ -1550,8 +1550,8 @@ export class Controls {
         jitterDragStartY = e.clientY;
         jitterDragStartWidth = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
         jitterDragMoved = false;
-        document.addEventListener('mousemove', onJitterDragMove);
-        document.addEventListener('mouseup', onJitterDragEnd);
+        (this.activeDocument || document).addEventListener('mousemove', onJitterDragMove);
+        (this.activeDocument || document).addEventListener('mouseup', onJitterDragEnd);
       });
 
       btnModToggle.addEventListener('click', (e) => {
