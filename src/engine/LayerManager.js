@@ -78,8 +78,8 @@ export class Layer {
       feedbackRotate: 0.005,
       // Distortion
       distortionIntensity: 0, // 0 to 40
-      distortionFrequency: 0.02,
-      distortionSpeed: 3,
+      distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
+      distortionSpeed: 1.5,
       kaleidoscopeSegment: 0,
       chromaticOffset: 0,
       

@@ -9,12 +9,15 @@ export function applyGlow(ctx, canvas, intensity = 15, mix = 0.6) {
 
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = mix;
-  
+  // Ramp opacity together with blur radius, so higher intensity reads as brighter -
+  // not just blurrier (blur alone just spreads existing light, it doesn't add any).
+  const effectiveMix = Math.min(1, mix + (intensity / 100) * 0.4);
+  ctx.globalAlpha = effectiveMix;
+
   // Apply CSS-like blur filter on context
   ctx.filter = `blur(${intensity}px)`;
   ctx.drawImage(canvas, 0, 0);
-  
+
   ctx.restore();
 }
 
@@ -105,11 +108,16 @@ export function applyDistortion(ctx, canvas, time, params = {}) {
 
   const speedOffset = time * speed * 0.02;
 
+  // Quadratic curve: low/mid dial values stay calm, only the top of the range gets
+  // dramatic (intensity=12, the randomizer's hard cap -> ~3.6px; intensity=40, the
+  // slider max -> 40px, unchanged) - raw linear intensity felt "always nauseating".
+  const effectiveIntensity = (intensity * intensity) / 40;
+
   // Draw slice by slice with sinus offset
   for (let y = 0; y < h; y += sliceHeight) {
     const sliceH = Math.min(sliceHeight, h - y);
     // Dynamic X offset based on sine wave
-    const dx = Math.sin(y * frequency + speedOffset) * intensity;
+    const dx = Math.sin(y * frequency + speedOffset) * effectiveIntensity;
     
     ctx.drawImage(
       tempCanvas, 
@@ -180,22 +188,28 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
   const angle = (Math.PI * 2) / segments;
   const cx = w / 2;
   const cy = h / 2;
+  // Sample a magnified crop of the source per wedge, not a near-1:1 copy - otherwise
+  // the mirrored wedges mostly overlap with the original center content and the
+  // "kaleidoscope" repetition barely reads as a distinct pattern.
+  const zoom = 1.6;
 
   for (let i = 0; i < segments; i++) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(i * angle);
-    
+
     ctx.beginPath();
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, Math.max(w, h) * 1.5, -angle / 2 - 0.001, angle / 2 + 0.001);
     ctx.closePath();
     ctx.clip();
-    
+
     if (i % 2 === 1) {
-      ctx.scale(-1, 1);
+      ctx.scale(-zoom, zoom);
+    } else {
+      ctx.scale(zoom, zoom);
     }
-    
+
     ctx.drawImage(tempCanvas, -cx, -cy);
     ctx.restore();
   }
@@ -204,6 +218,9 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
 // 7. Chromatic Aberration (RGB Color Splitting)
 export function applyChromaticAberration(ctx, canvas, offset = 5) {
   if (offset <= 0) return;
+  // Thin neon linework (this app's dominant look) has low area coverage, so the raw
+  // offset reads as barely-there against mostly-black backgrounds - boost it.
+  const effectiveOffset = offset * 1.6;
   const w = canvas.width;
   const h = canvas.height;
 
@@ -248,9 +265,9 @@ export function applyChromaticAberration(ctx, canvas, offset = 5) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   
-  ctx.drawImage(rCanvas, -offset, 0);
+  ctx.drawImage(rCanvas, -effectiveOffset, 0);
   ctx.drawImage(gCanvas, 0, 0);
-  ctx.drawImage(bCanvas, offset, 0);
+  ctx.drawImage(bCanvas, effectiveOffset, 0);
   
   ctx.restore();
 }

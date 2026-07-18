@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-18 15:34 [Claude Code] 意見書Excel由来の共通FXパラメータ調整4件(src/engine/Effects.js): ①Neon Glowをintensityに応じてalphaも持ち上げるよう変更(高強度で「ぼやけるだけ」を解消) ②Noise Warpに2乗カーブ適用+distortionFrequency/Speedのデフォルトを緩和(「常時気持ち悪い」を解消) ③Kaleidoscopeを各ウェッジ1.6倍ズームサンプリングに変更(反復パターンとして視認しやすく) ④Chromatic Aberrationのoffsetを1.6倍に強化。動作確認済み・未コミット
 - 2026-07-18 15:19 [Claude Code] 意見書Excel由来のバグ級修正3件: ①Lighthouse Beacon/Neon SpirographのLFO時カクつきを角度蓄積方式(time*speedの直接乗算→アキュムレータ)に修正 ②Neon Fog/Neon Snowflake/3D Shape Particlesの個数(density/count)LFO時の急な出現・消滅をfadeMulによるフェードイン/アウト方式に修正。動作確認済み・未コミット
 - 2026-07-18 11:04 [Antigravity] 意見書Excelの非パラメータセルのグレーアウトを濃い色に調整して再生成・Gitプッシュ完了
 - 2026-07-18 11:00 [Antigravity] 量産化に向けたランダマイザー改善と全21レイヤーの意見書Excel生成完了
