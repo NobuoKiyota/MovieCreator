@@ -47115,5 +47115,2704 @@
     "reasons": [
       "too_simple"
     ]
+  },
+  {
+    "id": "1784369858105cay8f",
+    "timestamp": "2026-07-18T10:17:38.105Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 4746.724465313983,
+      "shapeStyle": 2,
+      "ringCount": 3,
+      "maxRadius": 1251.8179784052422,
+      "ringThickness": 100,
+      "jaggedness": 0.30903839221025414,
+      "rotationSpeed": 0.23839050591886313,
+      "deformAmount": 0.5658743498672582,
+      "debrisCount": 20,
+      "windupFrac": 0.03921027284897127,
+      "holdFrac": 0.028486028666431507,
+      "fadeInFrac": 0.15043483785121534,
+      "fadeOutFrac": 0.3630683449422741,
+      "color": "#ef396f",
+      "colorLightness": 32.68390311849055
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.443193109807333,
+      "strobe": 0,
+      "glowIntensity": 95.68979053287676,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.8476989657235283,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.006,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 0,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1430.036224827113,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 269.85762162230276,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 272.9646138891821,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1439.6551556246523,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 248.0278353078553,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 1075.3553683690072,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1456.0424799904663,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 211.63081231828767,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 2.232167173872806,
+            "easing": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 2.132137985960605,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 1.4479266824892632,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 450,
+            "value": 2.7907260876432174,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 5,
+            "easing": "linear"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784369876404xirdq",
+    "timestamp": "2026-07-18T10:17:56.404Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 4973.248587483698,
+      "shapeStyle": 2,
+      "ringCount": 2.9987025611812594,
+      "maxRadius": 326.18584833238816,
+      "ringThickness": 100,
+      "jaggedness": 0.31250079796254177,
+      "rotationSpeed": 0.16773797969932347,
+      "deformAmount": 0.6141732774586317,
+      "debrisCount": 18.840950524524807,
+      "windupFrac": 0.034829430744890734,
+      "holdFrac": 0.03797945857425436,
+      "fadeInFrac": 0.14890666816583475,
+      "fadeOutFrac": 0.3532782429131237,
+      "color": "#26bcf7",
+      "colorLightness": 30.812822469508014
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.42,
+      "strobe": 0,
+      "glowIntensity": 95.39144786306142,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.006,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -1.4296296296296305,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 246.57623711053316,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1482.257524804606,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 330.3076872985608,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 305.17452287067886,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1470.135080569068,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 217.83797218219755,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 1132.7515272382218,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 276.12264767476466,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 2.1940128700429393,
+            "easing": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 2.178956703313429,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 1.4401277653569626,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1.4892664951323533,
+            "easing": "linear"
+          },
+          {
+            "frame": 450,
+            "value": 2.786436446595905,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 5,
+            "easing": "linear"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784369900074is7mo",
+    "timestamp": "2026-07-18T10:18:20.074Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 2000,
+      "shapeStyle": 0,
+      "ringCount": 3,
+      "maxRadius": 1359.5020216794937,
+      "ringThickness": 100,
+      "jaggedness": 0.32646049798623555,
+      "rotationSpeed": 0.2499953130091485,
+      "deformAmount": 0.6312668094512469,
+      "debrisCount": 17.974347370605518,
+      "windupFrac": 0.04755792484984761,
+      "holdFrac": 0.032326293191952946,
+      "fadeInFrac": 0.15209722589635816,
+      "fadeOutFrac": 0.3443009708388573,
+      "color": "#1af4c5",
+      "colorLightness": 28.555676142675473
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 2.36575724837947,
+      "strobe": 0,
+      "glowIntensity": 92.80945089109923,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.006,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 8.680645161290322,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 241.99147963859505,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 257.66864215725377,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 378.85732032924744,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1491.0553659322188,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 1087.982468268311,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 310.8119357265623,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 2.130322596461613,
+            "easing": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 1.481416622978471,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 2.1576376918819955,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 1.4908136240890526,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 1.4460590790424737,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1.4891356642174962,
+            "easing": "linear"
+          },
+          {
+            "frame": 450,
+            "value": 2.7745045559505934,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 4.926552929494008,
+            "easing": "linear"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784369942091jcd92",
+    "timestamp": "2026-07-18T10:19:02.091Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 600,
+      "shapeStyle": 0.46317531892162767,
+      "ringCount": 3,
+      "maxRadius": 1238.3463111650835,
+      "ringThickness": 5,
+      "jaggedness": 0.31409512205446466,
+      "rotationSpeed": 0.11263835390084216,
+      "deformAmount": 0.5748733933895147,
+      "debrisCount": 19.712143169125994,
+      "windupFrac": 0.061369926545569616,
+      "holdFrac": 0.025370181926753613,
+      "fadeInFrac": 0.1565425856165556,
+      "fadeOutFrac": 0.37332939940074894,
+      "color": "#02ed2a",
+      "colorLightness": 25.84054341378893
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.9992078041893133,
+      "strobe": 0,
+      "glowIntensity": 92.45174649655915,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.015,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 0,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 310.6650507503802,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1418.2609069208513,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 227.18243319844132,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 458.9654131735772,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 239.38786477064207,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 1007.2275450844396,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1427.4634613666267,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 330.26787837962115,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 2.1011544136508937,
+            "easing": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 1.5783512882068922,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 2.1429116357404374,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 1.479203571689869,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 1.5389188915985923,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1.42,
+            "easing": "linear"
+          },
+          {
+            "frame": 450,
+            "value": 2.78251551672419,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 4.945146102158855,
+            "easing": "linear"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784369986518mpqv9",
+    "timestamp": "2026-07-18T10:19:46.518Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 1216.1462942121598,
+      "shapeStyle": 0.6490839012610113,
+      "ringCount": 3,
+      "maxRadius": 296.1283699327821,
+      "ringThickness": 23.638293560698276,
+      "jaggedness": 0.7684081087359365,
+      "rotationSpeed": 0.1643175642059718,
+      "deformAmount": 0.5519399725315716,
+      "debrisCount": 20,
+      "windupFrac": 0.06253050821960301,
+      "holdFrac": 0.03350431432492194,
+      "fadeInFrac": 0.15181630297352303,
+      "fadeOutFrac": 0.3641686175916868,
+      "color": "#fc1303",
+      "colorLightness": 10
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.453205121116255,
+      "strobe": 30,
+      "glowIntensity": 90.1999699043387,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": -0.015,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 0,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 256.26066895443296,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1476.2594684507799,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1426.1859643708735,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1447.4592501290247,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 263.6560252466222,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 394.5928989811378,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 203.1785022112495,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 937.6629457694673,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1488.535146849483,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 361.75931763964917,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 2.0282132771015573,
+            "easing": "linear"
+          },
+          {
+            "frame": 120,
+            "value": 1.5474793288821322,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 2.0759371647101963,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 1.44511442266431,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 1.4777382067447333,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 1.3724641240682867,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1.4191300134790854,
+            "easing": "linear"
+          },
+          {
+            "frame": 450,
+            "value": 2.741580840934313,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 4.919713811214857,
+            "easing": "linear"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784370160970wvhjv",
+    "timestamp": "2026-07-18T10:22:40.970Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 3790.059015460848,
+      "shapeStyle": 1.7621511268554786,
+      "ringCount": 2.88445957956391,
+      "maxRadius": 650.92797846449,
+      "ringThickness": 51.290789615020024,
+      "jaggedness": 0.5384312712673527,
+      "rotationSpeed": 0.1654244126815143,
+      "deformAmount": 0.5604785183010257,
+      "debrisCount": 18.812254796291565,
+      "windupFrac": 0.17208322922237815,
+      "holdFrac": 0.03389773694334301,
+      "fadeInFrac": 0.14944887036348317,
+      "fadeOutFrac": 0.3400276183545082,
+      "color": "#e5065f",
+      "colorLightness": 60.4785452211662
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 4.8472198659964185,
+      "strobe": 0,
+      "glowIntensity": 92.70165283153845,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -14.468041237113402,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 273.11424514998004,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1371.4099815293696,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 264.77287878533,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1390.8812729741478,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 285.8297823620125,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 501.95997574367647,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1422.4218172478193,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 242.6676833625035,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1446.7204565143143,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 894.9572222999426,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1378.7048338162233,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 241.2833028570514,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 4.953900385385442,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 84,
+            "value": 1.42,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 180,
+            "value": 3.447200987495809,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 252,
+            "value": 1.42,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 330,
+            "value": 2.8828994864871422,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 420,
+            "value": 1.42,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 510,
+            "value": 3.4680950569828286,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 600,
+            "value": 2.5750740017547282,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "17843702785915vxuo",
+    "timestamp": "2026-07-18T10:24:38.591Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 1000,
+      "shapeStyle": 1.5541379324657443,
+      "ringCount": 1,
+      "maxRadius": 803.8454434728488,
+      "ringThickness": 5.551245351239672,
+      "jaggedness": 0.48519451374823985,
+      "rotationSpeed": 0.25378363923712105,
+      "deformAmount": 0.6114814295315968,
+      "debrisCount": 20,
+      "windupFrac": 0.14243834675411332,
+      "holdFrac": 0.030780093717555017,
+      "fadeInFrac": 0.1625992031678854,
+      "fadeOutFrac": 0.3222906647916505,
+      "color": "#f50f77",
+      "colorLightness": 54.282942061004306
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 360,
+      "scale": 2.7905239838506746,
+      "strobe": 30,
+      "glowIntensity": 90.95602307416755,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.8,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 0,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 306.2286458101365,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1428.4656626371445,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1327.6037388217135,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 295.92532477431854,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 504.58696413334644,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1354.0939386372058,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 307.99413794451027,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1458.2218350516557,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 891.6543666472967,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1417.2629051048925,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 267.78173307024974,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 5,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 72,
+            "value": 52.5,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 150,
+            "value": 5,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 228,
+            "value": 52.5,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 360,
+            "value": 5,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 100,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 72.43139528760723,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 5,
+            "easing": "ease-out"
+          }
+        ]
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 4.929475107713766,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 84,
+            "value": 1.444494593379221,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 180,
+            "value": 3.5181090654654463,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 252,
+            "value": 1.4171425956244343,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 330,
+            "value": 2.8785534206740366,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 420,
+            "value": 1.4467976279593444,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 510,
+            "value": 3.4722005901045745,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 600,
+            "value": 2.581480145644589,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "17843702918013rqls",
+    "timestamp": "2026-07-18T10:24:51.801Z",
+    "layerType": "shockwave-burst",
+    "params": {
+      "cycleDuration": 1591.1301684490666,
+      "shapeStyle": 1.5276469636860206,
+      "ringCount": 1.6949809482585876,
+      "maxRadius": 1412.8354085855947,
+      "ringThickness": 70.1083679655801,
+      "jaggedness": 0.4974027968366498,
+      "rotationSpeed": 0.21843111935525716,
+      "deformAmount": 0.5664128262459008,
+      "debrisCount": 20,
+      "windupFrac": 0.11139356259055647,
+      "holdFrac": 0.03848119366819345,
+      "fadeInFrac": 0.15933201764359867,
+      "fadeOutFrac": 0.31333430259047845,
+      "color": "#731ded",
+      "colorLightness": 53.39020568918147
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 3.242863318356447,
+      "strobe": 0,
+      "glowIntensity": 93.14454993725849,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.92,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 14.42727272727273,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0,
+      "chromatic": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "shapeStyle": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "maxRadius": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 354.4190523797444,
+            "easing": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 1370.9322580283026,
+            "easing": "linear"
+          },
+          {
+            "frame": 60,
+            "value": 200,
+            "easing": "linear"
+          },
+          {
+            "frame": 90,
+            "value": 1500,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 1262.5030805542383,
+            "easing": "linear"
+          },
+          {
+            "frame": 210,
+            "value": 320.8449394231021,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 525.0360026183314,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 1369.7513789361153,
+            "easing": "linear"
+          },
+          {
+            "frame": 360,
+            "value": 272.07068030305487,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 1474.018354299158,
+            "easing": "linear"
+          },
+          {
+            "frame": 480,
+            "value": 953.5356914678999,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 1428.0188703084934,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 287.17132451934015,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "ringThickness": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 8.215739508559997,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 72,
+            "value": 57.313653147927994,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 150,
+            "value": 5,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 228,
+            "value": 52.269211490035204,
+            "easing": "ease-out"
+          },
+          {
+            "frame": 360,
+            "value": 5.550534946646292,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 94.31301239898949,
+            "easing": "linear"
+          },
+          {
+            "frame": 540,
+            "value": 69.71479651137834,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 6.845918895835292,
+            "easing": "ease-out"
+          }
+        ]
+      },
+      "jaggedness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotationSpeed": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "deformAmount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "debrisCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "windupFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holdFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeInFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 4.998870702081153,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 84,
+            "value": 1.433579411754422,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 180,
+            "value": 3.5732480326087526,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 252,
+            "value": 1.4504892158203784,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 330,
+            "value": 2.9360006303389667,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 420,
+            "value": 1.42,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 510,
+            "value": 3.4165727030770388,
+            "easing": "ease-in-out"
+          },
+          {
+            "frame": 600,
+            "value": 2.524327753616406,
+            "easing": "ease-in-out"
+          }
+        ]
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784370549794hseyd",
+    "timestamp": "2026-07-18T10:29:09.794Z",
+    "layerType": "glass-crack",
+    "params": {
+      "cycleDuration": 2319.8074333841273,
+      "crackCount": 20.56626559294261,
+      "crackLength": 788.8656829216044,
+      "complexity": 2.9655811830885628,
+      "displace": 59.57568185533884,
+      "branchChance": 0.5737753515977337,
+      "ringCount": 4.97573578447213,
+      "holeRadius": 6.463449663883922,
+      "growFrac": 0.37244301744473857,
+      "fadeOutFrac": 0.16916182601491894,
+      "color": "#08f0fd",
+      "colorLightness": 79.02520424536289
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.6610631706065617,
+      "strobe": 0,
+      "glowIntensity": 100,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.8518545436681254,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 9.814285714285717,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "crackCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "crackLength": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "complexity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "displace": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "branchChance": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holeRadius": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "growFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784370595295xonrw",
+    "timestamp": "2026-07-18T10:29:55.295Z",
+    "layerType": "glass-crack",
+    "params": {
+      "cycleDuration": 4000,
+      "crackCount": 19.659926338895545,
+      "crackLength": 887.0241938183124,
+      "complexity": 2.8315829797998786,
+      "displace": 44.59223282145619,
+      "branchChance": 0.6,
+      "ringCount": 5,
+      "holeRadius": 5.696743034769186,
+      "growFrac": 0.31996465542609,
+      "fadeOutFrac": 0.1630505557183901,
+      "color": "#33fa72",
+      "colorLightness": 65.35201990077678
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.6413423584176805,
+      "strobe": 0,
+      "glowIntensity": 100,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.83,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.034,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": -7.263157894736842,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0
+    },
+    "modulations": {
+      "cycleDuration": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "crackCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "crackLength": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "complexity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "displace": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "branchChance": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "ringCount": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "holeRadius": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "growFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "fadeOutFrac": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
+  },
+  {
+    "id": "1784370635249cm4sk",
+    "timestamp": "2026-07-18T10:30:35.249Z",
+    "layerType": "lightning",
+    "params": {
+      "thickness": 2.8819191415204712,
+      "complexity": 5.9404044647398955,
+      "displace": 74.12877444143805,
+      "branchChance": 0.3023126496392291,
+      "frequency": 1.7895741210792042,
+      "glow": 20.981259451324032,
+      "color": "#8f02ed",
+      "colorLightness": 50.26492447033218
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.2,
+      "strobe": 0,
+      "glowIntensity": 60,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.827524179962709,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.006,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "chromaticOffset": 0,
+      "rotateX": 0,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0
+    },
+    "modulations": {
+      "thickness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "complexity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "displace": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "branchChance": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "frequency": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "colorLightness": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glow": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "positionY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotation": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "scale": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "strobe": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "glowIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackDecay": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "feedbackRotate": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "distortionIntensity": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "kaleidoscopeSegment": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "chromaticOffset": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateX": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateY": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "rotateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      },
+      "translateZ": {
+        "keyframeEnabled": false,
+        "keyframes": []
+      }
+    },
+    "score": "good",
+    "reasons": []
   }
 ]
