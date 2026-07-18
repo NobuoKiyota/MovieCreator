@@ -7,7 +7,7 @@ export const FX_PARAM_RANGES = {
   rotation:            { min: -360,  max: 360 },
   scale:               { min: 0.1,   max: 5.0 },
   strobe:              { min: 0,     max: 30  },
-  glowIntensity:       { min: 0,     max: 50  },
+  glowIntensity:       { min: 0,     max: 100 },
   feedbackDecay:       { min: 0.0,   max: 0.95 },
   feedbackRotate:      { min: -0.05, max: 0.05 },
   distortionIntensity: { min: 0,     max: 40  },
