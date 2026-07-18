@@ -19,6 +19,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 2026-07-18 15:56 [Claude Code] Shockwave Burst再設計(リッチな多様性創出、src/engine/Generators.js `ShockwaveBurstGenerator`): ①収束→拡散の2フェーズに新規`holdFrac`(溜め)を挿入し3フェーズ化+溜め→拡散の切り替わりにコアフラッシュ追加 ②`rotationSpeed`で棘形状が拡大しながら回転(「型抜きスタンプ」感の解消) ③新規`shapeStyle`(0=Smooth Ring/1=Jagged Star/2=Double Ring干渉波)で構造的に異なる3種類の見た目 ④新規`debrisCount`で本体リングより速く飛ぶ破片/火花レイヤーを追加 ⑤サイクル毎に半径・太さ・回転位相・リング色相・デブリ角度を再抽選(`regenerateCycleVariation`)しバッチ多様性を強化。新規4パラメータはデフォルト値で旧見た目を概ね維持、既存プリセット(Shockwave Burst01等)読み込み確認済み・3形状スタイル/デブリ/多重リング動作確認済み・未コミット
 - 2026-07-18 15:34 [Claude Code] 意見書Excel由来の共通FXパラメータ調整4件(src/engine/Effects.js): ①Neon Glowをintensityに応じてalphaも持ち上げるよう変更(高強度で「ぼやけるだけ」を解消) ②Noise Warpに2乗カーブ適用+distortionFrequency/Speedのデフォルトを緩和(「常時気持ち悪い」を解消) ③Kaleidoscopeを各ウェッジ1.6倍ズームサンプリングに変更(反復パターンとして視認しやすく) ④Chromatic Aberrationのoffsetを1.6倍に強化。動作確認済み・未コミット
 - 2026-07-18 15:19 [Claude Code] 意見書Excel由来のバグ級修正3件: ①Lighthouse Beacon/Neon SpirographのLFO時カクつきを角度蓄積方式(time*speedの直接乗算→アキュムレータ)に修正 ②Neon Fog/Neon Snowflake/3D Shape Particlesの個数(density/count)LFO時の急な出現・消滅をfadeMulによるフェードイン/アウト方式に修正。動作確認済み・未コミット
+- 2026-07-18 18:16 [Antigravity] 打点数（2点・3点・4点・多点）別モーションテンプレートの拡充作業に着手
 - 2026-07-18 18:05 [Antigravity] タイムラインコントロールの横幅を極小に圧縮・コンパクト化するUI改善完了
 - 2026-07-18 18:00 [Antigravity] UI上でのカスタムモーションテンプレート保存・適用・インポート・エクスポート機能の実装完了
 - 2026-07-18 17:55 [Antigravity] UI上でのカスタムモーションテンプレート保存・適用・インポート・エクスポート機能の実装に着手
