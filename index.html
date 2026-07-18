@@ -141,6 +141,17 @@
               <button id="btn-key-paste" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Paste</button>
               
               <div class="controls-divider"></div>
+
+              <span style="font-size: 0.7rem; color: #a78bfa; margin-right: 0.2rem;">Template:</span>
+              <select id="timeline-template-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.7rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px; cursor: pointer;">
+                <option value="">-- Apply Template --</option>
+              </select>
+              <button id="btn-key-save-template" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;" title="Save current keyframes as a new template">Save As</button>
+              <button id="btn-template-export" class="btn btn-secondary btn-small" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; cursor: pointer;" title="Export custom templates to JSON file">Export</button>
+              <button id="btn-template-import" class="btn btn-secondary btn-small" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; cursor: pointer;" title="Import custom templates from JSON file">Import</button>
+              <input type="file" id="template-import-file" style="display: none;" accept=".json">
+
+              <div class="controls-divider"></div>
               
               <label for="timeline-snap-select">Snap</label>
               <select id="timeline-snap-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.75rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px;">

@@ -51,6 +51,11 @@ export class Controls {
     this.btnKeyCopyEl = document.getElementById('btn-key-copy');
     this.btnKeyPasteEl = document.getElementById('btn-key-paste');
     this.timelineSnapSelectEl = document.getElementById('timeline-snap-select');
+    this.timelineTemplateSelectEl = document.getElementById('timeline-template-select');
+    this.btnKeySaveTemplateEl = document.getElementById('btn-key-save-template');
+    this.btnTemplateExportEl = document.getElementById('btn-template-export');
+    this.btnTemplateImportEl = document.getElementById('btn-template-import');
+    this.templateImportFileEl = document.getElementById('template-import-file');
     this.timelineCanvas = document.getElementById('timeline-canvas');
     this.activeTimelineParam = null;
     this.selectedKeyframeIndex = -1;
@@ -132,12 +137,52 @@ export class Controls {
     }
   }
 
+  updateTemplateDropdown() {
+    if (!this.timelineTemplateSelectEl) return;
+    
+    this.timelineTemplateSelectEl.innerHTML = '<option value="">-- Apply Template --</option>';
+    
+    // 1. Built-in Templates
+    const builtinGroup = this.createElement('optgroup');
+    builtinGroup.label = "Built-in Shapes";
+    for (let key in MOTION_TEMPLATES) {
+      const opt = this.createElement('option');
+      opt.value = "builtin:" + key;
+      opt.textContent = key;
+      builtinGroup.appendChild(opt);
+    }
+    this.timelineTemplateSelectEl.appendChild(builtinGroup);
+    
+    // 2. Custom Templates
+    let customs = {};
+    try {
+      const data = localStorage.getItem('motion_templates_custom');
+      if (data) customs = JSON.parse(data);
+    } catch (e) {
+      console.warn("Failed to parse custom motion templates from localStorage", e);
+    }
+    
+    const customKeys = Object.keys(customs);
+    if (customKeys.length > 0) {
+      const customGroup = this.createElement('optgroup');
+      customGroup.label = "Custom Shapes";
+      customKeys.forEach(key => {
+        const opt = this.createElement('option');
+        opt.value = "custom:" + key;
+        opt.textContent = key;
+        customGroup.appendChild(opt);
+      });
+      this.timelineTemplateSelectEl.appendChild(customGroup);
+    }
+  }
+
   createElement(tagName) {
     return (this.activeDocument || document).createElement(tagName);
   }
 
   init() {
     this.loadMotionMapping();
+    this.updateTemplateDropdown();
     // 1. Layer add toggling
     this.btnAddLayerEl.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -442,6 +487,184 @@ export class Controls {
         this.drawTimeline();
       }
     });
+
+    // Apply template event
+    if (this.timelineTemplateSelectEl) {
+      this.timelineTemplateSelectEl.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (!val) return;
+        
+        const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+        if (!activeLayer || !this.activeTimelineParam) return;
+        const mod = activeLayer.modulations[this.activeTimelineParam];
+        const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+        
+        if (mod && config) {
+          const parts = val.split(':');
+          const type = parts[0];
+          const key = parts[1];
+          
+          let templateKfs = null;
+          if (type === 'builtin') {
+            templateKfs = MOTION_TEMPLATES[key];
+          } else if (type === 'custom') {
+            try {
+              const data = localStorage.getItem('motion_templates_custom');
+              if (data) {
+                const customs = JSON.parse(data);
+                templateKfs = customs[key];
+              }
+            } catch (err) {
+              console.error("Failed to read custom template", err);
+            }
+          }
+          
+          if (templateKfs) {
+            const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+            
+            // Set modulation to keyframe mode
+            mod.keyframeEnabled = true;
+            mod.enabled = false;
+            
+            if (type === 'builtin') {
+              this.applyMotionTemplate(mod, key, config.min, config.max, durationVal);
+            } else if (type === 'custom') {
+              const maxFrames = durationVal * 60;
+              mod.keyframes = templateKfs.map(pt => ({
+                frame: Math.round(pt.time * maxFrames),
+                value: config.min + (config.max - config.min) * pt.value,
+                easing: pt.easing || 'linear'
+              }));
+              mod.keyframes.sort((a, b) => a.frame - b.frame);
+            }
+            
+            this.selectedKeyframeIndex = -1;
+            this.keyPreciseFrameEl.value = '';
+            this.keyPreciseFrameEl.disabled = true;
+            this.keyPreciseValueEl.value = '';
+            this.keyPreciseValueEl.disabled = true;
+            this.keyPreciseEasingEl.value = 'linear';
+            this.keyPreciseEasingEl.disabled = true;
+            this.btnKeyPreciseDeleteEl.disabled = true;
+            
+            this.mainApp.renderSingleFrame();
+            this.drawTimeline();
+          }
+        }
+        
+        e.target.value = "";
+      });
+    }
+
+    // Save as template event
+    if (this.btnKeySaveTemplateEl) {
+      this.btnKeySaveTemplateEl.addEventListener('click', () => {
+        const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+        if (!activeLayer || !this.activeTimelineParam) return;
+        const mod = activeLayer.modulations[this.activeTimelineParam];
+        const config = this.getParamConfig(activeLayer, this.activeTimelineParam);
+        
+        if (!mod || !mod.keyframes || mod.keyframes.length === 0) {
+          alert("No keyframes found to save as a template!");
+          return;
+        }
+        
+        const name = prompt("Enter a name for the motion template:");
+        if (!name) return;
+        
+        const trimmedName = name.trim();
+        if (!trimmedName) return;
+        
+        const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+        const maxFrames = durationVal * 60;
+        const range = config.max - config.min;
+        
+        const normalized = mod.keyframes.map(kf => {
+          const time = maxFrames > 0 ? (kf.frame / maxFrames) : 0;
+          const valNorm = range > 0 ? ((kf.value - config.min) / range) : 0;
+          return {
+            time: parseFloat(time.toFixed(4)),
+            value: parseFloat(valNorm.toFixed(4)),
+            easing: kf.easing || 'linear'
+          };
+        });
+        
+        let customs = {};
+        try {
+          const data = localStorage.getItem('motion_templates_custom');
+          if (data) customs = JSON.parse(data);
+        } catch (err) {}
+        
+        customs[trimmedName] = normalized;
+        localStorage.setItem('motion_templates_custom', JSON.stringify(customs));
+        
+        this.updateTemplateDropdown();
+        alert(`Template "${trimmedName}" saved successfully!`);
+      });
+    }
+
+    // Export templates event
+    if (this.btnTemplateExportEl) {
+      this.btnTemplateExportEl.addEventListener('click', () => {
+        let customs = {};
+        try {
+          const data = localStorage.getItem('motion_templates_custom');
+          if (data) customs = JSON.parse(data);
+        } catch (err) {}
+        
+        if (Object.keys(customs).length === 0) {
+          alert("No custom templates to export!");
+          return;
+        }
+        
+        const jsonStr = JSON.stringify(customs, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = this.createElement('a');
+        a.href = url;
+        a.download = "motion_templates_custom.json";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // Import templates triggering
+    if (this.btnTemplateImportEl && this.templateImportFileEl) {
+      this.btnTemplateImportEl.addEventListener('click', () => {
+        this.templateImportFileEl.click();
+      });
+      
+      this.templateImportFileEl.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const imported = JSON.parse(event.target.result);
+            if (typeof imported !== 'object' || Array.isArray(imported)) {
+              throw new Error("Invalid format. Expected JSON object of templates.");
+            }
+            
+            let customs = {};
+            try {
+              const data = localStorage.getItem('motion_templates_custom');
+              if (data) customs = JSON.parse(data);
+            } catch (err) {}
+            
+            Object.assign(customs, imported);
+            localStorage.setItem('motion_templates_custom', JSON.stringify(customs));
+            
+            this.updateTemplateDropdown();
+            alert("Custom templates imported successfully!");
+          } catch (err) {
+            alert("Failed to import templates: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      });
+    }
 
     // Canvas mousedown event
     this.timelineCanvas.addEventListener('mousedown', (e) => {
@@ -757,6 +980,8 @@ export class Controls {
       this.btnKeyCopyEl.disabled = true;
       this.btnKeyPasteEl.disabled = true;
       this.timelineSnapSelectEl.disabled = true;
+      if (this.timelineTemplateSelectEl) this.timelineTemplateSelectEl.disabled = true;
+      if (this.btnKeySaveTemplateEl) this.btnKeySaveTemplateEl.disabled = true;
 
       // Draw placeholder with seek ruler showing current position
       const duration = parseFloat(this.exportDurationEl.value) || 10;
@@ -841,6 +1066,8 @@ export class Controls {
     this.btnKeyCopyEl.disabled = false;
     this.btnKeyPasteEl.disabled = !this.copiedKeyframes;
     this.timelineSnapSelectEl.disabled = false;
+    if (this.timelineTemplateSelectEl) this.timelineTemplateSelectEl.disabled = false;
+    if (this.btnKeySaveTemplateEl) this.btnKeySaveTemplateEl.disabled = false;
 
     // Sync precise input disabled states based on keyframe selection
     if (this.selectedKeyframeIndex !== -1 && mod.keyframes[this.selectedKeyframeIndex]) {
