@@ -2126,16 +2126,32 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
     super(params);
     this.lastCycleIndex = -1;
     this.spikeProfiles = []; // one jagged radius-multiplier profile per ring, cached per cycle
+    this.cycleRotationPhase = []; // per-ring random starting spin angle, cached per cycle
+    this.cycleRingHueOffsets = []; // per-ring hue jitter so multi-ring bursts don't read as one flat color
+    this.cycleRadiusJitter = 1;
+    this.cycleThicknessJitter = 1;
+    this.cycleDebrisAngles = []; // per-cycle debris shard angles/speeds
+    this.cycleDeformSeeds = []; // per-ring noise seed, so rings warp differently rather than being time-shifted clones
+    this.cycleRotationDir = []; // per-ring spin direction (1 or -1)
+    // Evenly-spaced unit-circle points reused as the base shape for Smooth/Double styles (and
+    // as the deformation sample base), so every style can go through the same tapered/warped
+    // rendering path instead of a separate ctx.arc() special case.
+    this.circlePoints = Array.from({ length: 48 }, (_, i) => ({ angle: (i / 48) * Math.PI * 2, mult: 1 }));
   }
 
   defaultParams() {
     return {
       cycleDuration: 1500, // ms; match the project's export Duration for a single burst
+      shapeStyle: 1, // 0 = Smooth Ring, 1 = Jagged Star (legacy look), 2 = Double Ring (interference)
       ringCount: 1,
       maxRadius: 800,
       ringThickness: 30,
       jaggedness: 0.35, // 0 = perfect circle (old look); higher = sharp spiky silhouette, not a smooth wobble
+      rotationSpeed: 0.4, // spin of the jagged silhouette as it expands - 0 = static stamp scaling up
+      deformAmount: 0.3, // 0 = perfectly circular motion; higher = organic per-phase warping (see computeDeformParams)
+      debrisCount: 0, // additive flying shard/spark layer, independent of shapeStyle (0 = off, legacy look)
       windupFrac: 0.12, // fraction of the cycle spent coiling inward before the burst fires outward
+      holdFrac: 0.05, // brief pinned pause between windup and spread - the "charge" beat before release
       fadeInFrac: 0.05,
       fadeOutFrac: 0.3,
       color: '#22d3ee',
@@ -2146,11 +2162,16 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
   getParameterConfig() {
     return [
       { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 5000, step: 100 },
+      { name: 'shapeStyle', label: 'Shape Style (0=Smooth,1=Jagged,2=Double)', type: 'range', min: 0, max: 2, step: 1 },
       { name: 'ringCount', label: 'Ring Count', type: 'range', min: 1, max: 3, step: 1 },
       { name: 'maxRadius', label: 'Max Radius', type: 'range', min: 200, max: 1500, step: 10 },
       { name: 'ringThickness', label: 'Ring Thickness', type: 'range', min: 5, max: 100, step: 1 },
       { name: 'jaggedness', label: 'Jaggedness', type: 'range', min: 0, max: 1, step: 0.05 },
+      { name: 'rotationSpeed', label: 'Rotation Speed', type: 'range', min: 0, max: 2, step: 0.05 },
+      { name: 'deformAmount', label: 'Deform Amount', type: 'range', min: 0, max: 1, step: 0.05 },
+      { name: 'debrisCount', label: 'Debris Count', type: 'range', min: 0, max: 20, step: 1 },
       { name: 'windupFrac', label: 'Windup Fraction', type: 'range', min: 0, max: 0.3, step: 0.01 },
+      { name: 'holdFrac', label: 'Hold Fraction', type: 'range', min: 0, max: 0.2, step: 0.01 },
       { name: 'fadeInFrac', label: 'Fade In Fraction', type: 'range', min: 0, max: 0.3, step: 0.01 },
       { name: 'fadeOutFrac', label: 'Fade Out Fraction', type: 'range', min: 0, max: 0.5, step: 0.01 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
@@ -2158,14 +2179,19 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
     ];
   }
 
-  // Builds one jagged radius-multiplier profile per ring for this cycle - sharp alternating
-  // near/far spike points around the circle (a real jagged silhouette, not a smooth sine wobble).
-  // Cached per cycle so the burst reads as one consistent spiky shape as it expands, rather than
-  // flickering noise from frame to frame.
-  generateSpikeProfiles() {
+  // Rerolls everything that should stay fixed for the life of one burst but vary from burst to
+  // burst: the jagged spike silhouette per ring (as before), plus rotation start phase, per-ring
+  // hue jitter, a small radius/thickness jitter, and debris shard angles. Regenerating all of
+  // this together (instead of just the spike profile) means repeated cycles - or successive
+  // Random LFO rolls of the same preset - each look like a distinct burst, not a stamp replay.
+  regenerateCycleVariation() {
     const ringCount = Math.round(this.params.ringCount);
     const jag = this.params.jaggedness;
     this.spikeProfiles = [];
+    this.cycleRotationPhase = [];
+    this.cycleRingHueOffsets = [];
+    this.cycleDeformSeeds = [];
+    this.cycleRotationDir = [];
     for (let i = 0; i < ringCount; i++) {
       const spikeCount = 12 + Math.floor(Math.random() * 10); // 12-21 points, varies per ring
       const profile = [];
@@ -2178,21 +2204,174 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
         profile.push({ angle, mult: Math.max(0.05, mult) });
       }
       this.spikeProfiles.push(profile);
+      this.cycleRotationPhase.push(Math.random() * Math.PI * 2);
+      this.cycleRingHueOffsets.push((Math.random() - 0.5) * 30); // +-15deg, keeps multi-ring bursts from being one flat color
+      this.cycleDeformSeeds.push(Math.random() * 1000); // decorrelates each ring's warp pattern, not just its timing
+      this.cycleRotationDir.push(Math.random() < 0.5 ? 1 : -1);
+    }
+
+    this.cycleRadiusJitter = 1 + (Math.random() - 0.5) * 0.24; // +-12%
+    this.cycleThicknessJitter = 1 + (Math.random() - 0.5) * 0.4; // +-20%
+
+    const debrisCount = Math.round(this.params.debrisCount);
+    this.cycleDebrisAngles = [];
+    for (let d = 0; d < debrisCount; d++) {
+      this.cycleDebrisAngles.push({
+        angle: Math.random() * Math.PI * 2,
+        lengthMult: 0.6 + Math.random() * 0.8,
+        speedMult: 1.15 + Math.random() * 0.35, // shrapnel outruns the main ring
+        hueOffset: (Math.random() - 0.5) * 40
+      });
     }
   }
 
-  // Two-phase radius curve: a brief inward "windup" compression down toward the center, then a
-  // snappy ease-out burst back outward - a real explosion coils back before it fires, unlike a
-  // plain ripple that only ever expands. Returns a 0..1 fraction of maxRadius.
-  computeRadiusFrac(progress) {
+  // Phase-dependent warp character: converge = slow, low-frequency "sucked in unevenly" wobble
+  // that ramps in; hold = a fast-pulsing high-frequency "charging" crackle; spread = frequency
+  // and amplitude both grow with progress, as if the wave loses its coherence as it disperses.
+  // Returns { amp, freq, timeAxis } consumed by fillRingGradient's noise sampling.
+  computeDeformParams(progress) {
+    const deform = this.params.deformAmount;
+    if (deform <= 0) return { amp: 0, freq: 0, timeAxis: 0 };
     const windupFrac = this.params.windupFrac;
+    const holdFrac = this.params.holdFrac;
+
     if (windupFrac > 0 && progress < windupFrac) {
       const wp = progress / windupFrac;
-      return 0.22 * (1 - wp) + 0.02 * wp;
+      return { amp: deform * 0.5 * wp, freq: 2.5, timeAxis: progress * 2 };
     }
-    const ep = windupFrac < 1 ? (progress - windupFrac) / (1 - windupFrac) : progress;
+    if (progress < windupFrac + holdFrac) {
+      const hp = holdFrac > 0 ? (progress - windupFrac) / holdFrac : 0;
+      const pulse = 0.5 + 0.5 * Math.sin(hp * Math.PI * 6);
+      return { amp: deform * (0.4 + 0.35 * pulse), freq: 5, timeAxis: progress * 8 };
+    }
+    const spreadStart = windupFrac + holdFrac;
+    const sp = spreadStart < 1 ? (progress - spreadStart) / (1 - spreadStart) : 1;
+    return { amp: deform * (0.15 + 0.85 * sp), freq: 6 + sp * 3, timeAxis: progress * 1.5 };
+  }
+
+  // Three-phase radius curve - converge (windup), hold (charge beat), spread (release) - each an
+  // independent motion rather than one continuous easing, so the "coil back, pause, explode"
+  // rhythm actually reads instead of blurring together. Returns a 0..1 fraction of maxRadius.
+  computeRadiusFrac(progress) {
+    const windupFrac = this.params.windupFrac;
+    const holdFrac = this.params.holdFrac;
+    if (windupFrac > 0 && progress < windupFrac) {
+      const wp = progress / windupFrac;
+      return 0.22 * (1 - wp * wp) + 0.02 * (wp * wp); // ease-in pull, accelerating compression
+    }
+    if (progress < windupFrac + holdFrac) {
+      return 0.02; // pinned - the "hold"/charge beat before release
+    }
+    const spreadStart = windupFrac + holdFrac;
+    const ep = spreadStart < 1 ? (progress - spreadStart) / (1 - spreadStart) : progress;
     const epClamped = Math.max(0, Math.min(1, ep));
     return 0.02 + 0.98 * (1 - Math.pow(1 - epClamped, 3));
+  }
+
+  // Short, bright pulse at the center right as energy releases (progress just past windup+hold) -
+  // separate from the rings' own fade envelope, so the hold beat has a clear visual payoff.
+  drawCoreFlash(ctx, cx, cy, progress, releaseProgress, thickness, envelope) {
+    const flashSpan = 0.15;
+    if (progress < releaseProgress || progress >= releaseProgress + flashSpan) return;
+    const flashT = (progress - releaseProgress) / flashSpan;
+    const flashAlpha = (1 - flashT) * envelope;
+    if (flashAlpha <= 0.01) return;
+
+    const parsedColor = parseHexToRgb(this.params.color);
+    const flashR = thickness * 2.5;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, flashR);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${0.9 * flashAlpha})`);
+    grad.addColorStop(0.4, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, ${0.6 * flashAlpha})`);
+    grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, flashR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Fills one ring silhouette as a radial-gradient band, sampling every point through the same
+  // tapered path (Jagged Star's spike profile, or the shared 48-point circle for Smooth/Double)
+  // so all three shape styles can carry the same per-phase noise warp instead of Smooth/Double
+  // being a flat, un-deformable ctx.arc() circle.
+  fillRingGradient(ctx, cx, cy, radius, thickness, profile, color, envelope, alphaMul, rotationOffset, deform, ringSeed) {
+    const grad = ctx.createRadialGradient(cx, cy, Math.max(0, radius - thickness), cx, cy, radius);
+    grad.addColorStop(0, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+    grad.addColorStop(0.5, `rgba(${color.r}, ${color.g}, ${color.b}, ${0.8 * envelope * alphaMul})`);
+    grad.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`);
+    ctx.fillStyle = grad;
+
+    const points = profile || this.circlePoints;
+    const deformAmp = deform ? deform.amp : 0;
+    ctx.beginPath();
+    points.forEach((p, idx) => {
+      let mult = p.mult;
+      if (deformAmp > 0) {
+        const n = noiseInst.noise2D(
+          Math.cos(p.angle) * deform.freq + ringSeed,
+          Math.sin(p.angle) * deform.freq + ringSeed * 1.7 + deform.timeAxis
+        );
+        mult *= 1 + deformAmp * n * 0.5;
+      }
+      const r = radius * Math.max(0.05, mult);
+      const a = p.angle + rotationOffset;
+      const x = cx + Math.cos(a) * r;
+      const y = cy + Math.sin(a) * r;
+      if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Dispatches to one of the three shape styles for a single ring:
+  // 0 Smooth Ring (clean circle), 1 Jagged Star (spiky silhouette + spin), 2 Double Ring (two
+  // overlaid circles, offset in radius and hue, for a chromatic "interference" look). All three
+  // pass through the same deformable point path, so `deform` warps every style, not just Jagged.
+  drawRingShape(ctx, cx, cy, radius, thickness, shapeStyle, jag, profile, rotationOffset, hueOffset, envelope, deform, ringSeed) {
+    const baseColor = hueOffset
+      ? jitterHue(this.params.color, this.params.colorLightness, hueOffset).rgb
+      : parseHexToRgb(this.params.color);
+
+    if (shapeStyle === 2) {
+      this.fillRingGradient(ctx, cx, cy, radius, thickness * 0.55, null, baseColor, envelope, 1, 0, deform, ringSeed);
+      const innerColor = jitterHue(this.params.color, this.params.colorLightness, hueOffset + 15).rgb;
+      // Offset seed so the inner echo ring warps independently, not as a scaled copy of the outer one.
+      this.fillRingGradient(ctx, cx, cy, radius * 0.88, thickness * 0.45, null, innerColor, envelope, 0.55, 0, deform, ringSeed + 500);
+      return;
+    }
+    const useProfile = shapeStyle === 1 && jag > 0.001 ? profile : null;
+    this.fillRingGradient(ctx, cx, cy, radius, thickness, useProfile, baseColor, envelope, 1, rotationOffset, deform, ringSeed);
+  }
+
+  // Flying shard/spark layer, independent of shapeStyle: short radial streaks that launch at the
+  // release moment and outrun the main ring, fading out partway through the spread phase.
+  drawDebris(ctx, cx, cy, progress, releaseProgress, effMaxRadius, effThickness, envelope) {
+    if (progress < releaseProgress || !this.cycleDebrisAngles.length) return;
+
+    const spreadSpan = Math.max(0.001, 1 - releaseProgress);
+    const spreadT = Math.min(1, (progress - releaseProgress) / spreadSpan);
+    const debrisEase = 1 - Math.pow(1 - spreadT, 2);
+    const fadeStart = 0.6;
+    const alphaMul = spreadT < fadeStart ? 1 : Math.max(0, 1 - (spreadT - fadeStart) / (1 - fadeStart));
+    if (alphaMul <= 0.01) return;
+
+    const parsedColor = parseHexToRgb(this.params.color);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(1, effThickness * 0.08);
+    for (const d of this.cycleDebrisAngles) {
+      const debrisR = effMaxRadius * debrisEase * d.speedMult;
+      const debrisLen = effThickness * 1.2 * d.lengthMult;
+      const innerR = Math.max(0, debrisR - debrisLen);
+      const x1 = cx + Math.cos(d.angle) * innerR;
+      const y1 = cy + Math.sin(d.angle) * innerR;
+      const x2 = cx + Math.cos(d.angle) * debrisR;
+      const y2 = cy + Math.sin(d.angle) * debrisR;
+      const dColor = jitterHue(this.params.color, this.params.colorLightness, d.hueOffset).rgb;
+      ctx.strokeStyle = `rgba(${dColor.r}, ${dColor.g}, ${dColor.b}, ${0.85 * envelope * alphaMul})`;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
   }
 
   draw(ctx, width, height, time) {
@@ -2200,7 +2379,7 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
     const cycleIndex = Math.floor(time / cycleDuration);
     if (cycleIndex !== this.lastCycleIndex) {
       this.lastCycleIndex = cycleIndex;
-      this.generateSpikeProfiles();
+      this.regenerateCycleVariation();
     }
 
     const progress = (time % cycleDuration) / cycleDuration;
@@ -2216,37 +2395,32 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
 
     const cx = width / 2;
     const cy = height / 2;
-    const parsedColor = parseHexToRgb(this.params.color);
     const ringCount = Math.round(this.params.ringCount);
+    const shapeStyle = Math.round(this.params.shapeStyle);
     const jag = this.params.jaggedness;
+    const releaseProgress = this.params.windupFrac + this.params.holdFrac;
+    const effMaxRadius = this.params.maxRadius * this.cycleRadiusJitter;
+    const effThickness = this.params.ringThickness * this.cycleThicknessJitter;
 
     ctx.save();
+
+    this.drawCoreFlash(ctx, cx, cy, progress, releaseProgress, effThickness, envelope);
+
     for (let i = 0; i < ringCount; i++) {
       const ringProgress = Math.max(0, progress - i * 0.15);
-      const radius = this.computeRadiusFrac(ringProgress) * this.params.maxRadius;
+      const radius = this.computeRadiusFrac(ringProgress) * effMaxRadius;
       if (radius <= 0) continue;
 
-      const grad = ctx.createRadialGradient(cx, cy, Math.max(0, radius - this.params.ringThickness), cx, cy, radius);
-      grad.addColorStop(0, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
-      grad.addColorStop(0.5, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, ${0.8 * envelope})`);
-      grad.addColorStop(1, `rgba(${parsedColor.r}, ${parsedColor.g}, ${parsedColor.b}, 0)`);
-      ctx.fillStyle = grad;
-
-      ctx.beginPath();
-      const profile = this.spikeProfiles[i];
-      if (jag <= 0.001 || !profile) {
-        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      } else {
-        profile.forEach((p, idx) => {
-          const r = radius * p.mult;
-          const x = cx + Math.cos(p.angle) * r;
-          const y = cy + Math.sin(p.angle) * r;
-          if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        });
-        ctx.closePath();
-      }
-      ctx.fill();
+      const hueOffset = this.cycleRingHueOffsets[i] || 0;
+      const rotationDir = this.cycleRotationDir[i] || 1;
+      const rotationOffset = (this.cycleRotationPhase[i] || 0) + ringProgress * this.params.rotationSpeed * Math.PI * 2 * rotationDir;
+      const deform = this.computeDeformParams(ringProgress);
+      const ringSeed = this.cycleDeformSeeds[i] || 0;
+      this.drawRingShape(ctx, cx, cy, radius, effThickness, shapeStyle, jag, this.spikeProfiles[i], rotationOffset, hueOffset, envelope, deform, ringSeed);
     }
+
+    this.drawDebris(ctx, cx, cy, progress, releaseProgress, effMaxRadius, effThickness, envelope);
+
     ctx.restore();
   }
 }
