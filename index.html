@@ -117,14 +117,14 @@
               <span class="timeline-title">🔑 KEYFRAME TIMELINE</span>
               <span id="timeline-active-param" class="timeline-active-param">Select a parameter to animate</span>
             </div>
-            <div class="timeline-keyframe-editor">
-              <label for="key-precise-frame">Frame</label>
-              <input type="number" id="key-precise-frame" min="0" step="1" disabled>
-              <label for="key-precise-value">Value</label>
-              <input type="number" id="key-precise-value" step="0.001" disabled>
+            <div class="timeline-keyframe-editor" style="gap: 0.3rem;">
+              <label for="key-precise-frame" style="font-size: 0.65rem;">F:</label>
+              <input type="number" id="key-precise-frame" min="0" step="1" disabled style="width: 32px !important; padding: 0.1rem 0.2rem !important; font-size: 0.65rem !important;">
+              <label for="key-precise-value" style="font-size: 0.65rem;">V:</label>
+              <input type="number" id="key-precise-value" step="0.001" disabled style="width: 48px !important; padding: 0.1rem 0.2rem !important; font-size: 0.65rem !important;">
               
-              <label for="key-precise-easing">Easing</label>
-              <select id="key-precise-easing" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.75rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px;">
+              <label for="key-precise-easing" style="font-size: 0.65rem;">Ease:</label>
+              <select id="key-precise-easing" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.65rem; border-radius: 4px; padding: 0.1rem 0.2rem; outline: none; height: 20px;">
                 <option value="linear">Linear</option>
                 <option value="ease-in">Ease In</option>
                 <option value="ease-out">Ease Out</option>
@@ -132,36 +132,34 @@
                 <option value="step">Step</option>
               </select>
               
-              <button id="btn-key-precise-delete" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Delete</button>
+              <button id="btn-key-precise-delete" class="btn btn-secondary btn-small" disabled style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;">Del</button>
               
-              <div class="controls-divider"></div>
+              <div class="controls-divider" style="height: 18px; margin: 0 2px;"></div>
               
-              <button id="btn-key-clear-all" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Clear All</button>
-              <button id="btn-key-copy" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Copy</button>
-              <button id="btn-key-paste" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;">Paste</button>
+              <button id="btn-key-clear-all" class="btn btn-secondary btn-small" disabled style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;">Clear</button>
+              <button id="btn-key-copy" class="btn btn-secondary btn-small" disabled style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;">Copy</button>
+              <button id="btn-key-paste" class="btn btn-secondary btn-small" disabled style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;">Paste</button>
               
-              <div class="controls-divider"></div>
+              <div class="controls-divider" style="height: 18px; margin: 0 2px;"></div>
 
-              <span style="font-size: 0.7rem; color: #a78bfa; margin-right: 0.2rem;">Template:</span>
-              <select id="timeline-template-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.7rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px; cursor: pointer;">
-                <option value="">-- Apply Template --</option>
+              <select id="timeline-template-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.65rem; border-radius: 4px; padding: 0.1rem 0.2rem; outline: none; height: 20px; width: 85px; cursor: pointer;">
+                <option value="">Template</option>
               </select>
-              <button id="btn-key-save-template" class="btn btn-secondary btn-small" disabled style="padding: 0.15rem 0.5rem; font-size: 0.7rem; cursor: pointer;" title="Save current keyframes as a new template">Save As</button>
-              <button id="btn-template-export" class="btn btn-secondary btn-small" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; cursor: pointer;" title="Export custom templates to JSON file">Export</button>
-              <button id="btn-template-import" class="btn btn-secondary btn-small" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; cursor: pointer;" title="Import custom templates from JSON file">Import</button>
+              <button id="btn-key-save-template" class="btn btn-secondary btn-small" disabled style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;" title="Save current keyframes as a new template">Save</button>
+              <button id="btn-template-export" class="btn btn-secondary btn-small" style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;" title="Export custom templates to JSON file">Exp</button>
+              <button id="btn-template-import" class="btn btn-secondary btn-small" style="padding: 0.12rem 0.35rem; font-size: 0.65rem; cursor: pointer;" title="Import custom templates from JSON file">Imp</button>
               <input type="file" id="template-import-file" style="display: none;" accept=".json">
 
-              <div class="controls-divider"></div>
+              <div class="controls-divider" style="height: 18px; margin: 0 2px;"></div>
               
-              <label for="timeline-snap-select">Snap</label>
-              <select id="timeline-snap-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.75rem; border-radius: 4px; padding: 0.1rem 0.3rem; outline: none; height: 22px;">
-                <option value="off">Off</option>
-                <option value="1">1f</option>
-                <option value="5">5f</option>
-                <option value="10">10f</option>
-                <option value="15">15f</option>
-                <option value="30">30f</option>
-                <option value="60">60f</option>
+              <select id="timeline-snap-select" disabled style="background: rgba(15, 15, 26, 0.9); border: 1px solid rgba(124, 58, 237, 0.4); color: #e2e8f0; font-size: 0.65rem; border-radius: 4px; padding: 0.1rem 0.2rem; outline: none; height: 20px; width: 80px;">
+                <option value="off">Snap: Off</option>
+                <option value="1">Snap: 1f</option>
+                <option value="5">Snap: 5f</option>
+                <option value="10">Snap: 10f</option>
+                <option value="15">Snap: 15f</option>
+                <option value="30">Snap: 30f</option>
+                <option value="60">Snap: 60f</option>
               </select>
             </div>
           </div>

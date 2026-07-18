@@ -140,7 +140,7 @@ export class Controls {
   updateTemplateDropdown() {
     if (!this.timelineTemplateSelectEl) return;
     
-    this.timelineTemplateSelectEl.innerHTML = '<option value="">-- Apply Template --</option>';
+    this.timelineTemplateSelectEl.innerHTML = '<option value="">Template</option>';
     
     // 1. Built-in Templates
     const builtinGroup = this.createElement('optgroup');
