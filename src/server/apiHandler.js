@@ -217,7 +217,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           throw new Error('Request body is empty');
         }
         const parsed = JSON.parse(body);
-        const { layerType, params, effects, modulations, score, reasons } = parsed;
+        const { layerType, params, effects, modulations, score, reasons, rating, comment } = parsed;
 
         if (!layerType || !score) {
           throw new Error('layerType and score parameters are required');
@@ -235,7 +235,9 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           effects: effects || {},
           modulations: modulations || {},
           score,
-          reasons: reasons || []
+          reasons: reasons || [],
+          rating: typeof rating === 'number' ? rating : undefined,
+          comment: typeof comment === 'string' ? comment : ''
         };
 
         scores.push(record);

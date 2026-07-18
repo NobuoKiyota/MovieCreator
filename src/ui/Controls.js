@@ -1551,16 +1551,14 @@ export class Controls {
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
       <div style="display: flex; gap: 0.25rem;">
         <button class="btn btn-secondary btn-small btn-score-stats" title="View Learning Progress & Stats" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📊</button>
-        <button class="btn btn-secondary btn-small btn-score-good" title="Rate: Good! (Prioritize similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👍</button>
-        <button class="btn btn-secondary btn-small btn-score-bad" title="Rate: Bad! (Avoid similar parameters)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">👎</button>
+        <button class="btn btn-secondary btn-small btn-score-rate" title="Rate this generation (1-10 + comment)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">⭐ Rate</button>
       </div>
     `;
 
     const spreadSlider = randomizerHeader.querySelector('.random-spread-slider');
     const spreadDisplay = randomizerHeader.querySelector('.spread-val-display');
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
-    const btnGood = randomizerHeader.querySelector('.btn-score-good');
-    const btnBad = randomizerHeader.querySelector('.btn-score-bad');
+    const btnRate = randomizerHeader.querySelector('.btn-score-rate');
     const btnStats = randomizerHeader.querySelector('.btn-score-stats');
 
     spreadSlider.addEventListener('input', (e) => {
@@ -1575,14 +1573,10 @@ export class Controls {
       this.mainApp.renderSingleFrame();
     });
 
-    btnGood.addEventListener('click', () => {
-      this.rateLayer(layer, 'good', btnGood);
-    });
-
-    btnBad.addEventListener('click', async () => {
-      const selectedReasons = await this.showBadScoreDialog();
-      if (selectedReasons !== null) {
-        this.rateLayer(layer, 'bad', btnBad, selectedReasons);
+    btnRate.addEventListener('click', async () => {
+      const result = await this.showRatingDialog();
+      if (result) {
+        this.rateLayer(layer, result.rating, result.comment, result.reasons, btnRate);
       }
     });
 
@@ -2116,14 +2110,24 @@ export class Controls {
       ? 0
       : this.GOOD_ATTRACTION_MAX_WEIGHT * Math.min(1, goodEvaluations.length / this.GOOD_ATTRACTION_CONFIDENCE_SAMPLES);
 
-    const goodParamCentroid = (key) => {
-      const vals = goodEvaluations.map(e => e.params && e.params[key]).filter(v => typeof v === 'number');
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    // Weighted by each entry's own 1-10 rating (a 9/10 pulls harder than a flat 7/10) instead of
+    // averaging the Good bucket unweighted. Older entries saved before the rating dialog only
+    // have score: 'good', so they fall back to an implicit weight of 8 - they still count, just
+    // without the extra precision newer rated entries provide.
+    const ratingWeight = (e) => typeof e.rating === 'number' ? e.rating : 8;
+    const weightedCentroid = (evalList, field, key) => {
+      let weightedSum = 0, weightTotal = 0;
+      for (const e of evalList) {
+        const val = e[field] && e[field][key];
+        if (typeof val !== 'number') continue;
+        const w = ratingWeight(e);
+        weightedSum += val * w;
+        weightTotal += w;
+      }
+      return weightTotal > 0 ? weightedSum / weightTotal : null;
     };
-    const goodEffectCentroid = (key) => {
-      const vals = goodEvaluations.map(e => e.effects && e.effects[key]).filter(v => typeof v === 'number');
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    };
+    const goodParamCentroid = (key) => weightedCentroid(goodEvaluations, 'params', key);
+    const goodEffectCentroid = (key) => weightedCentroid(goodEvaluations, 'effects', key);
 
     // Analyze negative reasons from past bad evaluations
     const hasStrobeExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('strobe_excess'));
@@ -3092,13 +3096,22 @@ export class Controls {
     return 1.0;
   }
 
-  rateLayer(layer, scoreType, buttonEl, reasons = []) {
+  // rating: 1-10. Derives the legacy good/bad/neutral bucket so randomizeLayer's existing
+  // Bad-avoidance and Good-attraction pools (score === 'bad' / 'good') keep working unchanged -
+  // 7+ counts as Good, 4- counts as Bad, 5-6 is a deliberate "meh" middle that isn't strongly
+  // pulled either way. The raw numeric rating is stored too so Good-attraction can weight by it
+  // instead of averaging the Good bucket flatly (see goodParamCentroid/goodEffectCentroid).
+  rateLayer(layer, rating, comment, reasons, buttonEl) {
+    const scoreType = rating >= 7 ? 'good' : (rating <= 4 ? 'bad' : 'neutral');
+
     const payload = {
       layerType: layer.type,
       params: JSON.parse(JSON.stringify(layer.generator.params || {})),
       effects: JSON.parse(JSON.stringify(layer.effects || {})),
       modulations: {},
-      reasons: reasons
+      reasons: reasons || [],
+      rating,
+      comment: comment || ''
     };
 
     for (let pName in layer.modulations) {
@@ -3129,24 +3142,13 @@ export class Controls {
         }
         this.scoreData.push(data.record);
 
-        const scoreLabel = scoreType === 'good' ? 'Good! 👍' : 'Bad! 👎';
-        this.showToast(`Saved score: ${scoreLabel}`, 'success');
+        this.showToast(`Saved score: ${rating}/10`, 'success');
 
-        if (scoreType === 'good') {
-          buttonEl.style.background = '#065f46';
-          buttonEl.style.borderColor = '#10b981';
-          buttonEl.style.boxShadow = '0 0 12px #10b981';
-        } else {
-          buttonEl.style.background = '#7f1d1d';
-          buttonEl.style.borderColor = '#ef4444';
-          buttonEl.style.boxShadow = '0 0 12px #ef4444';
+        if (buttonEl) {
+          const tierColor = scoreType === 'good' ? '#10b981' : (scoreType === 'bad' ? '#ef4444' : '#f59e0b');
+          buttonEl.style.boxShadow = `0 0 12px ${tierColor}`;
+          setTimeout(() => { buttonEl.style.boxShadow = ''; }, 1000);
         }
-
-        setTimeout(() => {
-          buttonEl.style.background = '';
-          buttonEl.style.borderColor = '';
-          buttonEl.style.boxShadow = '';
-        }, 1000);
       } else {
         this.showToast('Failed to save score: ' + (data.error || 'Unknown error'), 'error');
       }
@@ -3599,7 +3601,11 @@ export class Controls {
     });
   }
 
-  showBadScoreDialog() {
+  // Unified 1-10 + comment rating dialog, replacing the old binary Good/Bad buttons. Resolves
+  // { rating, comment, reasons } on submit, or null on cancel/escape. rateLayer() derives the
+  // legacy good/bad/neutral bucket from `rating` for the existing randomizeLayer logic, and
+  // Good-attraction now weights by the raw rating instead of averaging the Good bucket flatly.
+  showRatingDialog() {
     return new Promise((resolve) => {
       const overlay = this.createElement('div');
       overlay.style.cssText = `
@@ -3620,55 +3626,92 @@ export class Controls {
       ];
 
       const checkboxesHtml = reasons.map(r => `
-        <label style="display: flex; align-items: center; gap: 0.5rem; color: #9ca3af; font-size: 0.85rem; cursor: pointer; user-select: none; margin-bottom: 0.2rem;">
-          <input type="checkbox" name="bad-reason" value="${r.id}" style="
-            accent-color: #ef4444; cursor: pointer; width: 15px; height: 15px;
+        <label style="display: flex; align-items: center; gap: 0.5rem; color: #9ca3af; font-size: 0.8rem; cursor: pointer; user-select: none; margin-bottom: 0.2rem;">
+          <input type="checkbox" name="rate-reason" value="${r.id}" style="
+            accent-color: #f59e0b; cursor: pointer; width: 14px; height: 14px;
           ">
           <span>${r.text}</span>
         </label>
       `).join('');
 
+      const tierColor = (n) => n <= 4 ? '#ef4444' : (n <= 6 ? '#f59e0b' : '#10b981');
+      const ratingButtonsHtml = Array.from({ length: 10 }, (_, i) => i + 1).map(n => `
+        <button class="rate-num-btn" data-val="${n}" style="
+          width: 30px; height: 30px; border-radius: 6px; border: 1px solid ${tierColor(n)};
+          background: transparent; color: ${tierColor(n)}; cursor: pointer;
+          font-size: 0.8rem; font-weight: 700; font-family: var(--font-mono);
+        ">${n}</button>
+      `).join('');
+
       overlay.innerHTML = `
         <div style="
-          background: #1a1a2e; border: 1px solid #ef4444;
-          border-radius: 12px; padding: 1.5rem 2rem; min-width: 420px;
-          box-shadow: 0 0 30px rgba(239,68,68,0.4);
+          background: #1a1a2e; border: 1px solid #f59e0b;
+          border-radius: 12px; padding: 1.5rem 2rem; min-width: 460px;
+          box-shadow: 0 0 30px rgba(245,158,11,0.35);
           display: flex; flex-direction: column; gap: 1rem;
         ">
-          <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">Rate Bad Parameters</h3>
-          <p style="margin: 0; font-size: 0.85rem; color: #9ca3af; line-height: 1.4; white-space: normal; text-align: left;">
-            Select negative reasons for this generation:
-          </p>
-          <div style="display: flex; flex-direction: column; gap: 0.6rem; text-align: left; padding: 0.5rem 0;">
+          <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">⭐ Rate This Generation</h3>
+          <div style="display: flex; gap: 0.4rem; justify-content: space-between;">
+            ${ratingButtonsHtml}
+          </div>
+          <p class="rate-selected-label" style="margin: 0; font-size: 0.8rem; color: #6b7280; text-align: center;">Select a score (1-10)</p>
+          <textarea class="rate-comment" placeholder="Comment (optional) - what worked, what didn't..." rows="2" style="
+            resize: vertical; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+            color: #e2e8f0; font-size: 0.8rem; border-radius: 6px; padding: 0.5rem; font-family: inherit;
+          "></textarea>
+          <p style="margin: 0; font-size: 0.8rem; color: #9ca3af;">気になった点(任意):</p>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; text-align: left; max-height: 160px; overflow-y: auto;">
             ${checkboxesHtml}
           </div>
           <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-            <button id="bad-dialog-cancel" style="
+            <button id="rate-dialog-cancel" style="
               padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563;
               background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;
             ">Cancel</button>
-            <button id="bad-dialog-submit" style="
+            <button id="rate-dialog-submit" disabled style="
               padding: 0.4rem 1.2rem; border-radius: 6px; border: none;
-              background: #ef4444; color: white; cursor: pointer; font-size: 0.85rem; font-weight: 600;
-              box-shadow: 0 0 10px rgba(239,68,68,0.5);
-            ">Submit Bad Score</button>
+              background: #4b5563; color: white; cursor: not-allowed; font-size: 0.85rem; font-weight: 600;
+            ">Submit</button>
           </div>
         </div>
       `;
 
       (this.activeDocument || document).body.appendChild(overlay);
 
-      const btnSubmit = overlay.querySelector('#bad-dialog-submit');
-      const btnCancel = overlay.querySelector('#bad-dialog-cancel');
+      const numBtns = Array.from(overlay.querySelectorAll('.rate-num-btn'));
+      const selectedLabel = overlay.querySelector('.rate-selected-label');
+      const btnSubmit = overlay.querySelector('#rate-dialog-submit');
+      const btnCancel = overlay.querySelector('#rate-dialog-cancel');
+      let selectedRating = null;
 
-      const finish = (selectedReasons) => {
+      numBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedRating = parseInt(btn.dataset.val, 10);
+          const color = tierColor(selectedRating);
+          numBtns.forEach(b => {
+            const active = b === btn;
+            b.style.background = active ? color : 'transparent';
+            b.style.color = active ? '#0a0a0f' : tierColor(parseInt(b.dataset.val, 10));
+          });
+          selectedLabel.textContent = `Score: ${selectedRating}/10`;
+          selectedLabel.style.color = color;
+          btnSubmit.disabled = false;
+          btnSubmit.style.background = color;
+          btnSubmit.style.cursor = 'pointer';
+          btnSubmit.style.boxShadow = `0 0 10px ${color}`;
+        });
+      });
+
+      const finish = (result) => {
         (this.activeDocument || document).body.removeChild(overlay);
-        resolve(selectedReasons);
+        resolve(result);
       };
 
       btnSubmit.addEventListener('click', () => {
-        const checked = Array.from(overlay.querySelectorAll('input[name="bad-reason"]:checked')).map(el => el.value);
-        finish(checked);
+        if (selectedRating === null) return;
+        const checkedReasons = Array.from(overlay.querySelectorAll('input[name="rate-reason"]:checked')).map(el => el.value);
+        const comment = overlay.querySelector('.rate-comment').value.trim();
+        finish({ rating: selectedRating, comment, reasons: checkedReasons });
       });
 
       btnCancel.addEventListener('click', () => finish(null));
