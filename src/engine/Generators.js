@@ -1203,29 +1203,32 @@ export class FogGenerator extends BaseGenerator {
       targetOpacity: maxOpacity,
       fadeState: 'in', // 'in' or 'out'
       angle: Math.random() * Math.PI * 2,
-      angleSpeed: (Math.random() - 0.5) * 0.002
+      angleSpeed: (Math.random() - 0.5) * 0.002,
+      dying: false // true once excess from a density decrease - fades out instead of respawning
     };
   }
 
   update(time, frameCount, width, height) {
     // 1. Maintain correct density
     const targetDensity = Math.round(this.params.density);
-    
-    // Adjust puff count
+
+    // Adjust puff count: grow immediately (new puffs fade in via fadeState below), but
+    // shrink by marking excess puffs to fade out naturally instead of truncating the array.
     while (this.fogPuffs.length < targetDensity) {
       this.fogPuffs.push(this.createFogPuff(width, height, this.fogPuffs.length === 0));
     }
-    if (this.fogPuffs.length > targetDensity) {
-      this.fogPuffs.length = targetDensity;
+    for (let i = targetDensity; i < this.fogPuffs.length; i++) {
+      this.fogPuffs[i].dying = true;
+      this.fogPuffs[i].fadeState = 'out';
     }
 
     // 2. Update each active fog puff
     const fadeSpeed = this.params.fadeSpeed;
     const speedMultiplier = this.params.speed;
 
-    for (let i = 0; i < this.fogPuffs.length; i++) {
+    for (let i = this.fogPuffs.length - 1; i >= 0; i--) {
       let p = this.fogPuffs[i];
-      
+
       // Update drift velocity relative to speed parameter updates
       p.vx = Math.sign(p.vx || 1) * Math.random() * speedMultiplier;
       p.vy = Math.sign(p.vy || 1) * Math.random() * speedMultiplier;
@@ -1252,6 +1255,11 @@ export class FogGenerator extends BaseGenerator {
         p.opacity -= fadeSpeed;
         if (p.opacity <= 0) {
           p.opacity = 0;
+          if (p.dying) {
+            // Excess from a density decrease - remove instead of respawning
+            this.fogPuffs.splice(i, 1);
+            continue;
+          }
           // Respawn this puff at screen boundary
           this.fogPuffs[i] = this.createFogPuff(width, height, false);
         }
@@ -1477,23 +1485,30 @@ export class SnowflakeGenerator extends BaseGenerator {
       // Rotation speeds
       rx: (Math.random() - 0.5) * 0.03,
       ry: (Math.random() - 0.5) * 0.03,
-      rz: (Math.random() - 0.5) * 0.03
+      rz: (Math.random() - 0.5) * 0.03,
+      fadeMul: 0, // ramps 0->1 on spawn, 1->0 when dying, so count changes fade instead of pop
+      dying: false
     };
   }
 
   update(time, frameCount, width, height) {
     const targetCount = Math.round(this.params.count);
-    if (this.particles.length !== targetCount) {
-      if (this.particles.length < targetCount) {
-        while (this.particles.length < targetCount) {
-          this.particles.push(this.createParticle(width, height));
-        }
-      } else {
-        this.particles.length = targetCount;
-      }
+    while (this.particles.length < targetCount) {
+      this.particles.push(this.createParticle(width, height));
+    }
+    for (let i = targetCount; i < this.particles.length; i++) {
+      this.particles[i].dying = true;
     }
 
-    for (let p of this.particles) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.fadeMul += p.dying ? -0.05 : 0.05;
+      p.fadeMul = Math.max(0, Math.min(1, p.fadeMul));
+      if (p.dying && p.fadeMul <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
       // Fall down
       p.y += p.vy;
 
@@ -1539,12 +1554,12 @@ export class SnowflakeGenerator extends BaseGenerator {
     for (let p of this.particles) {
       ctx.save();
       ctx.translate(p.x, p.y);
-      
+
       // Z-rotation and X/Y-rotation via scale (3D effect)
       ctx.rotate(p.angleZ);
       ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
 
-      ctx.globalAlpha = p.alpha;
+      ctx.globalAlpha = p.alpha * p.fadeMul;
 
       const r = p.size;
 
@@ -1585,6 +1600,15 @@ export class SnowflakeGenerator extends BaseGenerator {
 
 // 15. Neon Spirograph Generator
 export class SpirographGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.currentPhase = 0;
+  }
+
+  update(time, frameCount, width, height) {
+    this.currentPhase += this.params.speed * 0.01;
+  }
+
   defaultParams() {
     return {
       R: 150,
@@ -1626,7 +1650,7 @@ export class SpirographGenerator extends BaseGenerator {
     const d = this.params.d;
     const revs = this.params.revolutions;
     
-    const phase = time * 0.001 * this.params.speed;
+    const phase = this.currentPhase;
     const totalPoints = revs * 150;
 
     for (let i = 0; i <= totalPoints; i++) {
@@ -1882,23 +1906,30 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
       // Custom variations for rotation speeds
       rx: (Math.random() - 0.5) * this.params.rotSpeedX,
       ry: (Math.random() - 0.5) * this.params.rotSpeedY,
-      rz: (Math.random() - 0.5) * this.params.rotSpeedZ
+      rz: (Math.random() - 0.5) * this.params.rotSpeedZ,
+      fadeMul: 0, // ramps 0->1 on spawn, 1->0 when dying, so count changes fade instead of pop
+      dying: false
     };
   }
 
   update(time, frameCount, width, height) {
     const targetCount = Math.round(this.params.count);
-    if (this.particles.length !== targetCount) {
-      if (this.particles.length < targetCount) {
-        while (this.particles.length < targetCount) {
-          this.particles.push(this.createParticle(width, height));
-        }
-      } else {
-        this.particles.length = targetCount;
-      }
+    while (this.particles.length < targetCount) {
+      this.particles.push(this.createParticle(width, height));
+    }
+    for (let i = targetCount; i < this.particles.length; i++) {
+      this.particles[i].dying = true;
     }
 
-    for (let p of this.particles) {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.fadeMul += p.dying ? -0.05 : 0.05;
+      p.fadeMul = Math.max(0, Math.min(1, p.fadeMul));
+      if (p.dying && p.fadeMul <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+
       p.x += p.vx;
       p.y += p.vy;
 
@@ -1935,7 +1966,7 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
       ctx.rotate(p.angleZ);
       ctx.scale(Math.cos(p.angleY), Math.sin(p.angleX));
 
-      ctx.globalAlpha = p.alpha;
+      ctx.globalAlpha = p.alpha * p.fadeMul;
 
       let particleThemeColor = themeColor;
       let particleParsedColor = parsedColor;
@@ -1959,6 +1990,15 @@ export class Shape3DParticlesGenerator extends BaseGenerator {
 
 // 19. Lighthouse Beacon Generator
 export class LighthouseGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.currentAngle = 0;
+  }
+
+  update(time, frameCount, width, height) {
+    this.currentAngle += this.params.rotationSpeed * 0.01;
+  }
+
   defaultParams() {
     return {
       beamCount: 2,
@@ -2011,7 +2051,7 @@ export class LighthouseGenerator extends BaseGenerator {
   draw(ctx, width, height, time) {
     const cx = width / 2;
     const cy = height / 2;
-    const rotation = time * 0.001 * this.params.rotationSpeed;
+    const rotation = this.currentAngle;
     const hueOffset = this.params.hueCycleSpeed > 0
       ? (time * 0.001 * this.params.hueCycleSpeed * 36) % 360
       : 0;

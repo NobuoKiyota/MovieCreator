@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-18 15:19 [Claude Code] 意見書Excel由来のバグ級修正3件: ①Lighthouse Beacon/Neon SpirographのLFO時カクつきを角度蓄積方式(time*speedの直接乗算→アキュムレータ)に修正 ②Neon Fog/Neon Snowflake/3D Shape Particlesの個数(density/count)LFO時の急な出現・消滅をfadeMulによるフェードイン/アウト方式に修正。動作確認済み・未コミット
 - 2026-07-18 11:04 [Antigravity] 意見書Excelの非パラメータセルのグレーアウトを濃い色に調整して再生成・Gitプッシュ完了
 - 2026-07-18 11:00 [Antigravity] 量産化に向けたランダマイザー改善と全21レイヤーの意見書Excel生成完了
 - 2026-07-18 10:57 [Antigravity] 量産化に向けたランダマイザー改善と意見書Excel出力の作業に着手
