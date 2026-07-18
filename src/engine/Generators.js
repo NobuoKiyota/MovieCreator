@@ -2437,6 +2437,7 @@ export class GlassCrackGenerator extends BaseGenerator {
     this.rings = [];
     this.holePoly = null;
     this.holeFlakes = [];
+    this.holeFacetShades = [];
   }
 
   defaultParams() {
@@ -2577,11 +2578,30 @@ export class GlassCrackGenerator extends BaseGenerator {
     // rather than from an independent random n-gon.
     let holePoly = null;
     let holeFlakes = [];
+    let holeFacetShades = [];
     if (holeR > 0) {
+      // Inserts 1-2 radius-jittered vertices along the edge from a to b, so the outline has
+      // small irregular facets instead of one smooth line between each point and valley -
+      // real broken glass edges are never a single clean stroke.
+      const jaggedEdge = (a, b, out) => {
+        const steps = 1 + Math.floor(Math.random() * 2);
+        for (let s = 1; s <= steps; s++) {
+          const t = s / (steps + 1);
+          const mx = a.x + (b.x - a.x) * t;
+          const my = a.y + (b.y - a.y) * t;
+          const r = Math.hypot(mx, my) || 1;
+          const jitter = 0.75 + Math.random() * 0.5; // +-25%
+          out.push({ x: (mx / r) * (r * jitter), y: (my / r) * (r * jitter) });
+        }
+        out.push(b);
+      };
+
       holePoly = [];
+      let prevPt = null;
       for (let i = 0; i < crackCount; i++) {
         const outerPt = cracks[i].main[0];
-        holePoly.push({ x: outerPt.x, y: outerPt.y });
+        if (prevPt) jaggedEdge(prevPt, outerPt, holePoly);
+        else holePoly.push({ x: outerPt.x, y: outerPt.y });
 
         const nextPt = cracks[(i + 1) % crackCount].main[0];
         const angleA = Math.atan2(outerPt.y, outerPt.x);
@@ -2591,14 +2611,24 @@ export class GlassCrackGenerator extends BaseGenerator {
         while (da > Math.PI) da -= Math.PI * 2;
         const valleyAngle = angleA + da / 2 + (Math.random() - 0.5) * 0.08;
         const valleyR = holeR * (0.3 + Math.random() * 0.25);
-        holePoly.push({ x: Math.cos(valleyAngle) * valleyR, y: Math.sin(valleyAngle) * valleyR });
+        const valleyPt = { x: Math.cos(valleyAngle) * valleyR, y: Math.sin(valleyAngle) * valleyR };
+        jaggedEdge(outerPt, valleyPt, holePoly);
+        prevPt = valleyPt;
       }
+      // Close the loop back to the first point with a jagged edge too.
+      jaggedEdge(prevPt, holePoly[0], holePoly);
+      holePoly.pop(); // last push duplicates holePoly[0] (closePath already closes the loop)
 
-      // Rim flakes cling to the actual fracture lines (the "point" vertices), not to the
-      // smooth crushed-out valleys, so only even indices (crack roots) are eligible bases.
-      const flakeCount = 2 + Math.floor(Math.random() * 4);
+      // One independently-rolled shade per facet triangle, cached alongside the polygon so
+      // each "shard" reads as catching light at a slightly different angle instead of the
+      // hole being one flat gradient disc.
+      holeFacetShades = holePoly.map(() => 0.5 + Math.random() * 0.5);
+
+      // Rim flakes now launch from any polygon vertex (points, valleys, and the jagged
+      // in-between facets alike) so they ring the whole hole densely, not just the crack roots.
+      const flakeCount = Math.round(crackCount * (0.8 + Math.random() * 0.4));
       for (let i = 0; i < flakeCount; i++) {
-        const base = holePoly[Math.floor(Math.random() * crackCount) * 2];
+        const base = holePoly[Math.floor(Math.random() * holePoly.length)];
         const ang = Math.atan2(base.y, base.x);
         const flakeLen = holeR * (0.2 + Math.random() * 0.3);
         const spread = 0.2 + Math.random() * 0.15;
@@ -2615,6 +2645,7 @@ export class GlassCrackGenerator extends BaseGenerator {
     this.rings = rings;
     this.holePoly = holePoly;
     this.holeFlakes = holeFlakes;
+    this.holeFacetShades = holeFacetShades;
   }
 
   // Fills a series of per-segment quads (all in a single fill call) whose half-width is
@@ -2686,16 +2717,34 @@ export class GlassCrackGenerator extends BaseGenerator {
     if (this.holePoly && microProgress > 0) {
       ctx.globalAlpha = envelope * microProgress;
 
-      const R = this.params.holeRadius;
-      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 1.2);
-      grad.addColorStop(0, 'rgba(8, 8, 12, 0.95)');
-      grad.addColorStop(0.7, 'rgba(15, 15, 20, 0.85)');
-      grad.addColorStop(1, 'rgba(20, 20, 25, 0.4)');
-      ctx.beginPath();
-      this.holePoly.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-      ctx.closePath();
-      ctx.fillStyle = grad;
-      ctx.fill();
+      // Faceted fill: a triangle fan from the center to each polygon edge, each triangle an
+      // independently-rolled shade, so the hole reads as a cluster of shard faces catching
+      // light differently rather than one flat gradient disc.
+      const n = this.holePoly.length;
+      for (let i = 0; i < n; i++) {
+        const p1 = this.holePoly[i];
+        const p2 = this.holePoly[(i + 1) % n];
+        const shade = this.holeFacetShades[i] !== undefined ? this.holeFacetShades[i] : 0.7;
+        const g = Math.round(6 + shade * 26);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${g}, ${g}, ${g + 6}, 0.92)`;
+        ctx.fill();
+      }
+      // A faint highlight along each facet edge to define the cut lines between shards.
+      ctx.strokeStyle = 'rgba(180, 200, 220, 0.15)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < n; i++) {
+        const p1 = this.holePoly[i];
+        const p2 = this.holePoly[(i + 1) % n];
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
 
       ctx.fillStyle = 'rgba(8, 8, 12, 0.85)';
       for (const flake of this.holeFlakes) {
