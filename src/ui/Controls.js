@@ -142,16 +142,68 @@ export class Controls {
     
     this.timelineTemplateSelectEl.innerHTML = '<option value="">Template</option>';
     
-    // 1. Built-in Templates
-    const builtinGroup = this.createElement('optgroup');
-    builtinGroup.label = "Built-in Shapes";
+    // 1. Built-in Templates: Group by Point count (e.g. "2P", "3P", etc.)
+    const groups = {};
+    
     for (let key in MOTION_TEMPLATES) {
-      const opt = this.createElement('option');
-      opt.value = "builtin:" + key;
-      opt.textContent = key;
-      builtinGroup.appendChild(opt);
+      // Determine group (e.g. "2P", "3P")
+      const match = key.match(/^(\d+P)_/);
+      const groupKey = match ? match[1] : "Other";
+      
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      
+      // Determine strength suffix and clean name
+      let cleanName = key.replace(/^\d+P_/, '');
+      let strength = "1.0";
+      if (cleanName.endsWith('_Half')) {
+        cleanName = cleanName.replace('_Half', '');
+        strength = "0.5";
+      } else if (cleanName.endsWith('_Quarter')) {
+        cleanName = cleanName.replace('_Quarter', '');
+        strength = "0.25";
+      }
+      
+      // Improve readability of cleanName (e.g., "LinearUp" -> "Linear Up", "SineLFO_2.5x" -> "Sine LFO 2.5x")
+      // Insert space before capital letters, but avoid splitting consecutive uppercase or trailing numbers/x
+      let readableName = cleanName
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // e.g. "SineLFO" -> "Sine LFO"
+        .replace(/([a-z\d])([A-Z])/g, '$1 $2')      // e.g. "LinearUp" -> "Linear Up"
+        .replace(/_/g, ' ')                        // e.g. "SineLFO_2.5x" -> "Sine LFO 2.5x"
+        .trim();
+      
+      groups[groupKey].push({
+        key: key,
+        displayName: `${readableName} (${strength})`,
+        sortKey: `${cleanName.toLowerCase()}_${strength === "1.0" ? "a" : strength === "0.5" ? "b" : "c"}`
+      });
     }
-    this.timelineTemplateSelectEl.appendChild(builtinGroup);
+    
+    // Create optgroups sorted by point count
+    const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+      const numA = parseInt(a) || 999;
+      const numB = parseInt(b) || 999;
+      return numA - numB;
+    });
+    
+    sortedGroupKeys.forEach(groupKey => {
+      const optgroup = this.createElement('optgroup');
+      optgroup.label = `${groupKey.replace('P', '-Point')} Curves`;
+      
+      // Sort items within group by base name, then by strength (Full -> Half -> Quarter)
+      const items = groups[groupKey];
+      items.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      
+      items.forEach(item => {
+        const opt = this.createElement('option');
+        opt.value = "builtin:" + item.key;
+        opt.textContent = item.displayName;
+        optgroup.appendChild(opt);
+      });
+      
+      this.timelineTemplateSelectEl.appendChild(optgroup);
+    });
     
     // 2. Custom Templates
     let customs = {};

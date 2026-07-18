@@ -2,19 +2,36 @@
 // These templates define shapes similar to Wwise/DAW automation curves
 // and are scaled to the actual parameter range and session duration at runtime.
 // Categorized by exact point count (2P to 10P) for intuitive UX.
-export const MOTION_TEMPLATES = {
+
+const BASE_TEMPLATES = {
   // --- 2-Point Curves (Simple transitions) ---
-  "2P_DriftUp": [
-    { time: 0.0, value: 0.0, easing: 'ease-in-out' },
-    { time: 1.0, value: 1.0, easing: 'ease-in-out' }
-  ],
-  "2P_DriftDown": [
-    { time: 0.0, value: 1.0, easing: 'ease-in-out' },
-    { time: 1.0, value: 0.0, easing: 'ease-in-out' }
-  ],
   "2P_LinearUp": [
     { time: 0.0, value: 0.0, easing: 'linear' },
     { time: 1.0, value: 1.0, easing: 'linear' }
+  ],
+  "2P_DriftUp1": [
+    { time: 0.0, value: 0.0, easing: 'ease-in-out' },
+    { time: 1.0, value: 1.0, easing: 'ease-in-out' }
+  ],
+  "2P_DriftUp2": [
+    { time: 0.0, value: 0.0, easing: 'ease-in' },
+    { time: 1.0, value: 1.0, easing: 'ease-in' }
+  ],
+  "2P_DriftUp3": [
+    { time: 0.0, value: 0.0, easing: 'ease-out' },
+    { time: 1.0, value: 1.0, easing: 'ease-out' }
+  ],
+  "2P_DriftDown1": [
+    { time: 0.0, value: 1.0, easing: 'ease-in-out' },
+    { time: 1.0, value: 0.0, easing: 'ease-in-out' }
+  ],
+  "2P_DriftDown2": [
+    { time: 0.0, value: 1.0, easing: 'ease-in' },
+    { time: 1.0, value: 0.0, easing: 'ease-in' }
+  ],
+  "2P_DriftDown3": [
+    { time: 0.0, value: 1.0, easing: 'ease-out' },
+    { time: 1.0, value: 0.0, easing: 'ease-out' }
   ],
   "2P_LinearDown": [
     { time: 0.0, value: 1.0, easing: 'linear' },
@@ -186,3 +203,23 @@ export const MOTION_TEMPLATES = {
     { time: 1.0, value: 0.0, easing: 'ease-out' }
   ]
 };
+
+export const MOTION_TEMPLATES = {};
+
+// Auto-generate 1.0, 0.5, 0.25 scaling variations for ALL base templates
+for (const [key, kfs] of Object.entries(BASE_TEMPLATES)) {
+  // 1.0 (Full strength)
+  MOTION_TEMPLATES[key] = kfs;
+  
+  // 0.5 (Half strength)
+  MOTION_TEMPLATES[`${key}_Half`] = kfs.map(kf => ({
+    ...kf,
+    value: kf.value * 0.5
+  }));
+  
+  // 0.25 (Quarter strength)
+  MOTION_TEMPLATES[`${key}_Quarter`] = kfs.map(kf => ({
+    ...kf,
+    value: kf.value * 0.25
+  }));
+}

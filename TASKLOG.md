@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-18 18:58 [Antigravity] キーフレームテンプレートの自動スケーリング(1.0/0.5/0.25)対応およびドロップダウンのポイント数別グループ化(optgroup)実装・検証完了
 - 2026-07-18 17:05 [Antigravity] 銃弾痕(Glass Crack)のこれまでの開発経緯と最新ブラッシュアップの差分について調査・トレース
 - 2026-07-18 16:58 [Claude Code] Inspector Float(別ウィンドウ分離)時にSpawn Jitterトグル(🎲)が反応しなくなる不具合を修正(src/ui/Controls.js)。ドラッグ追跡用のmousemove/mouseupリスナーが常にメインウィンドウのdocumentに固定登録されていたため、別ウィンドウ上のマウス操作が届いていかった。activeDocument(Float時はポップアップのdocument)を参照するよう修正、同ファイル内の既存パターンに統一。ドック状態での動作を確認済み(Float状態はブラウザ環境のポップアップブロックにより直接検証不可)・未コミット
 - 2026-07-18 16:38 [Claude Code] Shockwave Burst追加改善(ユーザーFB: 「RingCountが単純なリピート」「WindUp/Hold/Waveで円形以外の変形を」、src/engine/Generators.js `ShockwaveBurstGenerator`): ①新規`computeDeformParams()`でフェーズ別ノイズ変形(収束=低周波の吸い込まれ歪み/溜め=高速パルスのチャージ感/拡散=進捗とともに周波数・振幅増加の乱流)を追加 ②`fillRingGradient`の`ctx.arc`分岐を廃止し48点円(`circlePoints`)ベースの点列パスに統一、Smooth/Doubleスタイルも変形可能に ③リングごとに`cycleDeformSeeds`(独立した歪みパターン)・`cycleRotationDir`(回転方向)をサイクル毎に再抽選し、ringCount>1が単純な時間差複製でなくなるよう強化。新規パラメータ`deformAmount`(0-1, デフォルト0.3)。`deformAmount=0`で旧見た目を維持することを確認、既存プリセット読み込み・複数レイヤー同時再生でのエラーなしを確認済み・未コミット
