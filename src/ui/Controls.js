@@ -758,17 +758,11 @@ export class Controls {
       const duration = parseFloat(this.exportDurationEl.value) || 10;
       const maxFrames = duration * 60;
 
-      // 1. Check if clicking on the ruler (top margin) for seek operation
-      if (pos.y <= topMargin) {
-        this.isTimelineSeeking = true;
-        const f = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
-        this.mainApp.accumulatedTime = (f / 60) * 1000;
-        this.mainApp.renderSingleFrame();
-        this.drawTimeline();
-        return;
-      }
-
-      // 2. Check if clicking near a keyframe point
+      // 1. Check if clicking near a keyframe point FIRST - a keyframe at value=1.0 (the top of
+      // the graph's Y range) draws exactly on the topMargin boundary line, so checking the ruler
+      // (seek) zone first would swallow most of that keyframe's hit circle and make it nearly
+      // impossible to grab. Keyframe-grabbing takes priority over ruler-seeking wherever the two
+      // overlap; seeking still works everywhere else in the ruler zone.
       let clickedIdx = -1;
       for (let i = 0; i < mod.keyframes.length; i++) {
         const kf = mod.keyframes[i];
@@ -779,6 +773,16 @@ export class Controls {
           clickedIdx = i;
           break;
         }
+      }
+
+      // 2. Not on a keyframe - check if clicking on the ruler (top margin) for seek operation
+      if (clickedIdx === -1 && pos.y <= topMargin) {
+        this.isTimelineSeeking = true;
+        const f = Math.max(0, Math.min(maxFrames, Math.round(((pos.x - leftMargin) / graphWidth) * maxFrames)));
+        this.mainApp.accumulatedTime = (f / 60) * 1000;
+        this.mainApp.renderSingleFrame();
+        this.drawTimeline();
+        return;
       }
 
       if (clickedIdx !== -1) {
