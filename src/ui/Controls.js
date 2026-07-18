@@ -5,6 +5,7 @@
  * Right Lower: Inspector Panel (Detailed parameter tuning & LFO settings for the ACTIVE layer only)
  */
 import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
+import { MOTION_TEMPLATES } from '../engine/motionTemplates.js';
 
 export class Controls {
   constructor(layerManager, mainApp) {
@@ -115,6 +116,20 @@ export class Controls {
     // Batch generator defaults
     this.batchCount = 10;
     this.batchThreshold = 90;
+    this.motionMapping = {};
+  }
+
+  async loadMotionMapping() {
+    try {
+      const res = await fetch('/data/motion_mapping.json');
+      if (res.ok) {
+        this.motionMapping = await res.json();
+        console.log("[Motion Presets] Loaded motion mapping matrix successfully.");
+      }
+    } catch (e) {
+      console.warn("[Motion Presets] Failed to load motion mapping JSON, using defaults:", e.message);
+      this.motionMapping = {};
+    }
   }
 
   createElement(tagName) {
@@ -122,6 +137,7 @@ export class Controls {
   }
 
   init() {
+    this.loadMotionMapping();
     // 1. Layer add toggling
     this.btnAddLayerEl.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1741,6 +1757,34 @@ export class Controls {
   }
 
   /**
+   * Applies a normalized motion template (normalized keyframes) to a modulation config
+   */
+  applyMotionTemplate(candidateMod, templateName, localMin, localMax, durationVal) {
+    const template = MOTION_TEMPLATES[templateName];
+    if (!template) return false;
+
+    candidateMod.keyframeEnabled = true;
+    candidateMod.enabled = false;
+    candidateMod.keyframes = [];
+
+    const maxFrames = durationVal * 60;
+
+    template.forEach(pt => {
+      const frame = Math.round(pt.time * maxFrames);
+      // Scale from [0.0, 1.0] normalized value to the parameter's actual range
+      const value = localMin + (localMax - localMin) * pt.value;
+      candidateMod.keyframes.push({
+        frame: frame,
+        value: value,
+        easing: pt.easing || 'linear'
+      });
+    });
+
+    candidateMod.keyframes.sort((a, b) => a.frame - b.frame);
+    return true;
+  }
+
+  /**
    * Randomizes the inspected layer.
    * Decide center first, then determine automation bounds under current Spread percentage.
    */
@@ -1883,7 +1927,20 @@ export class Controls {
             const candidateMod = JSON.parse(JSON.stringify(mod));
             candidateMod.jitterBase = newVal; // keep Spawn Jitter centered on the new mutated value
 
-            if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
+            // Check if there is an Excel-mapped motion template for this parameter
+            const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][config.name];
+            let templateApplied = false;
+            if (allowedTemplates && allowedTemplates.length > 0) {
+              const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
+              const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+              const modMin = localMin + (localMax - localMin) * 0.1;
+              const modMax = localMax - (localMax - localMin) * 0.1;
+              templateApplied = this.applyMotionTemplate(candidateMod, templateName, modMin, modMax, durationVal);
+            }
+
+            if (templateApplied) {
+              candidateModulations[config.name] = candidateMod;
+            } else if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
               candidateMod.keyframes.forEach(kf => {
                 const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
                 let newKfVal = kf.value + kfOffset;
@@ -1941,6 +1998,51 @@ export class Controls {
         let localMin = config.min;
         let localMax = config.max;
         const range = config.max - config.min;
+
+        // Check if there is an Excel-mapped motion template for this FX parameter
+        const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][fxName];
+        let templateApplied = false;
+        
+        if (allowedTemplates && allowedTemplates.length > 0) {
+          const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
+          const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+          
+          let fxMin = localMin;
+          let fxMax = localMax;
+          // Apply safety limits for common FX templates
+          if (fxName === 'scale') {
+            fxMin = Math.max(1.0, localMin);
+            fxMax = Math.min(2.0, localMax);
+          } else if (fxName === 'feedbackDecay') {
+            fxMin = Math.max(0.70, localMin);
+            fxMax = Math.min(0.92, localMax);
+          } else if (fxName === 'glowIntensity') {
+            fxMin = Math.max(40, localMin);
+            fxMax = Math.min(85, localMax);
+          } else if (fxName === 'rotation') {
+            fxMin = -180;
+            fxMax = 180;
+          }
+          
+          const mod = layer.modulations[fxName] || {
+            enabled: false,
+            min: fxMin,
+            max: fxMax,
+            timePct: 50,
+            behavior: 'return',
+            keyframeEnabled: false,
+            keyframes: []
+          };
+          
+          const candidateMod = JSON.parse(JSON.stringify(mod));
+          templateApplied = this.applyMotionTemplate(candidateMod, templateName, fxMin, fxMax, durationVal);
+          
+          if (templateApplied) {
+            candidateEffects[fxName] = fxMin;
+            candidateModulations[fxName] = candidateMod;
+            continue; // Skip standard hardcoded logic for this parameter
+          }
+        }
 
         // Apply User Directive overrides & clamping
         
