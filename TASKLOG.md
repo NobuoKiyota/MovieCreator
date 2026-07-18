@@ -13,6 +13,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-18 20:44 [Claude Code] Random LFOにMoveスコア連動でキーフレームテンプレートを適度に適用する機能を実装。調査の結果、既存の「Excel Motion Mappingシート→motion_mapping.json」経路は①シート573行が未入力(全レイヤー空)②仮に埋めても6カテゴリ名(SlowDriftUp等)が実際のMOTION_TEMPLATESキー(2P_/3P_等のポイント数プレフィックス方式)と不一致で機能しない、の二重に機能不全と判明。代わりにPreset Layers Opinion SheetのMove列(0-5)を使う経路を新設: 新規`export_move_scores.py`で`data/move_scores.json`を生成(ジェネレーター固有パラメータ485件抽出)、`Controls.js`に`loadMoveScores()`追加、`randomizeLayer()`のジェネレーターパラメータループでMove<=1のパラメータはLFO/キーフレームを一切付けず固定値化、それ以外は30%(`RANDOM_TEMPLATE_CHANCE`)の確率でMOTION_TEMPLATESからランダムに1つ適用。共通FXパラメータは既存のガチャ軽減チューニングと干渉するため対象外。Glass Crackで動作確認(Move=1のcomplexity/jaggedness/growFractionは20回中0回、Move=5のcrackCountは20回中9回キーフレーム化)・コンソールエラーなし・未コミット
 - 2026-07-18 18:58 [Antigravity] キーフレームテンプレートの自動スケーリング(1.0/0.5/0.25)対応およびドロップダウンのポイント数別グループ化(optgroup)実装・検証完了
 - 2026-07-18 17:05 [Antigravity] 銃弾痕(Glass Crack)のこれまでの開発経緯と最新ブラッシュアップの差分について調査・トレース
 - 2026-07-18 16:58 [Claude Code] Inspector Float(別ウィンドウ分離)時にSpawn Jitterトグル(🎲)が反応しなくなる不具合を修正(src/ui/Controls.js)。ドラッグ追跡用のmousemove/mouseupリスナーが常にメインウィンドウのdocumentに固定登録されていたため、別ウィンドウ上のマウス操作が届いていかった。activeDocument(Float時はポップアップのdocument)を参照するよう修正、同ファイル内の既存パターンに統一。ドック状態での動作を確認済み(Float状態はブラウザ環境のポップアップブロックにより直接検証不可)・未コミット

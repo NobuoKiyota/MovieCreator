@@ -118,10 +118,15 @@ export class Controls {
     // feedbackDecay values above this start compounding into runaway feedback loops (see randomizeLayer)
     this.FEEDBACK_DECAY_HARD_CAP = 0.92;
 
+    // Odds that an eligible (non-low-Move) generator parameter gets a random motion template
+    // during Random LFO, instead of plain LFO/static handling - see randomizeLayer.
+    this.RANDOM_TEMPLATE_CHANCE = 0.3;
+
     // Batch generator defaults
     this.batchCount = 10;
     this.batchThreshold = 90;
     this.motionMapping = {};
+    this.moveScores = {};
   }
 
   async loadMotionMapping() {
@@ -134,6 +139,22 @@ export class Controls {
     } catch (e) {
       console.warn("[Motion Presets] Failed to load motion mapping JSON, using defaults:", e.message);
       this.motionMapping = {};
+    }
+  }
+
+  // Per (layerType, paramName) "Move" score (0-5) from the opinion sheet's Score/Move/Comment
+  // matrix - how effective animating that parameter was judged to be. Used by randomizeLayer to
+  // skip Random LFO/keyframe templates on parameters known to look worse when animated.
+  async loadMoveScores() {
+    try {
+      const res = await fetch('/data/move_scores.json');
+      if (res.ok) {
+        this.moveScores = await res.json();
+        console.log("[Motion Presets] Loaded Move-score matrix successfully.");
+      }
+    } catch (e) {
+      console.warn("[Motion Presets] Failed to load Move-score JSON, using defaults:", e.message);
+      this.moveScores = {};
     }
   }
 
@@ -234,6 +255,7 @@ export class Controls {
 
   init() {
     this.loadMotionMapping();
+    this.loadMoveScores();
     this.updateTemplateDropdown();
     // 1. Layer add toggling
     this.btnAddLayerEl.addEventListener('click', (e) => {
@@ -2206,47 +2228,73 @@ export class Controls {
             const candidateMod = JSON.parse(JSON.stringify(mod));
             candidateMod.jitterBase = newVal; // keep Spawn Jitter centered on the new mutated value
 
-            // Check if there is an Excel-mapped motion template for this parameter
-            const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][config.name];
-            let templateApplied = false;
-            if (allowedTemplates && allowedTemplates.length > 0) {
-              const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
-              const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-              const modMin = localMin + (localMax - localMin) * 0.1;
-              const modMax = localMax - (localMax - localMin) * 0.1;
-              templateApplied = this.applyMotionTemplate(candidateMod, templateName, modMin, modMax, durationVal);
-            }
+            // "Move" score (0-5) from the opinion sheet: how effective animating this parameter
+            // was judged to be. A low score (0-1) means past evaluation found it looks worse
+            // animated, so skip LFO/keyframes entirely and leave it fixed - no need to even
+            // consider motion templates for it.
+            const moveScore = this.moveScores && this.moveScores[layer.type]
+              ? this.moveScores[layer.type][config.name] : undefined;
+            const isLowMove = moveScore !== undefined && moveScore <= 1;
 
-            if (templateApplied) {
-              candidateModulations[config.name] = candidateMod;
-            } else if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
-              candidateMod.keyframes.forEach(kf => {
-                const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
-                let newKfVal = kf.value + kfOffset;
-                newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
-                kf.value = newKfVal;
-              });
-            } else if (mod.enabled) {
-              const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.2);
-              const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.2);
-              
-              let newMin = mod.min + offsetMin;
-              let newMax = mod.max + offsetMax;
-              
-              newMin = Math.max(localMin, Math.min(localMax, newMin));
-              newMax = Math.max(localMin, Math.min(localMax, newMax));
-              
-              candidateMod.min = newMin;
-              candidateMod.max = newMax;
-
-              const offsetTime = (Math.random() * 2 - 1) * 15;
-              let newTimePct = mod.timePct + offsetTime;
-              candidateMod.timePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
-            } else {
+            if (isLowMove) {
+              candidateMod.enabled = false;
+              candidateMod.keyframeEnabled = false;
+              candidateMod.keyframes = [];
               candidateMod.min = newVal;
               candidateMod.max = newVal;
+              candidateModulations[config.name] = candidateMod;
+            } else {
+              // Check if there is an Excel-mapped motion template for this parameter
+              const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][config.name];
+              let templateApplied = false;
+              if (allowedTemplates && allowedTemplates.length > 0) {
+                const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
+                const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+                const modMin = localMin + (localMax - localMin) * 0.1;
+                const modMax = localMax - (localMax - localMin) * 0.1;
+                templateApplied = this.applyMotionTemplate(candidateMod, templateName, modMin, modMax, durationVal);
+              }
+
+              if (templateApplied) {
+                candidateModulations[config.name] = candidateMod;
+              } else if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
+                candidateMod.keyframes.forEach(kf => {
+                  const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+                  let newKfVal = kf.value + kfOffset;
+                  newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
+                  kf.value = newKfVal;
+                });
+              } else if (Math.random() < this.RANDOM_TEMPLATE_CHANCE) {
+                // Not Excel-mapped, but Move score doesn't rule it out - occasionally pull a
+                // shape straight from the motion template library instead of plain LFO.
+                const templateKeys = Object.keys(MOTION_TEMPLATES);
+                const pick = templateKeys[Math.floor(Math.random() * templateKeys.length)];
+                const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+                const modMin = localMin + (localMax - localMin) * 0.1;
+                const modMax = localMax - (localMax - localMin) * 0.1;
+                this.applyMotionTemplate(candidateMod, pick, modMin, modMax, durationVal);
+              } else if (mod.enabled) {
+                const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.2);
+                const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.2);
+
+                let newMin = mod.min + offsetMin;
+                let newMax = mod.max + offsetMax;
+
+                newMin = Math.max(localMin, Math.min(localMax, newMin));
+                newMax = Math.max(localMin, Math.min(localMax, newMax));
+
+                candidateMod.min = newMin;
+                candidateMod.max = newMax;
+
+                const offsetTime = (Math.random() * 2 - 1) * 15;
+                let newTimePct = mod.timePct + offsetTime;
+                candidateMod.timePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
+              } else {
+                candidateMod.min = newVal;
+                candidateMod.max = newVal;
+              }
+              candidateModulations[config.name] = candidateMod;
             }
-            candidateModulations[config.name] = candidateMod;
           }
         } else if (config.type === 'color') {
           const h = Math.floor(Math.random() * 360);
