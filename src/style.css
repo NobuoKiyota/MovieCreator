@@ -354,6 +354,40 @@ select:focus {
   min-width: 0 !important;
 }
 
+/* Active layer's teacher-data summary, shown left of the Play button whenever a layer is
+   selected (see Controls.js updateHeaderLayerStatus, called from rebuildInspector). */
+.layer-status-badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg-control);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.layer-status-type {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.layer-status-type strong {
+  color: var(--color-accent);
+}
+
+.layer-status-counts {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
 /* Panel Section (Inspector Split Layout) */
 .panel-section {
   background: var(--bg-panel);

@@ -19,6 +19,11 @@
 
       <!-- 再生/録画・プロジェクトコントローラーを一列に統合 -->
       <div class="transport-controls">
+        <div id="layer-status-badge" class="layer-status-badge" style="display: none;" title="">
+          <span id="layer-status-type" class="layer-status-type"></span>
+          <span id="layer-status-counts" class="layer-status-counts"></span>
+        </div>
+
         <button id="btn-play-pause" class="btn btn-primary">
           <span class="btn-icon">▶</span> <span class="btn-text">Play</span>
         </button>
@@ -45,6 +50,11 @@
             <option value="green">Green Screen (MP4)</option>
             <option value="white">White (MP4)</option>
           </select>
+        </div>
+
+        <div class="control-group inline" title="Also export a ProRes 4444 MOV via local ffmpeg (Transparent WebM only)">
+          <label for="export-prores" style="cursor: pointer;">P4444</label>
+          <input type="checkbox" id="export-prores" style="width: 16px; height: 16px; cursor: pointer;">
         </div>
 
         <div class="control-group inline">

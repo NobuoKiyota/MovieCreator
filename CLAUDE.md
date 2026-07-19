@@ -47,6 +47,9 @@
      - `aspect_break`（回転時の黒い隙間）: rotation有効時、scale下限を対角線カバー率である $1.42$（$\sqrt{2}$）以上に強制クランプ。
      - `too_simple`（シンプルすぎ）: 各種数量・glow・feedbackDecayの下限値を引き上げ、賑やかさを確保。
      - `too_chaotic`（演出過剰）: glowIntensityを最大20.0、feedbackDecayを最大0.80にクランプし、白飛びを防止。
+     - `color_monotonous`（配色が地味・単調）[2026-07-19実装]: 生成する色相(hue)が直前の色相と円環距離で90°未満になった場合、最大20回リロールして離す。
+     - `motion_too_fast`（動きが速すぎて目が疲れる）[2026-07-19実装]: モーションテンプレートの適用を完全に停止(テンプレートは持続時間内に複数振動を詰め込むため速度調整の余地がない)し、代わりに素のLFOのみを使用。LFO周期(`timePct`、値が大きいほど1周期が長い=遅い)を55%以上に強制クランプ。
+     - `motion_too_slow`（静止しすぎ）[2026-07-19実装]: モーションテンプレート適用確率を+30%引き上げ。既存LFOの周期は35%以下(速い)にクランプ。本来は静止(min=max固定)になるはずだったパラメータも、振幅Rangeの15%幅・周期20-35%の軽いLFOを強制付与し、完全な静止を避ける。
 3. **過去のBadデータとの類似度フィルタリング（リロール）**
    - 生成されたパラメータ候補が、過去に👎評価（Bad）された同一レイヤータイプのパラメータ群と正規化類似度で90%以上合致する場合、自動的に再生成（リロール）を行う（最大10回）。
 4. **Good指向の引力（Attraction）** [2026-07-17実装済み]
@@ -95,6 +98,13 @@
 - ユーザーは書き出し時のDuration設定を`cycleDuration`と一致させれば1回だけの展開になる。`cycleDuration`をDurationより短くすると、その周期で繰り返しパルスする（意図的な柔軟性）。
 - `LayerManager.applyModulations(time, duration)`は`duration`を受け取るが`draw()`系には配線されていない（`generator.draw(ctx, width, height, time)`は`time`のみ）ため、他の手段でDurationを取得することはできない。上記の自己完結パターンを使うこと。
 
+**バリエーション: アンビエント素材の「周期ループ」化**（`GrowingSketchGenerator`が実例、2026-07-19）
+- 「無限ループのアンビエント素材」であっても、内部で毎フレーム状態を蓄積し不確定なタイミングでリセットするタイプ（例: 育つ線が画面外に出た/一定量成長したらランダムに描き直す）は、Durationに対して不規則な瞬間にリセットが起き、書き出したループ動画の継ぎ目が汚くなる。
+- この場合は上記のcycleDuration/progressパターンをそのまま流用しつつ、**透明度エンベロープ(fadeIn/fadeOutFrac)を省略**する(常時表示のアンビエント素材なので、透明→不透明→透明ではなく、形状そのものが周期的に再構築される)。
+  - `progress`が0に戻るサイクル境界のたびに、その周期分の軌跡を`Math.random()`込みで**まとめて事前計算**する(`regenerateCycleVariation()`。旧: 毎フレームの逐次成長+不確定な条件でのリセット)。
+  - `draw()`では`progress`に応じて事前計算済みの軌跡を**先頭から`progress`分だけ見せる**(reveal)だけにする。
+  - こうすることで「必ずcycleDurationちょうどで1周期が完結し、次の周期の見た目はランダムに変わる(オーガニックな変化は維持)が、タイミングだけは常に規則的」になる。書き出し時のDurationをcycleDurationの整数倍に設定すれば継ぎ目のないループになる。
+
 ## 開発ロードマップ ＆ タスク一覧（Claude Code / Antigravity IDE 共通）
 
 プリセット販売へ向けた量産の効率化とバリエーション拡充のため、以下の優先順位で開発・保守を進める。どちらのツールで着手してもよいが、着手・完了時は本リストのチェックを更新し、[TASKLOG.md](TASKLOG.md) に1行追記する。
@@ -107,8 +117,7 @@
   - **Move-score方式(稼働中)**: `PresetLayerOpinionSheet.xlsx`のScore/Move/CommentマトリクスのMove列(0〜5、「動かすと効果的か」の評価)を`export_move_scores.py`→`data/move_scores.json`(全21レイヤー485件)に抽出。`randomizeLayer`はMove≤1のパラメータをLFO/キーフレームなしの固定値にし、それ以外は`RANDOM_TEMPLATE_CHANCE`(30%)の確率でモーションテンプレートをランダム適用する。
   - **Excel「Motion Mapping」シート連携(未入力・コード側は修正済み)**: `export_motion_mapping.py`→`data/motion_mapping.json`という別経路も存在するが、シート573行が未入力のため現状マッピングは空。仮に将来手入力しても、シートの列名(`SlowDriftUp`等6種)が`motionTemplates.js`の実キー命名規則(`2P_`等の点数プレフィックス)と一致せず適用ゼロになるバグがあったため、2026-07-19に`LEGACY_CATEGORY_KEYS`で両者を紐付ける修正と、両エクスポートスクリプトのパスのハードコード(`Z:\MovieCreator\...`)を相対パス化する修正を実施。**シートの手入力自体は今後のタスクとして残っている**(573行は現実的でないため、優先度の高いレイヤー・パラメータから部分的に埋めるのが現実的)。
 - [x] **多次元重み付き類似度判定への改善** — 2026-07-19完了。`randomizeLayer`/`generateBatchVariations`で使う類似度計算(旧: 全パラメータ単純平均差分)を`calculateStatesSimilarity`に一本化し重み付けに変更。色/hue系パラメータ名・物量系パラメータ名(count/density等)を固定boost、それ以外はMove-scoreデータ(0〜5)で重み0.6〜1.6倍。あわせて色(color)パラメータ自体が類似度計算から完全に抜け落ちていた既存の抜け穴(hue差を一切見ていなかった)も色相の円環距離で修正。
-- [ ] **アノテーションの拡張**
-  - 👎モーダルのアノテーション理由に、販売用透過動画としての品質基準をより満たすための項目を追加（例: `color_monotonous`（配色が地味・単調）、`motion_too_fast`（動きが速すぎて目が疲れる）、`motion_too_slow`（静止しすぎ）など）。それに伴う動的クランプ制約も実装する。
+- [x] **アノテーションの拡張** — 2026-07-19完了。👎モーダルのアノテーション理由に `color_monotonous`（配色が地味・単調）、`motion_too_fast`（動きが速すぎて目が疲れる）、`motion_too_slow`（静止しすぎ）の3項目を追加し、対応する動的クランプを`randomizeLayer`に実装。詳細は上記「プリセット量産・教師モデル（Mutation）の仕組み」2番を参照。
 
 ### 2. 量産効率化UI・評価管理の整備（優先度：中）
 - [ ] **評価アノテーションデータ（data/scores.json）の管理UI**
@@ -135,6 +144,13 @@
   - WebCodecsによる書き出し時は、一時的に解像度が変わるため、キャンバスリサイズやピクセルデータの取得でメモリリークやクラッシュ（特に4Kエクスポート時）が発生しないか確認すること。
 - **マルチPC・Git運用の徹底**:
   - 開発フローに記載の通り、作業前は必ず `git pull`、完了後はコミットして `git push` を行い、競合を防ぐ。
+
+## ProRes 4444(透過)MOVエクスポート
+
+- 通常の透過エクスポートはブラウザ完結(WebCodecs VP9 alpha → `.webm`)だが、これに加えて**ローカルffmpegを使ったサーバーサイド変換でProRes 4444(透過)の`.mov`も出力できる**(`npm run dev`時のみ。本番ビルドにはAPIミドルウェアが無いため使用不可)。
+- 仕組み: エクスポート画面の「P4444」チェックボックス(`index.html` `#export-prores`)をONにすると、`VideoRecorder.js`の`exportWebMAlpha`が通常の`.webm`ダウンロード後に`transcodeToProRes()`を呼び、生成済みWebM blobを`POST /api/transcode-prores`(`src/server/apiHandler.js`)に送信する。サーバー側は`child_process.spawn`でffmpeg(`-c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le`)を実行し、変換結果の`.mov`をレスポンスとして返す。ブラウザ側は受け取ったMOVを追加でダウンロードする(WebM変換失敗時もWebM自体は正常に手元に残る)。
+- **ffmpegバイナリはPCごとに個別配置**(`tools/ffmpeg/ffmpeg.exe`、`.gitignore`対象でgit同期されない)。`findFfmpegBinary()`がまずこのベンダリングパスを探し、無ければPATH上の`ffmpeg`にフォールバックする。新しいPCでこの機能を使う場合は、ffmpeg実行ファイル(`prores_ks`エンコーダ入りビルド)を該当PCの`tools/ffmpeg/`に手動配置するか、システムPATHにffmpegを通しておくこと。
+- 変換時の一時ファイル(`.tmp_transcode/`、`.gitignore`対象)はリクエストごとに書き込み・変換後即削除される。
 
 ## マルチPC運用(自宅・会社)
 

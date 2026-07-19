@@ -25,10 +25,14 @@ export class Controls {
     this.inspectorContentEl = document.getElementById('inspector-content');
 
     // Transport controls
+    this.layerStatusBadgeEl = document.getElementById('layer-status-badge');
+    this.layerStatusTypeEl = document.getElementById('layer-status-type');
+    this.layerStatusCountsEl = document.getElementById('layer-status-counts');
     this.btnPlayPauseEl = document.getElementById('btn-play-pause');
     this.btnExportEl = document.getElementById('btn-export');
     this.exportDurationEl = document.getElementById('export-duration');
     this.exportBgEl = document.getElementById('export-bg');
+    this.exportProResEl = document.getElementById('export-prores');
     this.exportResolutionEl = document.getElementById('export-resolution');
     this.exportFpsEl = document.getElementById('export-fps');
     this.masterFadeOutEl = document.getElementById('master-fade-out');
@@ -314,7 +318,8 @@ export class Controls {
         width: w,
         height: h,
         bgMode: this.exportBgEl.value,
-        fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 0
+        fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 0,
+        alsoExportProRes: !!(this.exportProResEl && this.exportProResEl.checked)
       };
       this.mainApp.exportVideo(options);
     });
@@ -401,6 +406,10 @@ export class Controls {
       .then(data => {
         if (Array.isArray(data)) {
           this.scoreData = data;
+          // Header badge was built with an empty scoreData at initial rebuildInspector() time
+          // (this fetch hadn't resolved yet), so refresh it now that real counts are in.
+          const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
+          this.updateHeaderLayerStatus(activeLayer || null);
         }
       })
       .catch(err => console.error('Failed to load score history:', err));
@@ -1493,6 +1502,30 @@ export class Controls {
   }
 
   /**
+   * Updates the small teacher-data summary badge shown left of the Play button, so the
+   * evaluation counts for whichever layer is currently active are always at a glance -
+   * same underlying counts as showLearningStatsDialog's per-layer-type section, just
+   * always-visible instead of buried behind the 📊 button.
+   */
+  updateHeaderLayerStatus(layer) {
+    if (!this.layerStatusBadgeEl) return;
+    if (!layer) {
+      this.layerStatusBadgeEl.style.display = 'none';
+      return;
+    }
+
+    const layerData = (this.scoreData || []).filter(e => e.layerType === layer.type);
+    const total = layerData.length;
+    const good = layerData.filter(e => e.score === 'good').length;
+    const bad = layerData.filter(e => e.score === 'bad').length;
+
+    this.layerStatusTypeEl.innerHTML = `<strong>${layer.type}</strong>`;
+    this.layerStatusCountsEl.textContent = `👍${good} / 👎${bad} (${total}件)`;
+    this.layerStatusBadgeEl.title = `Layer Type: ${layer.type}\nこのレイヤータイプの評価数: ${total}回 (👍 ${good} / 👎 ${bad})`;
+    this.layerStatusBadgeEl.style.display = 'flex';
+  }
+
+  /**
    * Rebuilds the Inspector details panel for the active layer.
    */
   rebuildInspector() {
@@ -1512,6 +1545,7 @@ export class Controls {
           <p>Select a layer to adjust parameters</p>
         </div>
       `;
+      this.updateHeaderLayerStatus(null);
       return;
     }
 
@@ -1521,6 +1555,8 @@ export class Controls {
       this.rebuildInspector();
       return;
     }
+
+    this.updateHeaderLayerStatus(layer);
 
     this.inspectorLayerNameEl.value = layer.name;
     this.inspectorLayerNameEl.disabled = false;
@@ -1574,9 +1610,9 @@ export class Controls {
     });
 
     btnRate.addEventListener('click', async () => {
-      const result = await this.showRatingDialog();
+      const result = await this.showRatingDialog(layer);
       if (result) {
-        this.rateLayer(layer, result.rating, result.comment, result.reasons, btnRate);
+        this.rateLayer(layer, result.rating, result.comment, result.reasons, result.paramFlags, btnRate);
       }
     });
 
@@ -1610,7 +1646,7 @@ export class Controls {
           <input type="number" class="batch-threshold" value="${this.batchThreshold}" min="50" max="99" style="width: 40px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; font-size: 0.75rem; padding: 0.1rem 0.25rem; border-radius: 3px; text-align: center;">
           <span style="font-size: 0.7rem; color: var(--color-text-dim);">%</span>
         </div>
-        <button class="btn btn-accent btn-small btn-batch-export" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">🎬 Batch Export (Transparent WebM)</button>
+        <button class="btn btn-accent btn-small btn-batch-export" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; flex: 1;">🎬 Batch Generator...</button>
       </div>
     `;
 
@@ -1627,9 +1663,7 @@ export class Controls {
     });
 
     btnBatchExport.addEventListener('click', async () => {
-      if (confirm(`Start batch export of ${this.batchCount} variations as transparent WebM?`)) {
-        await this.runBatchExport(layer, this.batchCount, this.batchThreshold);
-      }
+      await this.showBatchGeneratorWizard(layer);
     });
 
     this.inspectorContentEl.appendChild(batchHeader);
@@ -1955,6 +1989,19 @@ export class Controls {
         this.drawTimeline();
       });
 
+      // Clicking anywhere on the parameter row focuses it in the shared Keyframe Timeline panel
+      // below - a plain "select to view/edit" action, distinct from the 🔑 button which also
+      // flips keyframeEnabled on/off. Without this, switching the timeline's focus to an already
+      // keyframe-enabled parameter meant toggling 🔑 off then on again just to re-select it.
+      // The per-row buttons (🧬/🔑/+Key/jitter knob) all stopPropagation their own clicks, so this
+      // only fires on the label/value/slider area, not on those.
+      mainField.addEventListener('click', () => {
+        if (this.activeTimelineParam === config.name) return;
+        this.activeTimelineParam = config.name;
+        this.selectedKeyframeIndex = -1;
+        this.drawTimeline();
+      });
+
       fieldWrapper.appendChild(mainField);
 
       // LFO Settings Sub-panel
@@ -2113,14 +2160,26 @@ export class Controls {
     // Weighted by each entry's own 1-10 rating (a 9/10 pulls harder than a flat 7/10) instead of
     // averaging the Good bucket unweighted. Older entries saved before the rating dialog only
     // have score: 'good', so they fall back to an implicit weight of 8 - they still count, just
-    // without the extra precision newer rated entries provide.
-    const ratingWeight = (e) => typeof e.rating === 'number' ? e.rating : 8;
+    // without the extra precision newer rated entries provide. When the rater specifically
+    // flagged THIS parameter as good/bad on THIS example (paramFlags), that per-parameter
+    // attribution overrides the whole-generation rating for this one key: a flagged-good value
+    // pulls at least as hard as a 9, and a flagged-bad value is excluded from this example's
+    // contribution entirely - so a 9/10 example with one specifically-bad param doesn't drag
+    // that param's centroid toward a value the rater explicitly said was wrong.
+    const ratingWeight = (e, key) => {
+      const flag = e.paramFlags && e.paramFlags[key];
+      if (flag === 'bad') return 0;
+      const base = typeof e.rating === 'number' ? e.rating : 8;
+      if (flag === 'good') return Math.max(base, 9);
+      return base;
+    };
     const weightedCentroid = (evalList, field, key) => {
       let weightedSum = 0, weightTotal = 0;
       for (const e of evalList) {
         const val = e[field] && e[field][key];
         if (typeof val !== 'number') continue;
-        const w = ratingWeight(e);
+        const w = ratingWeight(e, key);
+        if (w <= 0) continue;
         weightedSum += val * w;
         weightTotal += w;
       }
@@ -2137,6 +2196,9 @@ export class Controls {
     const hasTooChaotic = badEvaluations.some(e => e.reasons && e.reasons.includes('too_chaotic'));
     const hasNoiseWarpExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('noise_warp_excess'));
     const hasNothingVisible = badEvaluations.some(e => e.reasons && e.reasons.includes('nothing_visible'));
+    const hasColorMonotonous = badEvaluations.some(e => e.reasons && e.reasons.includes('color_monotonous'));
+    const hasMotionTooFast = badEvaluations.some(e => e.reasons && e.reasons.includes('motion_too_fast'));
+    const hasMotionTooSlow = badEvaluations.some(e => e.reasons && e.reasons.includes('motion_too_slow'));
 
     // Similarity between a candidate and one past evaluation - delegates to the shared weighted
     // metric (calculateStatesSimilarity) so the Bad-avoidance check, the Good-closeness check
@@ -2151,6 +2213,21 @@ export class Controls {
         if (sim > max) max = sim;
       }
       return max;
+    };
+
+    // Snaps a random-mutated value back onto the parameter's slider step (e.g. integer counts).
+    // The mutation math below (baseVal + random offset) is pure float arithmetic and previously
+    // ignored config.step entirely, so integer-only params like Sketch Growth's Branches could end
+    // up fractional (e.g. 4.37). That specific case wasn't just cosmetic: growing-sketch's update()
+    // rebuilds its path array to Math.round(branchCount) paths but initPaths() itself loops on the
+    // raw (unrounded) branchCount, so a fractional value made the two disagree on path count every
+    // single frame - triggering a full reset loop that never let branches grow, reading as "stuck
+    // tangled at the center" (see 2026-07-19 bug report). Snapping here fixes that at the source for
+    // every stepped param, not just this one.
+    const snapToStep = (val, config) => {
+      if (!config.step) return val;
+      const snapped = config.min + Math.round((val - config.min) / config.step) * config.step;
+      return Math.max(config.min, Math.min(config.max, snapped));
     };
 
     let attempt = 0;
@@ -2197,6 +2274,14 @@ export class Controls {
               localMin = Math.max(40, localMin); // avoid too dark color
             }
           }
+          // Sketch Growth's "Wiggle" (noiseScale) perturbs each branch's growth angle every frame;
+          // past ~0.5 the perturbation swamps the branch's base direction and it stops reading as
+          // an organic sketch, instead looping back on itself. Cap the randomizer's ceiling well
+          // below the slider's full manual range (kept at 3.0 there for hands-on experimentation) -
+          // 2026-07-19 user feedback: results above 0.5 are rarely kept anyway.
+          if (layer.type === 'growing-sketch' && config.name === 'noiseScale') {
+            localMax = Math.min(0.5, localMax);
+          }
 
           const range = config.max - config.min;
           let baseVal = layer.generator.params[config.name] !== undefined
@@ -2211,6 +2296,7 @@ export class Controls {
           const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
           let newVal = baseVal + offset;
           newVal = Math.max(localMin, Math.min(localMax, newVal));
+          newVal = snapToStep(newVal, config);
 
           candidateParams[config.name] = newVal;
 
@@ -2246,6 +2332,14 @@ export class Controls {
                 templateApplied = this.applyMotionTemplate(candidateMod, templateName, modMin, modMax, durationVal);
               }
 
+              // motion_too_fast constraint: templates pack in several oscillations across the
+              // duration with no independent speed knob, so the only lever is to stop reaching
+              // for one at all and fall back to a (speed-clampable) plain LFO instead.
+              // motion_too_slow constraint: nudge the odds up so more parameters actually move.
+              const effectiveTemplateChance = hasMotionTooFast
+                ? 0
+                : (hasMotionTooSlow ? Math.min(1, this.RANDOM_TEMPLATE_CHANCE + 0.3) : this.RANDOM_TEMPLATE_CHANCE);
+
               if (templateApplied) {
                 candidateModulations[config.name] = candidateMod;
               } else if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
@@ -2253,9 +2347,9 @@ export class Controls {
                   const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
                   let newKfVal = kf.value + kfOffset;
                   newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
-                  kf.value = newKfVal;
+                  kf.value = snapToStep(newKfVal, config);
                 });
-              } else if (Math.random() < this.RANDOM_TEMPLATE_CHANCE) {
+              } else if (Math.random() < effectiveTemplateChance) {
                 // Not Excel-mapped, but Move score doesn't rule it out - occasionally pull a
                 // shape straight from the motion template library instead of plain LFO.
                 const templateKeys = Object.keys(MOTION_TEMPLATES);
@@ -2274,12 +2368,24 @@ export class Controls {
                 newMin = Math.max(localMin, Math.min(localMax, newMin));
                 newMax = Math.max(localMin, Math.min(localMax, newMax));
 
-                candidateMod.min = newMin;
-                candidateMod.max = newMax;
+                candidateMod.min = snapToStep(newMin, config);
+                candidateMod.max = snapToStep(newMax, config);
 
                 const offsetTime = (Math.random() * 2 - 1) * 15;
                 let newTimePct = mod.timePct + offsetTime;
-                candidateMod.timePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
+                newTimePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
+                // timePct = one LFO cycle's % share of the export duration, so higher = slower.
+                if (hasMotionTooFast) newTimePct = Math.max(55, newTimePct);
+                if (hasMotionTooSlow) newTimePct = Math.min(35, newTimePct);
+                candidateMod.timePct = newTimePct;
+              } else if (hasMotionTooSlow) {
+                // "静止しすぎ" - this parameter would otherwise stay pinned static; force a modest,
+                // fast-ish sway instead so the layer isn't dead motion-wise.
+                const lfoSpan = range * 0.15;
+                candidateMod.enabled = true;
+                candidateMod.min = snapToStep(Math.max(localMin, newVal - lfoSpan / 2), config);
+                candidateMod.max = snapToStep(Math.min(localMax, newVal + lfoSpan / 2), config);
+                candidateMod.timePct = 20 + Math.floor(Math.random() * 15);
               } else {
                 candidateMod.min = newVal;
                 candidateMod.max = newVal;
@@ -2288,7 +2394,21 @@ export class Controls {
             }
           }
         } else if (config.type === 'color') {
-          const h = Math.floor(Math.random() * 360);
+          let h = Math.floor(Math.random() * 360);
+          // color_monotonous constraint: a fully random hue can land close to the previous one by
+          // pure chance, which is exactly what "地味・単調" complaints are about. Reroll until the
+          // new hue sits at least 90° (circular distance) away from the current color.
+          if (hasColorMonotonous) {
+            const prevHex = layer.generator.params[config.name];
+            if (prevHex) {
+              const prevHue = hexToHsl(prevHex).h;
+              let guard = 0;
+              while (guard < 20 && Math.min(Math.abs(h - prevHue), 360 - Math.abs(h - prevHue)) < 90) {
+                h = Math.floor(Math.random() * 360);
+                guard++;
+              }
+            }
+          }
           const s = 85 + Math.floor(Math.random() * 15);
           const l = 45 + Math.floor(Math.random() * 15);
           candidateParams[config.name] = this.hslToHex(h, s, l);
@@ -2569,7 +2689,7 @@ export class Controls {
           
           const goodDecayCentroid = goodEffectCentroid('feedbackDecay');
           if (goodDecayCentroid !== null && goodAttractionWeight > 0) {
-            baseVal = baseVal * (1 - goodAttractionWeight) + goodDecayCentroid * goodDecayCentroid;
+            baseVal = baseVal * (1 - goodAttractionWeight) + goodDecayCentroid * goodAttractionWeight;
           }
           
           const offset = (Math.random() * 2 - 1) * (range * spread * 0.05); // very small fluctuation
@@ -2820,167 +2940,6 @@ export class Controls {
     }
   }
 
-  async runBatchExport(layer, count, thresholdPct) {
-    this.mainApp.pause();
-
-    // 1. Generate variations
-    const threshold = thresholdPct / 100;
-    const variations = this.generateBatchVariations(layer, count, layer.randomSpread !== undefined ? layer.randomSpread : 50, threshold);
-
-    if (variations.length === 0) {
-      alert('Failed to generate any valid variations. Please adjust your criteria or score database.');
-      this.mainApp.play();
-      return;
-    }
-
-    // 2. Hide other layers to render active layer solo
-    const originalVisibilities = this.layerManager.layers.map(l => ({
-      id: l.id,
-      visible: l.visible
-    }));
-
-    this.layerManager.layers.forEach(l => {
-      l.visible = (l.id === layer.id);
-    });
-
-    // Back up original state of the active layer
-    const originalState = {
-      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
-      effects: JSON.parse(JSON.stringify(layer.effects || {})),
-      modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
-    };
-
-    // Show Progress Overlay
-    const overlay = this.mainApp.recordingOverlayEl;
-    const statusEl = this.mainApp.recordingStatusEl;
-    const progressEl = this.mainApp.recordingProgressEl;
-
-    overlay.classList.remove('hidden');
-
-    try {
-      const resVal = this.exportResolutionEl ? this.exportResolutionEl.value : '1080p';
-      let w = 1920, h = 1080;
-      if (resVal === '720p') { w = 1280; h = 720; }
-      else if (resVal === '4K') { w = 3840; h = 2160; }
-
-      const fpsVal = this.exportFpsEl ? parseInt(this.exportFpsEl.value, 10) : 60;
-      const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-      const fadeOutVal = parseFloat(this.masterFadeOutEl.value) || 0;
-
-      for (let i = 0; i < variations.length; i++) {
-        // Apply parameters for current variation
-        this.restoreLayerState(layer, variations[i]);
-        
-        statusEl.textContent = `Batch rendering: ${i + 1}/${variations.length} (0%)`;
-        progressEl.value = 0;
-
-        const options = {
-          duration: durationVal,
-          fps: fpsVal,
-          width: w,
-          height: h,
-          bgMode: 'transparent',
-          fadeOutDuration: fadeOutVal,
-          filename: `MovieCreator_Batch_${layer.type}_var${i + 1}_${Date.now()}`
-        };
-
-        // Export and wait for completion
-        await new Promise((resolve, reject) => {
-          this.mainApp.recorder.export(
-            options,
-            (percent) => {
-              statusEl.textContent = `Batch rendering: ${i + 1}/${variations.length} (${percent}%)`;
-              progressEl.value = percent;
-            },
-            () => {
-              resolve();
-            }
-          ).catch(err => {
-            console.error(`Error exporting variation ${i + 1}:`, err);
-            reject(err);
-          });
-        });
-
-        // Small delay to allow the browser thread to settle and process downloads
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    } catch (err) {
-      console.error('Batch export failed:', err);
-      alert(`Batch export stopped due to error: ${err.message}`);
-    } finally {
-      // Restore states
-      this.restoreLayerState(layer, originalState);
-      
-      originalVisibilities.forEach(orig => {
-        const l = this.layerManager.layers.find(x => x.id === orig.id);
-        if (l) l.visible = orig.visible;
-      });
-
-      overlay.classList.add('hidden');
-      this.rebuildInspector();
-      this.mainApp.play();
-    }
-  }
-
-  generateBatchVariations(layer, count, spreadPct, minSimilarityThreshold) {
-    const variations = [];
-    
-    const originalState = {
-      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
-      effects: JSON.parse(JSON.stringify(layer.effects || {})),
-      modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
-    };
-
-    const genConfigs = layer.generator.getParameterConfig();
-
-    for (let i = 0; i < count; i++) {
-      let candidateState = null;
-      let rerolls = 0;
-      const maxRerolls = 20;
-
-      while (rerolls < maxRerolls) {
-        this.restoreLayerState(layer, originalState);
-        this.randomizeLayer(layer, spreadPct);
-
-        const potentialState = {
-          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
-          effects: JSON.parse(JSON.stringify(layer.effects || {})),
-          modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
-        };
-
-        let isTooSimilar = false;
-        for (const existing of variations) {
-          const sim = this.calculateStatesSimilarity(potentialState, existing, genConfigs, layer.type);
-          if (sim >= minSimilarityThreshold) {
-            isTooSimilar = true;
-            break;
-          }
-        }
-
-        if (!isTooSimilar) {
-          candidateState = potentialState;
-          break;
-        }
-
-        rerolls++;
-      }
-
-      if (!candidateState) {
-        console.warn(`[Batch Generator] Reach max rerolls for variation ${i + 1}. Using last generated candidate.`);
-        candidateState = {
-          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
-          effects: JSON.parse(JSON.stringify(layer.effects || {})),
-          modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
-        };
-      }
-
-      variations.push(candidateState);
-    }
-
-    this.restoreLayerState(layer, originalState);
-    return variations;
-  }
-
   restoreLayerState(layer, state) {
     for (let key in state.params) {
       layer.generator.params[key] = state.params[key];
@@ -3006,6 +2965,606 @@ export class Controls {
     }
   }
 
+  // Saves one Batch Generator candidate's parameters as a real .mvlayer preset file, the moment
+  // it's checked "Keep" - reuses the exact same /api/save endpoint and file shape as the
+  // Inspector's normal 💾 Save button, so "keep this" persists across closing the wizard, closing
+  // the browser, or switching PCs (presets/ is git-tracked) without inventing a new storage
+  // format. Returns the saved filename, or null on failure (caller shows a toast either way).
+  async autoSaveCandidateAsPreset(layer, candidateState, index) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const baseName = (layer.name || layer.type).replace(/\s*\(Batch\)\s*$/, '').trim();
+    const rawName = `${baseName} Batch ${stamp} v${index + 1}`;
+
+    const layerData = {
+      version: '1.0',
+      type: 'movie-creator-layer-preset',
+      layer: {
+        type: layer.type,
+        name: rawName,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        randomSpread: layer.randomSpread,
+        currentPresetName: layer.currentPresetName,
+        params: { ...candidateState.params },
+        effects: { ...candidateState.effects },
+        modulations: JSON.parse(JSON.stringify(candidateState.modulations))
+      }
+    };
+
+    try {
+      const res = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'preset', name: rawName, data: layerData })
+      });
+      const result = await res.json();
+      if (result.success) {
+        this.showToast(`✅ Kept & saved: presets/${result.file}`, 'success');
+        await this.refreshFileList();
+        return result.file;
+      }
+      this.showToast('❌ Failed to save kept variation: ' + result.error, 'error');
+      return null;
+    } catch (err) {
+      this.showToast('❌ Failed to save kept variation: ' + err.message, 'error');
+      return null;
+    }
+  }
+
+  // Loads a saved .mvlayer preset file as a brand-new project layer (mirrors apiImportLayer's
+  // load+copy logic without its UI-refresh side effects) for the Batch Generator wizard to work
+  // on. Returns null on failure rather than throwing, so callers can show a toast and stay put.
+  async createLayerFromPresetFile(file) {
+    try {
+      const res = await fetch(`/api/load?type=preset&file=${encodeURIComponent(file)}`);
+      if (!res.ok) throw new Error('Preset file not found or server error');
+      const data = await res.json();
+      if (!data || data.type !== 'movie-creator-layer-preset' || !data.layer) {
+        throw new Error('Invalid layer preset data');
+      }
+
+      const lData = data.layer;
+      const newLayer = this.layerManager.addLayer(lData.type);
+
+      newLayer.name = lData.name ? `${lData.name} (Batch)` : newLayer.name;
+      newLayer.opacity = lData.opacity !== undefined ? lData.opacity : 1.0;
+      newLayer.blendMode = lData.blendMode || 'lighter';
+      newLayer.randomSpread = lData.randomSpread !== undefined ? lData.randomSpread : 50;
+      newLayer.currentPresetName = lData.currentPresetName || 'static-none';
+
+      if (lData.params) {
+        newLayer.generator.params = { ...newLayer.generator.params, ...lData.params };
+      }
+      if (lData.effects) {
+        newLayer.effects = { ...newLayer.effects, ...lData.effects };
+      }
+      if (lData.modulations) {
+        for (let paramName in lData.modulations) {
+          if (newLayer.modulations[paramName]) {
+            const srcMod = lData.modulations[paramName];
+            newLayer.modulations[paramName].enabled = srcMod.enabled;
+            newLayer.modulations[paramName].min = srcMod.min;
+            newLayer.modulations[paramName].max = srcMod.max;
+            newLayer.modulations[paramName].timePct = srcMod.timePct !== undefined ? srcMod.timePct : 50;
+            newLayer.modulations[paramName].behavior = srcMod.behavior || 'return';
+            newLayer.modulations[paramName].keyframeEnabled = srcMod.keyframeEnabled !== undefined ? srcMod.keyframeEnabled : false;
+            newLayer.modulations[paramName].keyframes = srcMod.keyframes ? JSON.parse(JSON.stringify(srcMod.keyframes)) : [];
+            newLayer.modulations[paramName].spawnJitter = srcMod.spawnJitter !== undefined ? srcMod.spawnJitter : false;
+            if (srcMod.jitterWidth !== undefined) newLayer.modulations[paramName].jitterWidth = srcMod.jitterWidth;
+          }
+        }
+      }
+
+      // initModulations() captured jitterBase from the generator's DEFAULT params at layer
+      // construction time, before the preset's real params/effects were copied in just above -
+      // re-sync it now so the wizard's Random draws center on what the preset actually configured.
+      for (let key in newLayer.modulations) {
+        if (key in newLayer.generator.params) newLayer.modulations[key].jitterBase = newLayer.generator.params[key];
+        else if (key in newLayer.effects) newLayer.modulations[key].jitterBase = newLayer.effects[key];
+      }
+
+      return newLayer;
+    } catch (err) {
+      console.error('Failed to load preset as new layer:', err);
+      return null;
+    }
+  }
+
+  // Applies one manually-configured random draw to `layer` in place, per the Batch Generator
+  // wizard's per-parameter flags. Priority per parameter is KeyFrame > LFO > Random > static (a
+  // parameter picks exactly one mode of variation, avoiding conflicting simultaneous ownership of
+  // its live value - the same reasoning applySpawnJitterOne already uses against LFO/keyframes).
+  // flags: { [paramName]: { random: bool, lfo: bool, keyframe: bool } }
+  applyManualBatchDraw(layer, flags, durationVal) {
+    const applyOne = (key, config) => {
+      const f = flags[key];
+      const mod = layer.modulations[key];
+      if (!f || !mod) return;
+
+      if (f.keyframe) {
+        const templateKeys = Object.keys(MOTION_TEMPLATES);
+        const pick = templateKeys[Math.floor(Math.random() * templateKeys.length)];
+        const modMin = config.min + (config.max - config.min) * 0.1;
+        const modMax = config.max - (config.max - config.min) * 0.1;
+        mod.enabled = false;
+        this.applyMotionTemplate(mod, pick, modMin, modMax, durationVal);
+      } else if (f.lfo) {
+        mod.keyframeEnabled = false;
+        mod.enabled = true; // keeps this param's existing min/max/timePct/behavior as configured
+      } else {
+        mod.enabled = false;
+        mod.keyframeEnabled = false;
+      }
+
+      if (f.random) {
+        mod.spawnJitter = true;
+        layer.applySpawnJitterOne(key); // no-ops if enabled/keyframeEnabled ended up true above
+      }
+    };
+
+    layer.generator.getParameterConfig().forEach(config => {
+      if (config.type === 'range') applyOne(config.name, config);
+    });
+    for (let fxName in this.fxConfigs) {
+      // this.fxConfigs is keyed by a UI-only shorthand that doesn't always match the real
+      // modulations/effects key (e.g. 'kaleidoscope' -> name: 'kaleidoscopeSegment') - use
+      // .name, not the loop key, wherever this actually indexes into layer state.
+      applyOne(this.fxConfigs[fxName].name, this.fxConfigs[fxName]);
+    }
+  }
+
+  // Manual-flag counterpart to generateBatchVariations: same within-batch diversity reroll (avoid
+  // near-duplicate candidates), but the per-parameter randomization itself is driven entirely by
+  // the wizard's explicit flags instead of randomizeLayer's spread/Good-Bad-learning heuristics.
+  generateManualBatchVariations(layer, count, thresholdPct, flags) {
+    const threshold = thresholdPct / 100;
+    const variations = [];
+    const originalState = {
+      params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+      effects: JSON.parse(JSON.stringify(layer.effects || {})),
+      modulations: JSON.parse(JSON.stringify(layer.modulations || {}))
+    };
+    const genConfigs = layer.generator.getParameterConfig();
+    const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+
+    for (let i = 0; i < count; i++) {
+      let candidateState = null;
+      let rerolls = 0;
+      const maxRerolls = 20;
+
+      while (rerolls < maxRerolls) {
+        this.restoreLayerState(layer, originalState);
+        this.applyManualBatchDraw(layer, flags, durationVal);
+
+        const potentialState = {
+          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+          effects: JSON.parse(JSON.stringify(layer.effects || {})),
+          modulations: JSON.parse(JSON.stringify(layer.modulations || {})),
+          keep: false,
+          rated: false
+        };
+
+        let isTooSimilar = false;
+        for (const existing of variations) {
+          const sim = this.calculateStatesSimilarity(potentialState, existing, genConfigs, layer.type);
+          if (sim >= threshold) {
+            isTooSimilar = true;
+            break;
+          }
+        }
+
+        if (!isTooSimilar) {
+          candidateState = potentialState;
+          break;
+        }
+        rerolls++;
+      }
+
+      if (!candidateState) {
+        candidateState = {
+          params: JSON.parse(JSON.stringify(layer.generator.params || {})),
+          effects: JSON.parse(JSON.stringify(layer.effects || {})),
+          modulations: JSON.parse(JSON.stringify(layer.modulations || {})),
+          keep: false,
+          rated: false
+        };
+      }
+
+      variations.push(candidateState);
+    }
+
+    this.restoreLayerState(layer, originalState);
+    return { variations, originalState };
+  }
+
+  // Exports only the specifically kept candidates from a Batch Generator review session, reusing
+  // the exact same per-item export options/loop as runBatchExport.
+  async exportBatchCandidates(layer, candidates) {
+    this.mainApp.pause();
+    const overlay = this.mainApp.recordingOverlayEl;
+    const statusEl = this.mainApp.recordingStatusEl;
+    const progressEl = this.mainApp.recordingProgressEl;
+    overlay.classList.remove('hidden');
+
+    try {
+      const resVal = this.exportResolutionEl ? this.exportResolutionEl.value : '1080p';
+      let w = 1920, h = 1080;
+      if (resVal === '720p') { w = 1280; h = 720; }
+      else if (resVal === '4K') { w = 3840; h = 2160; }
+
+      const fpsVal = this.exportFpsEl ? parseInt(this.exportFpsEl.value, 10) : 60;
+      const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+      const fadeOutVal = parseFloat(this.masterFadeOutEl.value) || 0;
+
+      for (let i = 0; i < candidates.length; i++) {
+        this.restoreLayerState(layer, candidates[i]);
+
+        statusEl.textContent = `Exporting kept variation: ${i + 1}/${candidates.length} (0%)`;
+        progressEl.value = 0;
+
+        const options = {
+          duration: durationVal,
+          fps: fpsVal,
+          width: w,
+          height: h,
+          bgMode: 'transparent',
+          fadeOutDuration: fadeOutVal,
+          alsoExportProRes: !!(this.exportProResEl && this.exportProResEl.checked),
+          filename: `MovieCreator_Batch_${layer.type}_var${i + 1}_${Date.now()}`
+        };
+
+        await new Promise((resolve, reject) => {
+          this.mainApp.recorder.export(
+            options,
+            (percent) => {
+              statusEl.textContent = `Exporting kept variation: ${i + 1}/${candidates.length} (${percent}%)`;
+              progressEl.value = percent;
+            },
+            () => resolve()
+          ).catch(reject);
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      this.showToast(`Exported ${candidates.length} variation(s)`, 'success');
+    } catch (err) {
+      console.error('Batch export (selected) failed:', err);
+      alert(`Batch export stopped due to error: ${err.message}`);
+    } finally {
+      overlay.classList.add('hidden');
+      this.mainApp.play();
+    }
+  }
+
+  // Batch Generator wizard: 1) pick a target preset (or use the current layer as-is), 2) toggle
+  // Random/LFO/KeyFrame per parameter and set Count/Filter, 3) review generated candidates one at
+  // a time in the live preview, mark which to keep (or rate the rejects), then export only the
+  // kept ones. Replaces the old "press button -> immediately export everything" flow.
+  async showBatchGeneratorWizard(seedLayer) {
+    // Opens in its own popup window (same mechanism as the Float Inspector) instead of an
+    // in-page overlay - a full-screen backdrop-blur overlay would otherwise mask the live
+    // preview canvas for the entire time this multi-step wizard is open, which defeats the
+    // point of the Step 3 review (you need to actually see each candidate while deciding).
+    // The popup's controls still drive this.mainApp/this.layerManager directly, so the canvas
+    // in the MAIN window updates live exactly like the Float Inspector's controls do today.
+    const popup = window.open('', 'MovieCreatorBatchGenerator', 'width=620,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+    if (!popup) {
+      this.showToast('⚠️ Popup blocker prevented opening the Batch Generator window. Please allow popups for this site.', 'error');
+      return;
+    }
+    const pDoc = popup.document;
+    pDoc.title = 'MovieCreator - Batch Generator';
+    document.querySelectorAll('link[rel="stylesheet"], style').forEach(el => {
+      pDoc.head.appendChild(el.cloneNode(true));
+    });
+    pDoc.body.style.cssText = `
+      background: #090714; margin: 0; padding: 1rem; color: #e2e8f0;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    `;
+
+    const card = pDoc.createElement('div');
+    card.style.cssText = `
+      display: flex; flex-direction: column; gap: 1rem;
+      height: calc(100vh - 2rem);
+    `;
+    pDoc.body.appendChild(card);
+
+    let closed = false;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeWizard();
+    };
+    popup.addEventListener('keydown', handleKeyDown);
+
+    // Restored when the wizard closes at any step, so cancelling never leaves the project
+    // showing a half-configured batch draw or other layers hidden.
+    const originalVisibilities = this.layerManager.layers.map(l => ({ id: l.id, visible: l.visible }));
+    let workingLayer = null;
+    let workingLayerIsNew = false;
+    let seedSnapshot = null;
+    // Accumulates across multiple "Generate" / "Generate More" rounds within one wizard session,
+    // so reconfiguring or generating another batch never discards earlier Keep/Rate decisions.
+    let candidates = [];
+    let lastFlags = null;
+
+    const closeWizard = (restore = true) => {
+      if (closed) return;
+      closed = true;
+      if (restore && workingLayer && seedSnapshot) {
+        this.restoreLayerState(workingLayer, seedSnapshot);
+      }
+      originalVisibilities.forEach(orig => {
+        const l = this.layerManager.layers.find(x => x.id === orig.id);
+        if (l) l.visible = orig.visible;
+      });
+      if (!popup.closed) popup.close();
+      this.rebuildLayersList();
+      this.rebuildInspector();
+      this.mainApp.renderSingleFrame();
+    };
+
+    // Also clean up correctly if the user closes the popup with its own window controls
+    // rather than the in-wizard Close/Cancel button.
+    popup.addEventListener('beforeunload', () => {
+      setTimeout(() => closeWizard(true), 0);
+    });
+
+    const soloPreview = (state) => {
+      if (state) this.restoreLayerState(workingLayer, state);
+      this.layerManager.layers.forEach(l => { l.visible = (l.id === workingLayer.id); });
+      this.mainApp.renderSingleFrame();
+    };
+
+    // --- Step 1: target ---
+    let presetFiles = [];
+    try {
+      const res = await fetch('/api/files');
+      const data = await res.json();
+      presetFiles = (data && data.presets) || [];
+    } catch (err) {
+      console.warn('Failed to load preset list for Batch Generator:', err.message);
+    }
+
+    const renderStep1 = () => {
+      card.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">🎬 Batch Generator — 1. Target</h3>
+        <p style="margin: 0; font-size: 0.8rem; color: #9ca3af;">プリセットを選ぶか、今のレイヤー(${seedLayer.name})をそのまま使います。</p>
+        <select class="bg-preset-select" style="padding: 0.4rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 6px; font-size: 0.85rem;">
+          <option value="">-- 今のレイヤーを使う (${seedLayer.name}) --</option>
+          ${presetFiles.map(f => `<option value="${f}">${f.replace(/\.mvlayer$/, '')}</option>`).join('')}
+        </select>
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <button class="bg-cancel" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+          <button class="bg-next" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #22d3ee; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Next</button>
+        </div>
+      `;
+      card.querySelector('.bg-cancel').addEventListener('click', () => closeWizard(false));
+      card.querySelector('.bg-next').addEventListener('click', async () => {
+        const chosen = card.querySelector('.bg-preset-select').value;
+        const nextBtn = card.querySelector('.bg-next');
+        nextBtn.disabled = true;
+        nextBtn.textContent = 'Loading...';
+
+        if (chosen) {
+          const loaded = await this.createLayerFromPresetFile(chosen);
+          if (!loaded) {
+            this.showToast('Failed to load preset', 'error');
+            nextBtn.disabled = false;
+            nextBtn.textContent = 'Next';
+            return;
+          }
+          workingLayer = loaded;
+          workingLayerIsNew = true;
+        } else {
+          workingLayer = seedLayer;
+          workingLayerIsNew = false;
+        }
+
+        seedSnapshot = {
+          params: JSON.parse(JSON.stringify(workingLayer.generator.params || {})),
+          effects: JSON.parse(JSON.stringify(workingLayer.effects || {})),
+          modulations: JSON.parse(JSON.stringify(workingLayer.modulations || {}))
+        };
+
+        this.rebuildLayersList();
+        soloPreview(null);
+        renderStep2();
+      });
+    };
+
+    // --- Step 2: per-parameter config ---
+    const renderStep2 = () => {
+      const genConfigs = workingLayer.generator.getParameterConfig();
+      const rows = [];
+      genConfigs.forEach(config => {
+        if (config.type === 'range') rows.push({ key: config.name, label: config.label, config });
+      });
+      for (let fxName in this.fxConfigs) {
+        // Same .name-vs-loop-key caveat as applyManualBatchDraw - see comment there.
+        rows.push({ key: this.fxConfigs[fxName].name, label: this.fxConfigs[fxName].label, config: this.fxConfigs[fxName] });
+      }
+
+      const moveScoreFor = (key) => this.moveScores && this.moveScores[workingLayer.type]
+        ? this.moveScores[workingLayer.type][key] : undefined;
+
+      const rowsHtml = rows.map(r => {
+        const mod = workingLayer.modulations[r.key];
+        const move = moveScoreFor(r.key);
+        const moveHint = move !== undefined ? `<span style="color: #6b7280;"> (Move:${move})</span>` : '';
+        const dim = (move !== undefined && move <= 1) ? 'opacity: 0.55;' : '';
+        const widthVal = mod.jitterWidth !== undefined ? mod.jitterWidth : 20;
+        return `
+          <div class="bg-param-row" data-key="${r.key}" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); ${dim}">
+            <span style="flex: 1; font-size: 0.72rem; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.label}">${r.label}${moveHint}</span>
+            <input type="checkbox" class="bg-flag-random" checked title="Random" style="accent-color: #f59e0b; width: 14px; height: 14px;">
+            <input type="range" class="bg-random-width" min="0" max="100" value="${widthVal}" title="Random width %" style="width: 46px;">
+            <input type="checkbox" class="bg-flag-lfo" title="LFO" style="accent-color: #a78bfa; width: 14px; height: 14px;">
+            <input type="checkbox" class="bg-flag-key" title="KeyFrame (random template)" style="accent-color: #22d3ee; width: 14px; height: 14px;">
+          </div>
+        `;
+      }).join('');
+
+      card.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">🎬 Batch Generator — 2. Configure</h3>
+        <div style="display: flex; gap: 0.4rem; font-size: 0.65rem; color: #6b7280;">
+          <span style="flex: 1;"></span><span title="Random">🎲</span><span style="width: 46px; text-align: center;">width%</span><span title="LFO">🧬</span><span title="KeyFrame">🔑</span>
+        </div>
+        <div class="bg-param-list" style="display: flex; flex-direction: column; max-height: 280px; overflow-y: auto; padding-right: 0.25rem;">
+          ${rowsHtml}
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; justify-content: space-between; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+          <div style="display: flex; align-items: center; gap: 0.25rem;">
+            <span style="font-size: 0.7rem; color: var(--color-text-dim);">Count:</span>
+            <input type="number" class="bg-count" value="${this.batchCount}" min="1" max="50" style="width: 45px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; font-size: 0.75rem; padding: 0.1rem 0.25rem; border-radius: 3px; text-align: center;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.25rem;">
+            <span style="font-size: 0.7rem; color: var(--color-text-dim);">Filter:</span>
+            <input type="number" class="bg-threshold" value="${this.batchThreshold}" min="50" max="99" style="width: 40px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; font-size: 0.75rem; padding: 0.1rem 0.25rem; border-radius: 3px; text-align: center;">
+            <span style="font-size: 0.7rem; color: var(--color-text-dim);">%</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <button class="bg-back" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Back</button>
+          <button class="bg-cancel" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Cancel</button>
+          <button class="bg-generate" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #22d3ee; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Generate</button>
+        </div>
+      `;
+
+      card.querySelector('.bg-back').addEventListener('click', () => {
+        if (workingLayerIsNew) {
+          this.layerManager.removeLayer(workingLayer.id);
+          workingLayer = null;
+          workingLayerIsNew = false;
+        }
+        this.rebuildLayersList();
+        renderStep1();
+      });
+      card.querySelector('.bg-cancel').addEventListener('click', () => closeWizard());
+
+      card.querySelector('.bg-generate').addEventListener('click', () => {
+        this.batchCount = parseInt(card.querySelector('.bg-count').value, 10) || 10;
+        this.batchThreshold = parseInt(card.querySelector('.bg-threshold').value, 10) || 90;
+
+        const flags = {};
+        card.querySelectorAll('.bg-param-row').forEach(row => {
+          const key = row.dataset.key;
+          const mod = workingLayer.modulations[key];
+          const widthInput = row.querySelector('.bg-random-width');
+          if (mod) mod.jitterWidth = parseInt(widthInput.value, 10);
+          flags[key] = {
+            random: row.querySelector('.bg-flag-random').checked,
+            lfo: row.querySelector('.bg-flag-lfo').checked,
+            keyframe: row.querySelector('.bg-flag-key').checked
+          };
+        });
+
+        lastFlags = flags;
+        const { variations } = this.generateManualBatchVariations(workingLayer, this.batchCount, this.batchThreshold, flags);
+        candidates = variations; // fresh start - "Generate More" in Step 3 appends instead
+        renderStep3();
+      });
+    };
+
+    // --- Step 3: review & export --- (reads/mutates the outer `candidates` array so "Generate
+    // More" can append another round without losing earlier Keep/Rate decisions)
+    const renderStep3 = () => {
+      let activeIdx = -1;
+
+      const rowsHtml = candidates.map((c, i) => `
+        <div class="bg-result-row" data-idx="${i}" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; border-radius: 4px;">
+          <span style="flex: 1; font-size: 0.8rem; color: #e2e8f0;">Variation ${i + 1}</span>
+          <span class="bg-saved-badge" style="font-size: 0.65rem; color: #10b981; display: ${c.savedPresetFile ? 'inline' : 'none'};" title="${c.savedPresetFile || ''}">💾 saved</span>
+          <span class="bg-rated-badge" style="font-size: 0.65rem; color: #f59e0b; display: ${c.rated ? 'inline' : 'none'};">rated</span>
+          <button class="bg-rate-btn" title="Rate this variation" style="padding: 0.15rem 0.4rem; border-radius: 4px; border: 1px solid #4b5563; background: transparent; color: #f59e0b; cursor: pointer; font-size: 0.75rem;">⭐</button>
+          <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: #10b981; cursor: pointer;">
+            <input type="checkbox" class="bg-keep-cb" ${c.keep ? 'checked' : ''}> Keep
+          </label>
+        </div>
+      `).join('');
+
+      card.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">🎬 Batch Generator — 3. Review (${candidates.length})</h3>
+        <p style="margin: 0; font-size: 0.8rem; color: #9ca3af;">クリックでプレビュー。Keepチェックで即プリセット保存されます(presets/へ)。不採用のものも⭐で評価できます。</p>
+        <div class="bg-result-list" style="display: flex; flex-direction: column; max-height: 300px; overflow-y: auto;">
+          ${rowsHtml}
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+          <span class="bg-keep-count" style="font-size: 0.75rem; color: #9ca3af;"></span>
+          <button class="bg-generate-more" style="padding: 0.3rem 0.75rem; border-radius: 6px; border: 1px solid #22d3ee; background: transparent; color: #22d3ee; cursor: pointer; font-size: 0.8rem;">🔄 Generate More (${this.batchCount})</button>
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+          <button class="bg-close" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Close</button>
+          <button class="bg-export-selected" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #10b981; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Export Selected</button>
+        </div>
+      `;
+
+      const keepCountEl = card.querySelector('.bg-keep-count');
+      const refreshKeepCount = () => {
+        const n = candidates.filter(c => c.keep).length;
+        keepCountEl.textContent = `${n} / ${candidates.length} kept`;
+      };
+      refreshKeepCount();
+
+      card.querySelectorAll('.bg-result-row').forEach(row => {
+        const idx = parseInt(row.dataset.idx, 10);
+
+        row.querySelector('.bg-keep-cb').addEventListener('change', async (e) => {
+          candidates[idx].keep = e.target.checked;
+          refreshKeepCount();
+          // Checking Keep immediately persists this candidate as a real preset file, so it
+          // survives closing the wizard/browser (unchecking does NOT delete the saved file -
+          // deleting on an accidental un-check would be a destructive surprise).
+          if (e.target.checked && !candidates[idx].savedPresetFile) {
+            const savedFile = await this.autoSaveCandidateAsPreset(workingLayer, candidates[idx], idx);
+            if (savedFile) {
+              candidates[idx].savedPresetFile = savedFile;
+              const badge = row.querySelector('.bg-saved-badge');
+              badge.style.display = 'inline';
+              badge.title = savedFile;
+            }
+          }
+        });
+
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.bg-keep-cb') || e.target.closest('.bg-rate-btn')) return;
+          activeIdx = idx;
+          soloPreview(candidates[idx]);
+          card.querySelectorAll('.bg-result-row').forEach(r => { r.style.background = ''; });
+          row.style.background = 'rgba(34,211,238,0.15)';
+        });
+
+        row.querySelector('.bg-rate-btn').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          activeIdx = idx;
+          soloPreview(candidates[idx]);
+          const result = await this.showRatingDialog(workingLayer, pDoc);
+          if (result) {
+            this.rateLayer(workingLayer, result.rating, result.comment, result.reasons, result.paramFlags, row.querySelector('.bg-rate-btn'));
+            candidates[idx].rated = true;
+            row.querySelector('.bg-rated-badge').style.display = 'inline';
+          }
+        });
+      });
+
+      card.querySelector('.bg-generate-more').addEventListener('click', () => {
+        const { variations } = this.generateManualBatchVariations(workingLayer, this.batchCount, this.batchThreshold, lastFlags);
+        candidates = candidates.concat(variations); // append - keeps earlier Keep/Rate decisions
+        renderStep3();
+      });
+
+      card.querySelector('.bg-close').addEventListener('click', () => closeWizard());
+      card.querySelector('.bg-export-selected').addEventListener('click', async () => {
+        const kept = candidates.filter(c => c.keep);
+        if (kept.length === 0) {
+          this.showToast('Check at least one "Keep" to export', 'error');
+          return;
+        }
+        await this.exportBatchCandidates(workingLayer, kept);
+      });
+    };
+
+    renderStep1();
+  }
+
   // Circular hue distance between two hex colors, normalized to 0 (same hue) .. 1 (opposite hue,
   // 180deg apart). Falls back to 0 if either value isn't a real hex color (nothing to compare).
   hueDiff(hexA, hexB) {
@@ -3023,7 +3582,13 @@ export class Controls {
   // evaluators judged animating that parameter to matter (Move score, 0-5, from the Opinion
   // Sheet) - a rough but concrete stand-in for "how much this parameter shapes the look", since
   // params worth animating tend to also be params whose static value is visually significant.
-  getParamSimilarityWeight(layerType, paramName, config) {
+  // paramFlag: optional 'good'|'bad' - the rating dialog's per-parameter attribution on the
+  // specific past example being compared against (stateB in calculateStatesSimilarity). When
+  // present it overrides the heuristics above for this one comparison: a param the rater
+  // specifically called out as the reason an example was bad should dominate the "avoid looking
+  // like this" signal, while a param flagged good even within an overall-bad example shouldn't
+  // count against a candidate that happens to share it.
+  getParamSimilarityWeight(layerType, paramName, config, paramFlag) {
     let weight = 1.0;
 
     if (config.type === 'color' || /color|hue/i.test(paramName)) {
@@ -3039,6 +3604,9 @@ export class Controls {
       weight *= (0.6 + moveScore / 5); // 0.6x at Move=0 up to 1.6x at Move=5
     }
 
+    if (paramFlag === 'bad') weight *= 3;
+    else if (paramFlag === 'good') weight *= 0.3;
+
     return weight;
   }
 
@@ -3050,6 +3618,7 @@ export class Controls {
   calculateStatesSimilarity(stateA, stateB, genConfigs, layerType) {
     let weightedDiffSum = 0;
     let weightSum = 0;
+    const flagsB = stateB.paramFlags;
 
     genConfigs.forEach(config => {
       if (config.type === 'range') {
@@ -3062,13 +3631,13 @@ export class Controls {
         const normA = (valA - config.min) / absoluteRange;
         const normB = (valB - config.min) / absoluteRange;
 
-        const w = this.getParamSimilarityWeight(layerType, config.name, config);
+        const w = this.getParamSimilarityWeight(layerType, config.name, config, flagsB && flagsB[config.name]);
         weightedDiffSum += w * Math.abs(normA - normB);
         weightSum += w;
       } else if (config.type === 'color') {
         const colorA = stateA.params && stateA.params[config.name];
         const colorB = stateB.params && stateB.params[config.name];
-        const w = this.getParamSimilarityWeight(layerType, config.name, config);
+        const w = this.getParamSimilarityWeight(layerType, config.name, config, flagsB && flagsB[config.name]);
         weightedDiffSum += w * this.hueDiff(colorA, colorB);
         weightSum += w;
       }
@@ -3085,7 +3654,7 @@ export class Controls {
       const normA = (valA - config.min) / absoluteRange;
       const normB = (valB - config.min) / absoluteRange;
 
-      const w = this.getParamSimilarityWeight(layerType, fxName, config);
+      const w = this.getParamSimilarityWeight(layerType, fxName, config, flagsB && flagsB[fxName]);
       weightedDiffSum += w * Math.abs(normA - normB);
       weightSum += w;
     }
@@ -3101,7 +3670,10 @@ export class Controls {
   // 7+ counts as Good, 4- counts as Bad, 5-6 is a deliberate "meh" middle that isn't strongly
   // pulled either way. The raw numeric rating is stored too so Good-attraction can weight by it
   // instead of averaging the Good bucket flatly (see goodParamCentroid/goodEffectCentroid).
-  rateLayer(layer, rating, comment, reasons, buttonEl) {
+  // paramFlags: optional { [paramName]: 'good'|'bad' } - only for parameters the rater actually
+  // marked, giving randomizeLayer a per-parameter attribution signal sharper than the whole
+  // generation's rating (see ratingWeight/getParamSimilarityWeight).
+  rateLayer(layer, rating, comment, reasons, paramFlags, buttonEl) {
     const scoreType = rating >= 7 ? 'good' : (rating <= 4 ? 'bad' : 'neutral');
 
     const payload = {
@@ -3111,7 +3683,8 @@ export class Controls {
       modulations: {},
       reasons: reasons || [],
       rating,
-      comment: comment || ''
+      comment: comment || '',
+      paramFlags: paramFlags || {}
     };
 
     for (let pName in layer.modulations) {
@@ -3141,6 +3714,7 @@ export class Controls {
           this.scoreData = [];
         }
         this.scoreData.push(data.record);
+        this.updateHeaderLayerStatus(layer);
 
         this.showToast(`Saved score: ${rating}/10`, 'success');
 
@@ -3605,14 +4179,43 @@ export class Controls {
   // { rating, comment, reasons } on submit, or null on cancel/escape. rateLayer() derives the
   // legacy good/bad/neutral bucket from `rating` for the existing randomizeLayer logic, and
   // Good-attraction now weights by the raw rating instead of averaging the Good bucket flatly.
-  showRatingDialog() {
+  // targetDoc: optional - render into a specific document (e.g. the Batch Generator's popup
+  // window) instead of wherever this.activeDocument currently points. Defaults to the existing
+  // behavior (main document, or the Float Inspector's popup if that's independently detached).
+  showRatingDialog(layer, targetDoc) {
     return new Promise((resolve) => {
-      const overlay = this.createElement('div');
+      const doc = targetDoc || this.activeDocument || document;
+      const overlay = doc.createElement('div');
       overlay.style.cssText = `
         position: fixed; inset: 0; z-index: 9999;
         background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
         display: flex; align-items: center; justify-content: center;
       `;
+
+      // Per-parameter good/bad attribution (optional, mark only what stood out): lets
+      // randomizeLayer's Good-attraction centroid trust a specific value more than the whole
+      // generation's rating would (or exclude it entirely if flagged bad), instead of every
+      // parameter in a 9/10 example pulling equally hard even when most of them were incidental.
+      const paramRows = [];
+      if (layer) {
+        layer.generator.getParameterConfig().forEach(config => {
+          if (config.type === 'range' || config.type === 'color') {
+            paramRows.push({ key: config.name, label: config.label, val: layer.generator.params[config.name] });
+          }
+        });
+        for (let fxName in this.fxConfigs) {
+          paramRows.push({ key: fxName, label: this.fxConfigs[fxName].label, val: layer.effects[fxName] });
+        }
+      }
+      const formatParamVal = (v) => typeof v === 'number' ? (v % 1 === 0 ? v.toString() : v.toFixed(3)) : v;
+      const paramRowsHtml = paramRows.map(p => `
+        <div class="param-flag-row" data-key="${p.key}" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <span style="flex: 1; font-size: 0.75rem; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.label}</span>
+          <span style="font-size: 0.7rem; color: #6b7280; font-family: var(--font-mono); width: 64px; text-align: right;">${formatParamVal(p.val)}</span>
+          <button class="param-flag-btn" data-flag="good" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid #4b5563; background: transparent; cursor: pointer; font-size: 0.7rem; line-height: 1; padding: 0;">👍</button>
+          <button class="param-flag-btn" data-flag="bad" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid #4b5563; background: transparent; cursor: pointer; font-size: 0.7rem; line-height: 1; padding: 0;">👎</button>
+        </div>
+      `).join('');
 
       const reasons = [
         { id: 'strobe_excess', text: 'strobe_excess : ストロボ過多 (チカチカしすぎる)' },
@@ -3622,7 +4225,10 @@ export class Controls {
         { id: 'too_simple', text: 'too_simple : シンプルすぎる (スカスカ・地味)' },
         { id: 'too_chaotic', text: 'too_chaotic : 過剰演出すぎる (光すぎ・残像過多・白飛び)' },
         { id: 'noise_warp_excess', text: 'noise_warp_excess : ノイズワープ過多 (歪みすぎ)' },
-        { id: 'nothing_visible', text: 'nothing_visible : 何も映っていない (真っ暗・見えない)' }
+        { id: 'nothing_visible', text: 'nothing_visible : 何も映っていない (真っ暗・見えない)' },
+        { id: 'color_monotonous', text: 'color_monotonous : 配色が地味・単調' },
+        { id: 'motion_too_fast', text: 'motion_too_fast : 動きが速すぎて目が疲れる' },
+        { id: 'motion_too_slow', text: 'motion_too_slow : 静止しすぎ' }
       ];
 
       const checkboxesHtml = reasons.map(r => `
@@ -3647,6 +4253,7 @@ export class Controls {
         <div style="
           background: #1a1a2e; border: 1px solid #f59e0b;
           border-radius: 12px; padding: 1.5rem 2rem; min-width: 460px;
+          max-height: 85vh; overflow-y: auto;
           box-shadow: 0 0 30px rgba(245,158,11,0.35);
           display: flex; flex-direction: column; gap: 1rem;
         ">
@@ -3663,6 +4270,10 @@ export class Controls {
           <div style="display: flex; flex-direction: column; gap: 0.4rem; text-align: left; max-height: 160px; overflow-y: auto;">
             ${checkboxesHtml}
           </div>
+          <p style="margin: 0; font-size: 0.8rem; color: #9ca3af;">パラメータ別チェック(任意 - 気になったものだけ):</p>
+          <div class="param-flags-list" style="display: flex; flex-direction: column; text-align: left; max-height: 220px; overflow-y: auto; padding-right: 0.25rem;">
+            ${paramRowsHtml}
+          </div>
           <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
             <button id="rate-dialog-cancel" style="
               padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563;
@@ -3676,13 +4287,34 @@ export class Controls {
         </div>
       `;
 
-      (this.activeDocument || document).body.appendChild(overlay);
+      doc.body.appendChild(overlay);
 
       const numBtns = Array.from(overlay.querySelectorAll('.rate-num-btn'));
       const selectedLabel = overlay.querySelector('.rate-selected-label');
       const btnSubmit = overlay.querySelector('#rate-dialog-submit');
       const btnCancel = overlay.querySelector('#rate-dialog-cancel');
       let selectedRating = null;
+
+      const paramFlags = {};
+      overlay.querySelectorAll('.param-flag-row').forEach(row => {
+        const key = row.dataset.key;
+        const btnFlagGood = row.querySelector('[data-flag="good"]');
+        const btnFlagBad = row.querySelector('[data-flag="bad"]');
+        const refreshRow = () => {
+          const flag = paramFlags[key];
+          btnFlagGood.style.background = flag === 'good' ? '#10b981' : 'transparent';
+          btnFlagGood.style.borderColor = flag === 'good' ? '#10b981' : '#4b5563';
+          btnFlagBad.style.background = flag === 'bad' ? '#ef4444' : 'transparent';
+          btnFlagBad.style.borderColor = flag === 'bad' ? '#ef4444' : '#4b5563';
+        };
+        const toggle = (flag) => {
+          if (paramFlags[key] === flag) delete paramFlags[key];
+          else paramFlags[key] = flag;
+          refreshRow();
+        };
+        btnFlagGood.addEventListener('click', () => toggle('good'));
+        btnFlagBad.addEventListener('click', () => toggle('bad'));
+      });
 
       numBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3703,7 +4335,7 @@ export class Controls {
       });
 
       const finish = (result) => {
-        (this.activeDocument || document).body.removeChild(overlay);
+        doc.body.removeChild(overlay);
         resolve(result);
       };
 
@@ -3711,18 +4343,19 @@ export class Controls {
         if (selectedRating === null) return;
         const checkedReasons = Array.from(overlay.querySelectorAll('input[name="rate-reason"]:checked')).map(el => el.value);
         const comment = overlay.querySelector('.rate-comment').value.trim();
-        finish({ rating: selectedRating, comment, reasons: checkedReasons });
+        finish({ rating: selectedRating, comment, reasons: checkedReasons, paramFlags });
       });
 
       btnCancel.addEventListener('click', () => finish(null));
 
+      const dialogWindow = doc.defaultView || window;
       const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
-          window.removeEventListener('keydown', handleKeyDown);
+          dialogWindow.removeEventListener('keydown', handleKeyDown);
           finish(null);
         }
       };
-      window.addEventListener('keydown', handleKeyDown);
+      dialogWindow.addEventListener('keydown', handleKeyDown);
     });
   }
 
@@ -3758,7 +4391,10 @@ export class Controls {
       too_simple: 0,
       too_chaotic: 0,
       noise_warp_excess: 0,
-      nothing_visible: 0
+      nothing_visible: 0,
+      color_monotonous: 0,
+      motion_too_fast: 0,
+      motion_too_slow: 0
     };
 
     layerData.forEach(e => {
@@ -3779,7 +4415,10 @@ export class Controls {
       { id: 'too_simple', name: 'シンプルすぎる (too_simple)', desc: '数量下限、Glow下限 5.0、Decay下限 0.30' },
       { id: 'too_chaotic', name: '過剰演出すぎる (too_chaotic)', desc: 'Glow上限 20.0、Decay上限 0.80' },
       { id: 'noise_warp_excess', name: 'ノイズワープ過多 (noise_warp_excess)', desc: '80%確率でノイズ無効化、有効時上限 4.0' },
-      { id: 'nothing_visible', name: '何も映っていない (nothing_visible)', desc: '数量・サイズ・輝度下限引き上げ、Glow下限 15.0、Scale下限 0.8' }
+      { id: 'nothing_visible', name: '何も映っていない (nothing_visible)', desc: '数量・サイズ・輝度下限引き上げ、Glow下限 15.0、Scale下限 0.8' },
+      { id: 'color_monotonous', name: '配色が地味・単調 (color_monotonous)', desc: '新しい色相を前回から90°以上離してリロール' },
+      { id: 'motion_too_fast', name: '動きが速すぎる (motion_too_fast)', desc: 'テンプレート適用を停止、LFO周期を55%以上(遅く)にクランプ' },
+      { id: 'motion_too_slow', name: '静止しすぎ (motion_too_slow)', desc: '静止パラメータを強制LFO化、周期を35%以下(速く)にクランプ' }
     ];
 
     const reasonsHtml = reasonsMeta.map(meta => {

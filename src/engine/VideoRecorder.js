@@ -29,7 +29,8 @@ export class VideoRecorder {
       fadeOutDuration = 2.0, // Master fade out duration in seconds
       width = 1920,
       height = 1080,
-      filename = `MovieCreator_Render_${Date.now()}`
+      filename = `MovieCreator_Render_${Date.now()}`,
+      alsoExportProRes = false // Also transcode the transparent WebM to ProRes 4444 MOV via local ffmpeg
     } = options;
 
     const totalFrames = duration * fps;
@@ -46,7 +47,7 @@ export class VideoRecorder {
     try {
       // Use webm-muxer + WebCodecs VP9 for transparent WebM export
       if (bgMode === 'transparent') {
-        await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename);
+        await this.exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename, alsoExportProRes);
       } else {
         await this.exportMP4(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename);
       }
@@ -269,7 +270,7 @@ export class VideoRecorder {
   /**
    * Off-line high-quality transparent WebM export using WebCodecs (VP9) and webm-muxer
    */
-  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename) {
+  async exportWebMAlpha(totalFrames, fps, bgMode, fadeOutDuration, onProgress, filename, alsoExportProRes = false) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
@@ -355,6 +356,9 @@ export class VideoRecorder {
         if (buffer) {
           const blob = new Blob([buffer], { type: 'video/webm' });
           this.downloadBlob(blob, `${filename}.webm`);
+          if (alsoExportProRes) {
+            await this.transcodeToProRes(blob, filename);
+          }
         } else {
           alert('WebM alpha encoding failed (empty buffer).');
         }
@@ -367,6 +371,31 @@ export class VideoRecorder {
       alert(`WebM alpha export failed: ${err.message}`);
     } finally {
       try { if (encoder && encoder.state !== 'closed') encoder.close(); } catch (_) {}
+    }
+  }
+
+  /**
+   * Sends the transparent WebM blob to the dev-server API for ffmpeg-based
+   * ProRes 4444 (alpha) transcoding, then downloads the resulting MOV.
+   * Only available under `npm run dev` (the API middleware isn't present in production builds),
+   * and requires a local ffmpeg binary (vendored under tools/ffmpeg/ or on PATH).
+   */
+  async transcodeToProRes(webmBlob, filename) {
+    try {
+      const response = await fetch(`/api/transcode-prores?filename=${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: webmBlob
+      });
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.error || `Transcode request failed (HTTP ${response.status})`);
+      }
+      const movBlob = await response.blob();
+      this.downloadBlob(movBlob, `${filename}.mov`);
+    } catch (err) {
+      console.error('ProRes 4444 transcode failed:', err);
+      alert(`ProRes 4444 transcode failed: ${err.message}\n(Transparent WebM was still exported successfully.)`);
     }
   }
 

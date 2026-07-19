@@ -434,6 +434,17 @@ export class GeometryGenerator extends BaseGenerator {
 }
 
 // 5. Growing Sketch Generator
+// Branches used to grow via mutable per-frame state (this.sketchTime accumulating by growSpeed,
+// paths reset whenever they all wandered off-canvas or sketchTime crossed a hardcoded 1500
+// threshold) with no tie to the export Duration - so a loop-exported clip would restart growth at
+// an unpredictable, param-dependent moment, and always with a hard snap back to a point (not a
+// fade). Rebuilt 2026-07-19 onto the cycleDuration/progress pattern this codebase already uses for
+// one-shot transitions (see CLAUDE.md "トランジション/カットイン系ジェネレーターの作り方"): each
+// branch's full trajectory is precomputed once per cycle (regenerateCycleVariation, same math as
+// before, just run to completion up-front instead of spread across live frames) and draw() reveals
+// a growing prefix of it as a pure function of time % cycleDuration. Growth now always completes
+// exactly at the cycle boundary, so looping the export (or setting cycleDuration to divide evenly
+// into Duration) is seamless instead of landing mid-clip.
 export class GrowingSketchGenerator extends BaseGenerator {
   constructor(params) {
     super(params);
@@ -442,6 +453,7 @@ export class GrowingSketchGenerator extends BaseGenerator {
 
   defaultParams() {
     return {
+      cycleDuration: 8000, // ms; one full grow-and-reset loop - match/divide evenly into export Duration for a seamless loop
       growSpeed: 3,
       branchCount: 5,
       noiseScale: 0.8,
@@ -454,6 +466,7 @@ export class GrowingSketchGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 1000, max: 20000, step: 500 },
       { name: 'growSpeed', label: 'Grow Speed', type: 'range', min: 0.5, max: 10, step: 0.5 },
       { name: 'branchCount', label: 'Branches', type: 'range', min: 1, max: 20, step: 1 },
       { name: 'noiseScale', label: 'Wiggle', type: 'range', min: 0.1, max: 3.0, step: 0.1 },
@@ -465,79 +478,68 @@ export class GrowingSketchGenerator extends BaseGenerator {
   }
 
   reset() {
-    this.sketchTime = 0;
-    this.paths = [];
+    this.lastCycleIndex = -1;
+    this.branchPaths = []; // one fully-precomputed point array per branch, for the current cycle
   }
 
-  initPaths(width, height) {
-    this.paths = [];
+  // Precomputes one full branch trajectory per cycle - identical growth math to the old live
+  // per-frame version (noise-perturbed angle around each branch's evenly-spaced base direction),
+  // just run to completion synchronously instead of accumulated frame-by-frame. Rerolled every
+  // cycle (fresh per-branch speed + a decorrelating noise-field offset) so repeated loops still
+  // look organically varied while always finishing at exactly cycleDuration.
+  regenerateCycleVariation(width, height) {
+    const branchCount = Math.round(this.params.branchCount);
+    const maxPoints = Math.max(2, Math.round(this.params.density));
     const cx = width / 2;
     const cy = height / 2;
+    const seedOffset = Math.random() * 10000;
 
-    for (let i = 0; i < this.params.branchCount; i++) {
-      const angle = (i / this.params.branchCount) * Math.PI * 2;
-      this.paths.push({
-        points: [{ x: cx, y: cy }],
-        angle: angle,
-        speed: Math.random() * 2 + 1,
-        active: true
-      });
-    }
-    this.sketchTime = 0;
-  }
+    this.branchPaths = [];
+    for (let i = 0; i < branchCount; i++) {
+      const baseAngle = (i / branchCount) * Math.PI * 2;
+      const speed = Math.random() * 2 + 1;
+      const points = [{ x: cx, y: cy }];
+      let stepTime = 0;
 
-  update(time, frameCount, width, height) {
-    const targetBranches = Math.round(this.params.branchCount);
-    if (this.paths.length !== targetBranches) {
-      this.initPaths(width, height);
-    }
+      for (let step = 0; step < maxPoints; step++) {
+        const lastPt = points[points.length - 1];
+        stepTime += this.params.growSpeed;
+        const noiseAngle = noiseInst.noise2D(lastPt.x * 0.01 + seedOffset, lastPt.y * 0.01 + stepTime * 0.005) * this.params.noiseScale;
+        const currentAngle = baseAngle + noiseAngle;
 
-    this.sketchTime += this.params.growSpeed;
+        const nextX = lastPt.x + Math.cos(currentAngle) * speed * this.params.growSpeed;
+        const nextY = lastPt.y + Math.sin(currentAngle) * speed * this.params.growSpeed;
 
-    const maxDensity = Math.round(this.params.density);
-    for (let path of this.paths) {
-      if (!path.active) continue;
-      if (path.points.length >= maxDensity) {
-        path.active = false;
-        continue;
+        if (nextX < 0 || nextX > width || nextY < 0 || nextY > height) break; // branch exits canvas - stop growing early, same as before
+        points.push({ x: nextX, y: nextY });
       }
 
-      const lastPt = path.points[path.points.length - 1];
-      const noiseAngle = noiseInst.noise2D(lastPt.x * 0.01, lastPt.y * 0.01 + this.sketchTime * 0.005) * this.params.noiseScale;
-      const currentAngle = path.angle + noiseAngle;
-
-      const nextX = lastPt.x + Math.cos(currentAngle) * path.speed * this.params.growSpeed;
-      const nextY = lastPt.y + Math.sin(currentAngle) * path.speed * this.params.growSpeed;
-
-      if (nextX < 0 || nextX > width || nextY < 0 || nextY > height) {
-        path.active = false;
-      } else {
-        path.points.push({ x: nextX, y: nextY });
-      }
-    }
-
-    const allInactive = this.paths.every(p => !p.active);
-    if (allInactive || this.sketchTime > 1500) {
-      this.initPaths(width, height);
+      this.branchPaths.push(points);
     }
   }
 
   draw(ctx, width, height, time) {
-    if (this.paths.length === 0) {
-      this.initPaths(width, height);
+    const cycleDuration = Math.max(1, this.params.cycleDuration);
+    const cycleIndex = Math.floor(time / cycleDuration);
+    if (cycleIndex !== this.lastCycleIndex || this.branchPaths.length === 0) {
+      this.lastCycleIndex = cycleIndex;
+      this.regenerateCycleVariation(width, height);
     }
+
+    const progress = (time % cycleDuration) / cycleDuration;
 
     ctx.strokeStyle = adjustColorLightness(this.params.color, this.params.colorLightness);
     ctx.lineWidth = this.params.strokeWidth;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    for (let path of this.paths) {
-      if (path.points.length < 2) continue;
+    for (let points of this.branchPaths) {
+      const revealCount = Math.max(1, Math.round(progress * points.length));
+      if (revealCount < 2) continue;
       ctx.beginPath();
-      ctx.moveTo(path.points[0].x, path.points[0].y);
-      for (let i = 1; i < path.points.length; i++) {
-        ctx.lineTo(path.points[i].x, path.points[i].y);
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < revealCount; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
       }
       ctx.stroke();
     }

@@ -7,3 +7,7 @@ ai_archives/
 # data/scores.json (教師データ本体) はマルチPC間で同期する必要があるため追跡対象。
 # 破損時フォールバック(apiHandler.js)が作るバックアップだけ除外する。
 data/*.corrupted-*.json
+
+# ProRes 4444変換用ffmpegバイナリ(PCごとに手動配置、CLAUDE.md参照)と変換時の一時ファイル
+tools/ffmpeg/
+.tmp_transcode/
