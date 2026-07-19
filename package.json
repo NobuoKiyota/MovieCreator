@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",
-    "webm-muxer": "^2.0.2"
+    "webm-muxer": "^2.0.2",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz"
   },
   "devDependencies": {
     "vite": "^5.4.11"

@@ -29,6 +29,7 @@ export class Controls {
     this.layerStatusTypeEl = document.getElementById('layer-status-type');
     this.layerStatusCountsEl = document.getElementById('layer-status-counts');
     this.btnPlayPauseEl = document.getElementById('btn-play-pause');
+    this.btnRewindStartEl = document.getElementById('btn-rewind-start');
     this.btnExportEl = document.getElementById('btn-export');
     this.exportDurationEl = document.getElementById('export-duration');
     this.exportBgEl = document.getElementById('export-bg');
@@ -302,6 +303,13 @@ export class Controls {
         this.mainApp.play();
       }
     });
+
+    // 3b. Rewind to start
+    if (this.btnRewindStartEl) {
+      this.btnRewindStartEl.addEventListener('click', () => {
+        this.mainApp.rewindToStart();
+      });
+    }
 
     // 4. Export Video
     this.btnExportEl.addEventListener('click', () => {
@@ -964,6 +972,13 @@ export class Controls {
       return;
     }
 
+    // Numpad ".": rewind to start
+    if (e.code === 'NumpadDecimal') {
+      e.preventDefault();
+      this.mainApp.rewindToStart();
+      return;
+    }
+
     const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
     if (!activeLayer || !this.activeTimelineParam) return;
     const mod = activeLayer.modulations[this.activeTimelineParam];
@@ -1587,6 +1602,7 @@ export class Controls {
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
       <div style="display: flex; gap: 0.25rem;">
         <button class="btn btn-secondary btn-small btn-score-stats" title="View Learning Progress & Stats" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📊</button>
+        <button class="btn btn-secondary btn-small btn-opinion-sheet" title="Edit Score/Move Tendencies (Opinion Sheet)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📝</button>
         <button class="btn btn-secondary btn-small btn-score-rate" title="Rate this generation (1-10 + comment)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">⭐ Rate</button>
       </div>
     `;
@@ -1596,6 +1612,7 @@ export class Controls {
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
     const btnRate = randomizerHeader.querySelector('.btn-score-rate');
     const btnStats = randomizerHeader.querySelector('.btn-score-stats');
+    const btnOpinionSheet = randomizerHeader.querySelector('.btn-opinion-sheet');
 
     spreadSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
@@ -1618,6 +1635,10 @@ export class Controls {
 
     btnStats.addEventListener('click', () => {
       this.showLearningStatsDialog(layer.type);
+    });
+
+    btnOpinionSheet.addEventListener('click', () => {
+      this.showOpinionSheetEditor(layer);
     });
 
     this.inspectorContentEl.appendChild(randomizerHeader);
@@ -2188,6 +2209,29 @@ export class Controls {
     const goodParamCentroid = (key) => weightedCentroid(goodEvaluations, 'params', key);
     const goodEffectCentroid = (key) => weightedCentroid(goodEvaluations, 'effects', key);
 
+    // Motion counterpart to weightedCentroid: averages a getMotionFeatures() feature (amplitude
+    // or speed) across Good evaluations that actually animated this param, so a currently-enabled
+    // LFO's range/timing gets nudged toward "how Good examples tended to move this param" the
+    // same way its base value already gets nudged toward their static centroid. Evaluations where
+    // the param wasn't animated are excluded (an amplitude/speed of a static param is meaningless
+    // noise, not a real "should be static" data point - the on/off decision itself stays governed
+    // by the layer's own inherited state + Move-score gating, unchanged).
+    const durationSecForMotion = parseFloat(this.exportDurationEl.value) || 10;
+    const weightedMotionCentroid = (key, config, featureName) => {
+      let weightedSum = 0, weightTotal = 0;
+      for (const e of goodEvaluations) {
+        const mod = e.modulations && e.modulations[key];
+        if (!mod) continue;
+        const feat = this.getMotionFeatures(mod, config, durationSecForMotion);
+        if (feat.animated === 0) continue;
+        const w = ratingWeight(e, key);
+        if (w <= 0) continue;
+        weightedSum += feat[featureName] * w;
+        weightTotal += w;
+      }
+      return weightTotal > 0 ? weightedSum / weightTotal : null;
+    };
+
     // Analyze negative reasons from past bad evaluations
     const hasStrobeExcess = badEvaluations.some(e => e.reasons && e.reasons.includes('strobe_excess'));
     const hasScaleIssue = badEvaluations.some(e => e.reasons && (e.reasons.includes('scale_too_small') || e.reasons.includes('scale_too_large')));
@@ -2203,13 +2247,13 @@ export class Controls {
     // Similarity between a candidate and one past evaluation - delegates to the shared weighted
     // metric (calculateStatesSimilarity) so the Bad-avoidance check, the Good-closeness check
     // below, and batch-diversity filtering all agree on exactly the same notion of "similar".
-    const calcSimilarityToEval = (evalItem, candidateParams, candidateEffects, genConfigs) =>
-      this.calculateStatesSimilarity({ params: candidateParams, effects: candidateEffects }, evalItem, genConfigs, layer.type);
+    const calcSimilarityToEval = (evalItem, candidateParams, candidateEffects, genConfigs, candidateModulations) =>
+      this.calculateStatesSimilarity({ params: candidateParams, effects: candidateEffects, modulations: candidateModulations }, evalItem, genConfigs, layer.type);
 
-    const maxSimilarityAmong = (evalList, candidateParams, candidateEffects, genConfigs) => {
+    const maxSimilarityAmong = (evalList, candidateParams, candidateEffects, genConfigs, candidateModulations) => {
       let max = 0;
       for (const evalItem of evalList) {
-        const sim = calcSimilarityToEval(evalItem, candidateParams, candidateEffects, genConfigs);
+        const sim = calcSimilarityToEval(evalItem, candidateParams, candidateEffects, genConfigs, candidateModulations);
         if (sim > max) max = sim;
       }
       return max;
@@ -2368,12 +2412,35 @@ export class Controls {
                 newMin = Math.max(localMin, Math.min(localMax, newMin));
                 newMax = Math.max(localMin, Math.min(localMax, newMax));
 
+                // Good-motion attraction: nudge this LFO's amplitude toward how Good examples
+                // tended to swing this same parameter (same confidence ramp as the static-value
+                // centroid above - see weightedMotionCentroid).
+                const goodAmplitude = weightedMotionCentroid(config.name, config, 'amplitude');
+                if (goodAmplitude !== null && goodAttractionWeight > 0) {
+                  const currentAmplitude = Math.abs(newMax - newMin) / range;
+                  const targetAmplitude = currentAmplitude * (1 - goodAttractionWeight) + goodAmplitude * goodAttractionWeight;
+                  const center = (newMin + newMax) / 2;
+                  const halfSpan = (targetAmplitude * range) / 2;
+                  newMin = Math.max(localMin, center - halfSpan);
+                  newMax = Math.min(localMax, center + halfSpan);
+                }
+
                 candidateMod.min = snapToStep(newMin, config);
                 candidateMod.max = snapToStep(newMax, config);
 
                 const offsetTime = (Math.random() * 2 - 1) * 15;
                 let newTimePct = mod.timePct + offsetTime;
                 newTimePct = Math.max(1, Math.min(100, Math.round(newTimePct)));
+
+                // Good-motion attraction: nudge this LFO's pacing toward how Good examples tended
+                // to run it.
+                const goodSpeed = weightedMotionCentroid(config.name, config, 'speed');
+                if (goodSpeed !== null && goodAttractionWeight > 0) {
+                  const currentSpeed = Math.max(0, Math.min(1, 1 - (newTimePct - 1) / 99));
+                  const targetSpeed = currentSpeed * (1 - goodAttractionWeight) + goodSpeed * goodAttractionWeight;
+                  newTimePct = Math.round(1 + (1 - targetSpeed) * 99);
+                }
+
                 // timePct = one LFO cycle's % share of the export duration, so higher = slower.
                 if (hasMotionTooFast) newTimePct = Math.max(55, newTimePct);
                 if (hasMotionTooSlow) newTimePct = Math.min(35, newTimePct);
@@ -2752,9 +2819,14 @@ export class Controls {
 
         // 7. feedbackRotate: Trail Spin - effect is extreme, keyframes have almost no effect.
         if (fxName === 'feedbackRotate') {
-          // Disable modulations, use constant values (-0.02, -0.01, 0, 0.01, 0.02)
-          const spinOpts = [0, -0.015, 0.015, -0.006, 0.006];
-          const val = spinOpts[Math.floor(Math.random() * spinOpts.length)];
+          // Previously picked uniformly among 5 options, 4 of them nonzero (80% chance of any
+          // spin every roll, independent of Move score - this is a hardcoded FX branch, not
+          // Move-score-gated). 2026-07-20 user report: unwanted spin (e.g. 0.015) kept showing up
+          // even when 0 was clearly correct for the layer. Matches the "mostly off, occasional
+          // spice" pattern already used for rotation/rotateX just above/below.
+          const isSpin = Math.random() < 0.2;
+          const spinOpts = [-0.015, 0.015, -0.006, 0.006];
+          const val = isSpin ? spinOpts[Math.floor(Math.random() * spinOpts.length)] : 0;
           candidateEffects['feedbackRotate'] = val;
           candidateModulations['feedbackRotate'] = {
             enabled: false,
@@ -2885,10 +2957,10 @@ export class Controls {
       // as 0. Still exits early once an attempt clears reasonable bars on both counts, so this
       // doesn't burn all 10 attempts when the very first draw is already solid.
       const maxBadSimilarity = badEvaluations.length > 0
-        ? maxSimilarityAmong(badEvaluations, candidateParams, candidateEffects, genConfigs)
+        ? maxSimilarityAmong(badEvaluations, candidateParams, candidateEffects, genConfigs, candidateModulations)
         : 0;
       const maxGoodSimilarity = goodEvaluations.length > 0
-        ? maxSimilarityAmong(goodEvaluations, candidateParams, candidateEffects, genConfigs)
+        ? maxSimilarityAmong(goodEvaluations, candidateParams, candidateEffects, genConfigs, candidateModulations)
         : null;
       const score = (maxGoodSimilarity !== null ? maxGoodSimilarity : 0) - maxBadSimilarity;
 
@@ -3610,15 +3682,65 @@ export class Controls {
     return weight;
   }
 
-  // Weighted normalized-diff similarity between two {params, effects} states (1.0 = identical,
-  // 0.0 = as different as every parameter's range/weight allows). Shared by the batch-diversity
-  // check (generateBatchVariations) and the Bad/Good closeness scoring in randomizeLayer, so all
-  // three use exactly the same metric. layerType is optional - omitting it just skips the
-  // Move-score weighting term (falls back to the heuristic-only weight).
+  // Extracts a normalized, comparable "how is this parameter moving" signature from a
+  // modulation entry: { animated: 0|1, amplitude: 0..1, speed: 0..1 }. Added 2026-07-19 because
+  // calculateStatesSimilarity/weightedCentroid previously only ever looked at stateA.params/
+  // effects - two generations identical in every static value but one fully static and the other
+  // wildly LFO'd registered as 100% similar. amplitude/speed are normalized against the param's
+  // own slider range/export duration so different parameters stay comparable to each other.
+  // Missing/legacy records (older ratings saved before the LFO-field-name bugfix above, or
+  // genuinely static params) fall back to "not animated" rather than throwing.
+  getMotionFeatures(mod, config, durationSec) {
+    const range = config.max - config.min;
+    if (!mod || !(range > 0)) return { animated: 0, amplitude: 0, speed: 0 };
+
+    if (mod.keyframeEnabled && Array.isArray(mod.keyframes) && mod.keyframes.length >= 2) {
+      const values = mod.keyframes.map(k => k.value).filter(v => typeof v === 'number');
+      if (values.length < 2) return { animated: 0, amplitude: 0, speed: 0 };
+      const amplitude = Math.max(0, Math.min(1, (Math.max(...values) - Math.min(...values)) / range));
+      const frames = mod.keyframes.map(k => k.frame).filter(f => typeof f === 'number').sort((a, b) => a - b);
+      const totalFrames = Math.max(1, durationSec * 60);
+      const avgGap = frames.length >= 2 ? (frames[frames.length - 1] - frames[0]) / (frames.length - 1) : totalFrames;
+      const speed = Math.max(0, Math.min(1, 1 - (avgGap / totalFrames))); // tightly-packed keyframes = busier/faster
+      return { animated: amplitude > 0.01 ? 1 : 0, amplitude, speed };
+    }
+
+    if (mod.enabled && typeof mod.min === 'number' && typeof mod.max === 'number') {
+      const amplitude = Math.max(0, Math.min(1, Math.abs(mod.max - mod.min) / range));
+      const timePct = typeof mod.timePct === 'number' ? mod.timePct : 50;
+      const speed = Math.max(0, Math.min(1, 1 - (timePct - 1) / 99)); // timePct = cycle's %-share of duration, so lower = faster
+      return { animated: amplitude > 0.01 ? 1 : 0, amplitude, speed };
+    }
+
+    return { animated: 0, amplitude: 0, speed: 0 };
+  }
+
+  // Average of the three motion-feature deltas between two modulation entries for the same
+  // parameter, 0 (identical motion) to 1 (as different as possible).
+  motionFeatureDist(modA, modB, config, durationSec) {
+    const fa = this.getMotionFeatures(modA, config, durationSec);
+    const fb = this.getMotionFeatures(modB, config, durationSec);
+    const animatedDiff = Math.abs(fa.animated - fb.animated);
+    const ampDiff = Math.abs(fa.amplitude - fb.amplitude);
+    const speedDiff = Math.abs(fa.speed - fb.speed);
+    return (animatedDiff + ampDiff + speedDiff) / 3;
+  }
+
+  // Weighted normalized-diff similarity between two {params, effects, modulations} states
+  // (1.0 = identical, 0.0 = as different as every parameter's range/weight allows). Shared by
+  // the batch-diversity check (generateBatchVariations) and the Bad/Good closeness scoring in
+  // randomizeLayer, so all three use exactly the same metric. layerType is optional - omitting
+  // it just skips the Move-score weighting term (falls back to the heuristic-only weight).
+  // Each range param's distance blends its static value (65%) with its motion signature (35%,
+  // via motionFeatureDist) so two otherwise-identical states with different animation actually
+  // register as different - see getMotionFeatures above.
   calculateStatesSimilarity(stateA, stateB, genConfigs, layerType) {
     let weightedDiffSum = 0;
     let weightSum = 0;
     const flagsB = stateB.paramFlags;
+    const durationSec = parseFloat(this.exportDurationEl.value) || 10;
+    const STATIC_WEIGHT = 0.65;
+    const MOTION_WEIGHT = 0.35;
 
     genConfigs.forEach(config => {
       if (config.type === 'range') {
@@ -3630,9 +3752,14 @@ export class Controls {
 
         const normA = (valA - config.min) / absoluteRange;
         const normB = (valB - config.min) / absoluteRange;
+        const staticDist = Math.abs(normA - normB);
+
+        const modA = stateA.modulations && stateA.modulations[config.name];
+        const modB = stateB.modulations && stateB.modulations[config.name];
+        const motionDist = this.motionFeatureDist(modA, modB, config, durationSec);
 
         const w = this.getParamSimilarityWeight(layerType, config.name, config, flagsB && flagsB[config.name]);
-        weightedDiffSum += w * Math.abs(normA - normB);
+        weightedDiffSum += w * (STATIC_WEIGHT * staticDist + MOTION_WEIGHT * motionDist);
         weightSum += w;
       } else if (config.type === 'color') {
         const colorA = stateA.params && stateA.params[config.name];
@@ -3653,9 +3780,14 @@ export class Controls {
 
       const normA = (valA - config.min) / absoluteRange;
       const normB = (valB - config.min) / absoluteRange;
+      const staticDist = Math.abs(normA - normB);
+
+      const modA = stateA.modulations && stateA.modulations[fxName];
+      const modB = stateB.modulations && stateB.modulations[fxName];
+      const motionDist = this.motionFeatureDist(modA, modB, config, durationSec);
 
       const w = this.getParamSimilarityWeight(layerType, fxName, config, flagsB && flagsB[fxName]);
-      weightedDiffSum += w * Math.abs(normA - normB);
+      weightedDiffSum += w * (STATIC_WEIGHT * staticDist + MOTION_WEIGHT * motionDist);
       weightSum += w;
     }
 
@@ -3687,15 +3819,21 @@ export class Controls {
       paramFlags: paramFlags || {}
     };
 
+    // 2026-07-19: previously saved lfoEnabled/lfoType/lfoRate/lfoAmount, none of which are real
+    // fields on a modulation object (the actual LFO state lives in enabled/min/max/timePct/
+    // behavior) - a stale field-name mismatch from an earlier data model, so every rating ever
+    // submitted recorded its LFO motion as undefined. keyframeEnabled/keyframes were already
+    // correct. Fixed to capture the real fields so getMotionFeatures() has something to read.
     for (let pName in layer.modulations) {
       const mod = layer.modulations[pName];
       payload.modulations[pName] = {
+        enabled: mod.enabled,
+        min: mod.min,
+        max: mod.max,
+        timePct: mod.timePct,
+        behavior: mod.behavior,
         keyframeEnabled: mod.keyframeEnabled,
-        keyframes: JSON.parse(JSON.stringify(mod.keyframes || [])),
-        lfoEnabled: mod.lfoEnabled,
-        lfoType: mod.lfoType,
-        lfoRate: mod.lfoRate,
-        lfoAmount: mod.lfoAmount
+        keyframes: JSON.parse(JSON.stringify(mod.keyframes || []))
       };
     }
     payload.score = scoreType;
@@ -4357,6 +4495,121 @@ export class Controls {
       };
       dialogWindow.addEventListener('keydown', handleKeyDown);
     });
+  }
+
+  // Popup editor (same window.open pattern as showBatchGeneratorWizard) for the Score/Move/Comment
+  // "tendency" rows this layer type has in Excels/PresetLayerOpinionSheet.xlsx - Score/Move drive
+  // randomizeLayer's constraints and Move-score gating (see CLAUDE.md "プリセット量産・教師モデル"),
+  // so a gacha-avoidance parameter that keeps rolling unwanted values usually traces back to one of
+  // these two numbers being set too permissively, not to the live evaluation data. 2026-07-20: added
+  // after a user report that Neon Lightning's Trail Spin kept rolling unwanted nonzero values - that
+  // turned out to be an unrelated hardcoded FX branch (fixed separately), but the underlying ask for
+  // a way to tune these tendencies without opening Excel is legitimate on its own.
+  async showOpinionSheetEditor(layer) {
+    const popup = window.open('', 'MovieCreatorOpinionSheet', 'width=580,height=780,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+    if (!popup) {
+      this.showToast('⚠️ Popup blocker prevented opening the editor window. Please allow popups for this site.', 'error');
+      return;
+    }
+    const pDoc = popup.document;
+    pDoc.title = 'MovieCreator - Opinion Sheet Editor';
+    document.querySelectorAll('link[rel="stylesheet"], style').forEach(el => {
+      pDoc.head.appendChild(el.cloneNode(true));
+    });
+    pDoc.body.style.cssText = `
+      background: #090714; margin: 0; padding: 1rem; color: #e2e8f0;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    `;
+
+    const card = pDoc.createElement('div');
+    card.style.cssText = `display: flex; flex-direction: column; gap: 0.75rem; height: calc(100vh - 2rem);`;
+    pDoc.body.appendChild(card);
+
+    let closed = false;
+    const closeEditor = () => {
+      if (closed) return;
+      closed = true;
+      if (!popup.closed) popup.close();
+    };
+    const handleKeyDown = (e) => { if (e.key === 'Escape') closeEditor(); };
+    popup.addEventListener('keydown', handleKeyDown);
+    popup.addEventListener('beforeunload', () => { closed = true; });
+
+    card.innerHTML = `<p style="color: #9ca3af; font-size: 0.85rem;">Loading ${layer.type}...</p>`;
+
+    let rows = [];
+    try {
+      const res = await fetch(`/api/opinion-sheet?layer=${encodeURIComponent(layer.type)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      rows = data.rows;
+    } catch (err) {
+      card.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem;">読み込み失敗: ${err.message}</p>`;
+      return;
+    }
+
+    const render = () => {
+      card.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">📝 Opinion Sheet — ${layer.type}</h3>
+        <p style="margin: 0; font-size: 0.75rem; color: #9ca3af;">Score(1-5): 結果の良さ。Move(0-5): アニメーションさせる効果。ここでの変更は保存時にExcelへ書き戻され、data/move_scores.jsonも自動再生成されます(ランダマイザーへ即反映)。</p>
+        <div class="os-rows" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+          ${rows.map((r, i) => `
+            <div class="os-row" data-idx="${i}" style="display: grid; grid-template-columns: 1fr 52px 52px 2fr; gap: 0.4rem; align-items: center;">
+              <span style="font-size: 0.78rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.param}">${r.label}</span>
+              <input type="number" class="os-score" min="0" max="5" step="1" value="${r.score !== null ? r.score : ''}" style="width: 48px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.78rem;">
+              <input type="number" class="os-move" min="0" max="5" step="1" value="${r.move !== null ? r.move : ''}" style="width: 48px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.78rem;">
+              <input type="text" class="os-comment" value="${(r.comment || '').replace(/"/g, '&quot;')}" style="padding: 0.2rem 0.4rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
+            </div>
+          `).join('')}
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 0.6rem;">
+          <button class="os-close" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Close</button>
+          <button class="os-save" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #22d3ee; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">💾 Save</button>
+        </div>
+      `;
+
+      card.querySelector('.os-close').addEventListener('click', closeEditor);
+      card.querySelector('.os-save').addEventListener('click', async () => {
+        const saveBtn = card.querySelector('.os-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        const updates = [];
+        card.querySelectorAll('.os-row').forEach(rowEl => {
+          const idx = parseInt(rowEl.dataset.idx, 10);
+          const r = rows[idx];
+          const scoreStr = rowEl.querySelector('.os-score').value;
+          const moveStr = rowEl.querySelector('.os-move').value;
+          const comment = rowEl.querySelector('.os-comment').value;
+          updates.push({
+            row: r.row,
+            score: scoreStr === '' ? null : parseFloat(scoreStr),
+            move: moveStr === '' ? null : parseFloat(moveStr),
+            comment
+          });
+        });
+
+        try {
+          const res = await fetch('/api/opinion-sheet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ layerType: layer.type, updates })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+
+          await this.loadMoveScores(); // refresh in-memory Move scores immediately
+          this.showToast('✅ Opinion sheet saved', 'success');
+        } catch (err) {
+          this.showToast('❌ Save failed: ' + err.message, 'error');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Save';
+        }
+      });
+    };
+
+    render();
   }
 
   showLearningStatsDialog(layerType) {

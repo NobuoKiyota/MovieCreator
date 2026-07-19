@@ -96,6 +96,25 @@ class MovieCreatorApp {
     this.controls.updatePlayPauseButton(false);
   }
 
+  /**
+   * Seeks playback (paused or running) back to time 0. Also resets each generator's own
+   * internal state (same reset() hook used before export) since stateful particle-field
+   * generators (Rain, Snowflake, ...) accumulate live spawn history that a plain
+   * accumulatedTime rewind can't undo on its own - this gives a genuine fresh start rather
+   * than just rewinding the clock while particles stay wherever they last were.
+   */
+  rewindToStart() {
+    this.accumulatedTime = 0;
+    this.frameCount = 0;
+    for (let layer of this.layerManager.layers) {
+      if (layer.generator.reset) layer.generator.reset();
+      if (layer.feedbackHandler) layer.feedbackHandler.clear();
+    }
+    if (!this.isPlaying) {
+      this.renderSingleFrame();
+    }
+  }
+
   tick() {
     if (!this.isPlaying || this.recorder.isRecording) return;
 

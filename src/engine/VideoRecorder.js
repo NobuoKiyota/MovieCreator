@@ -292,26 +292,44 @@ export class VideoRecorder {
       }
     });
 
+    // Unlike exportMP4's codec fallback ladder, there's only one alpha-capable codec here, so this
+    // is a pass/fail pre-flight check rather than a selection - but it still catches an unsupported
+    // browser/GPU combo up front with a clear reason, instead of only finding out via a mid-render
+    // encoder.error callback (whose actual message previously never reached the user - see below).
+    const alphaConfig = {
+      codec: 'vp09.00.10.08',
+      width, height,
+      bitrate: 12_000_000,
+      framerate: fps,
+      alpha: 'keep' // Retain alpha channel in encoded frames
+    };
+    try {
+      const support = await VideoEncoder.isConfigSupported(alphaConfig);
+      if (!support.supported) {
+        alert('この環境(ブラウザ/GPU)は透過WebM(VP9 alpha)のエンコードに対応していません。Chromeの最新版でお試しいただくか、BGをBlack/Green Screen(MP4)に切り替えてください。');
+        return;
+      }
+    } catch (err) {
+      alert(`透過WebMエンコードの対応確認に失敗しました: ${err.message}`);
+      return;
+    }
+
     let encoder = null;
     try {
       let hasEncoderError = false;
+      let lastEncoderError = null;
 
       encoder = new VideoEncoder({
         output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
         error: (e) => {
           console.error('VideoEncoder error:', e);
+          lastEncoderError = e;
           hasEncoderError = true;
         }
       });
 
       // Configure VP9 codec for alpha transparency support
-      encoder.configure({
-        codec: 'vp09.00.10.08',
-        width, height,
-        bitrate: 12_000_000,
-        framerate: fps,
-        alpha: 'keep' // Retain alpha channel in encoded frames
-      });
+      encoder.configure(alphaConfig);
 
       // 2. Frame-by-frame rendering loop
       for (let frame = 0; frame < totalFrames; frame++) {
@@ -363,7 +381,7 @@ export class VideoRecorder {
           alert('WebM alpha encoding failed (empty buffer).');
         }
       } else {
-        alert('WebM alpha encoding failed.');
+        alert(`WebM alpha encoding failed: ${lastEncoderError ? lastEncoderError.message : '(no error detail available)'}`);
       }
 
     } catch (err) {
@@ -407,11 +425,17 @@ export class VideoRecorder {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    // Must be attached to the DOM for Firefox to reliably fire the download.
+    document.body.appendChild(a);
     a.click();
-    
-    // Clean up
+    document.body.removeChild(a);
+
+    // Large exports (hundreds of MB, e.g. transparent WebM / ProRes 4444 MOV)
+    // can take well over a second for the browser to finish writing to disk.
+    // Revoking the object URL before that completes silently kills the download
+    // (most visible in Firefox), so give it a generous grace period.
     setTimeout(() => {
       URL.revokeObjectURL(url);
-    }, 1000);
+    }, 30000);
   }
 }

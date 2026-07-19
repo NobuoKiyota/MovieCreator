@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import * as XLSX from 'xlsx';
+
+// SheetJS's ESM build doesn't auto-detect Node's `fs` the way its CJS/UMD build does, so
+// XLSX.readFile/writeFile throw "Cannot access file" until this is wired in explicitly.
+XLSX.set_fs(fs);
 
 /**
  * OSでファイル名として使用不可能な文字や制御文字を安全に置換・削除し、
@@ -45,6 +50,156 @@ function findFfmpegBinary(workspaceRoot) {
     return candidate;
   }
   return 'ffmpeg'; // PATH上のffmpegにフォールバック
+}
+
+/**
+ * PresetLayerOpinionSheet.xlsx「Preset Layers Opinion Sheet」タブの行3ヘッダー(表示名)と
+ * index.htmlの#layer-type-selectの内部typeコードの対応表。export_move_scores.py/
+ * export_motion_mapping.pyのLAYER_NAME_TO_TYPEと同一内容を維持すること(手動同期)。
+ */
+const OPINION_SHEET_NAME = 'Preset Layers Opinion Sheet';
+const LAYER_NAME_TO_TYPE = {
+  'Sine Wave': 'sine-wave',
+  'Noise Wave': 'noise-wave',
+  'Firefly Particles': 'particles',
+  'Lissajous Geometry': 'geometry',
+  'Growing Sketch': 'growing-sketch',
+  'Neon Rain': 'rain',
+  'Meteor Shower': 'meteor',
+  'Pulse Ripples': 'ripple',
+  'Audio Spectrum': 'spectrum',
+  '3D Glowing Cube': 'cube-3d',
+  'Neon Lightning': 'lightning',
+  'Neon Fog': 'fog',
+  'Cyber Flame': 'flame',
+  'Neon Snowflake': 'snowflake',
+  'Neon Spirograph': 'spirograph',
+  'Aurora Curtain': 'aurora',
+  'Dry Ice Smoke': 'dry-ice',
+  '3D Shape Particles': 'shape-3d-particles',
+  'Lighthouse Beacon': 'lighthouse',
+  'Shockwave Burst': 'shockwave-burst',
+  'Glass Crack': 'glass-crack'
+};
+const TYPE_TO_LAYER_NAME = Object.fromEntries(Object.entries(LAYER_NAME_TO_TYPE).map(([name, type]) => [type, name]));
+
+function isBlankOrDash(val) {
+  return val === null || val === undefined || (typeof val === 'string' && (val.trim() === '' || val.trim() === '-'));
+}
+
+/**
+ * 行3(0-indexed row 2)をD列(0-indexed col 3)から3列おきにスキャンし、認識したレイヤータイプごとの
+ * Score/Move/Comment列(0-indexed)を返す。export_move_scores.pyのlayer_cols構築ロジックと同一。
+ */
+function parseLayerColumns(rows) {
+  const layerCols = {};
+  const headerRow = rows[2] || [];
+  for (let col = 3; col < headerRow.length; col += 3) {
+    const name = headerRow[col];
+    if (!name) continue;
+    const layerType = LAYER_NAME_TO_TYPE[String(name).trim()];
+    if (layerType) {
+      layerCols[layerType] = { score: col, move: col + 1, comment: col + 2 };
+    }
+  }
+  return layerCols;
+}
+
+/**
+ * ワークブックから該当レイヤーの実データ行(「-」/空欄でスキップされる非該当パラメータは除外)を
+ * 抽出する。rowは書き戻し先を特定するための1-indexed実行番号。
+ */
+function readOpinionRows(workbook, layerType) {
+  const ws = workbook.Sheets[OPINION_SHEET_NAME];
+  if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const layerCols = parseLayerColumns(rows);
+  const cols = layerCols[layerType];
+  if (!cols) throw new Error(`Layer type not recognized in opinion sheet: ${layerType}`);
+
+  const result = [];
+  for (let r = 4; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const colA = row[0];
+    if (colA && String(colA).trim().startsWith('---')) continue; // category banner row
+    const paramName = row[1];
+    if (!paramName) continue;
+
+    const scoreVal = row[cols.score];
+    const moveVal = row[cols.move];
+    const commentVal = row[cols.comment];
+    if (isBlankOrDash(scoreVal) && isBlankOrDash(moveVal)) continue; // param not applicable to this layer
+
+    result.push({
+      row: r + 1,
+      param: String(paramName).trim(),
+      label: row[2] ? String(row[2]).trim() : String(paramName).trim(),
+      score: isBlankOrDash(scoreVal) ? null : Number(scoreVal),
+      move: isBlankOrDash(moveVal) ? null : Number(moveVal),
+      comment: (commentVal === null || commentVal === undefined) ? '' : String(commentVal)
+    });
+  }
+  return result;
+}
+
+/**
+ * 指定レイヤーの行群にScore/Move/Commentを書き戻す。updatesの各要素のrowはreadOpinionRowsが
+ * 返した1-indexed行番号をそのまま使う。
+ */
+function writeOpinionRows(workbook, layerType, updates) {
+  const ws = workbook.Sheets[OPINION_SHEET_NAME];
+  if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const layerCols = parseLayerColumns(rows);
+  const cols = layerCols[layerType];
+  if (!cols) throw new Error(`Layer type not recognized in opinion sheet: ${layerType}`);
+
+  for (const u of updates) {
+    const r0 = u.row - 1;
+    if (typeof u.score === 'number' && !Number.isNaN(u.score)) {
+      XLSX.utils.sheet_add_aoa(ws, [[u.score]], { origin: { r: r0, c: cols.score } });
+    }
+    if (typeof u.move === 'number' && !Number.isNaN(u.move)) {
+      XLSX.utils.sheet_add_aoa(ws, [[u.move]], { origin: { r: r0, c: cols.move } });
+    }
+    if (typeof u.comment === 'string') {
+      XLSX.utils.sheet_add_aoa(ws, [[u.comment]], { origin: { r: r0, c: cols.comment } });
+    }
+  }
+}
+
+/**
+ * 全レイヤー分のMove列を再スキャンし、data/move_scores.jsonを再生成する。export_move_scores.py
+ * を手動実行しなくても保存時点で常に最新化されるようにするため、同じロジックをここに移植。
+ */
+function regenerateMoveScores(workbook, dataDir) {
+  const ws = workbook.Sheets[OPINION_SHEET_NAME];
+  if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const layerCols = parseLayerColumns(rows);
+
+  const mapping = {};
+  for (const layerType of Object.values(LAYER_NAME_TO_TYPE)) mapping[layerType] = {};
+
+  for (let r = 4; r < rows.length; r++) {
+    const row = rows[r] || [];
+    const colA = row[0];
+    if (colA && String(colA).trim().startsWith('---')) continue;
+    const paramName = row[1];
+    if (!paramName) continue;
+    const pName = String(paramName).trim();
+
+    for (const [layerType, cols] of Object.entries(layerCols)) {
+      const moveVal = row[cols.move];
+      if (isBlankOrDash(moveVal)) continue;
+      const num = Number(moveVal);
+      if (!Number.isNaN(num)) mapping[layerType][pName] = num;
+    }
+  }
+
+  const outPath = path.join(dataDir, 'move_scores.json');
+  fs.writeFileSync(outPath, JSON.stringify(mapping, null, 2), 'utf-8');
+  return mapping;
 }
 
 /**
@@ -289,7 +444,70 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     return;
   }
 
-  // 6. POST /api/transcode-prores - 透過WebMをProRes 4444(alpha)のMOVへローカルffmpegで変換
+  // 6. GET /api/opinion-sheet - 指定レイヤータイプのScore/Move/Comment行を読み込む
+  if (req.method === 'GET' && pathname === '/api/opinion-sheet') {
+    try {
+      const layerType = searchParams.get('layer');
+      if (!layerType) {
+        throw new Error('layer query parameter is required');
+      }
+      const excelPath = path.resolve(workspaceRoot, 'Excels', 'PresetLayerOpinionSheet.xlsx');
+      if (!fs.existsSync(excelPath)) {
+        throw new Error(`Opinion sheet not found: ${excelPath}`);
+      }
+      const workbook = XLSX.readFile(excelPath);
+      const rows = readOpinionRows(workbook, layerType);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ layerType, rows }));
+    } catch (err) {
+      console.error('[API Server] /api/opinion-sheet GET execution error:', err);
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // 6b. POST /api/opinion-sheet - Score/Move/Commentを書き戻し、data/move_scores.jsonを再生成
+  if (req.method === 'POST' && pathname === '/api/opinion-sheet') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        if (!body) {
+          throw new Error('Request body is empty');
+        }
+        const parsed = JSON.parse(body);
+        const { layerType, updates } = parsed;
+        if (!layerType || !Array.isArray(updates)) {
+          throw new Error('layerType and updates (array) are required');
+        }
+
+        const excelPath = path.resolve(workspaceRoot, 'Excels', 'PresetLayerOpinionSheet.xlsx');
+        if (!fs.existsSync(excelPath)) {
+          throw new Error(`Opinion sheet not found: ${excelPath}`);
+        }
+        const workbook = XLSX.readFile(excelPath);
+        writeOpinionRows(workbook, layerType, updates);
+        // 2026-07-20: SheetJSの無料版はスタイル情報を完全には保持できず、フォーマットは簡略化される
+        // (ユーザー確認済み・許容範囲。データ本体は正しく保持される)。compression:trueが無いと
+        // ファイルサイズが約7倍に膨張するため必須。
+        XLSX.writeFile(workbook, excelPath, { compression: true });
+
+        // 保存直後にdata/move_scores.jsonも再生成し、export_move_scores.pyの手動実行を不要にする
+        regenerateMoveScores(workbook, dataDir);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err) {
+        console.error('[API Server] /api/opinion-sheet POST execution error:', err);
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 7. POST /api/transcode-prores - 透過WebMをProRes 4444(alpha)のMOVへローカルffmpegで変換
   if (req.method === 'POST' && pathname === '/api/transcode-prores') {
     const chunks = [];
     req.on('data', chunk => { chunks.push(chunk); });

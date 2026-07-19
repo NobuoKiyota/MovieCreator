@@ -1154,12 +1154,16 @@ export class FogGenerator extends BaseGenerator {
 
   defaultParams() {
     return {
-      density: 12,        // Maximum number of active fog puffs
-      size: 260,          // Base radius of each puff
-      speed: 0.3,         // Maximum speed multiplier
-      fadeSpeed: 0.003,   // How slowly the fog fades in and out (0.001 - 0.015)
-      maxOpacity: 0.15,   // Maximum opacity limit for the fog
-      color: '#e2e8f0',   // Mist grey
+      density: 28,          // Maximum number of active fog puffs (was 12 - too sparse for
+                             // consistent overlap/coverage; measured coverage swung 0-30% of the
+                             // canvas frame-to-frame purely from random puff placement luck)
+      size: 260,            // Base radius of each puff
+      speed: 0.3,           // Maximum speed multiplier
+      fadeSpeed: 0.003,     // How slowly the fog fades in and out (0.001 - 0.015)
+      maxOpacity: 0.35,     // Maximum opacity limit for the fog (was 0.15 - measured peak pixel
+                             // brightness of only ~22/255 out of a 0-255 canvas, essentially
+                             // invisible; 2026-07-20 user report "doesn't look foggy at all")
+      color: '#e2e8f0',    // Mist grey
       colorLightness: 80
     };
   }
