@@ -173,7 +173,10 @@ export function applyFilmGrain(ctx, width, height, opacity = 0.05) {
 
 // 6. Kaleidoscope Symmetry Mirror
 export function applyKaleidoscope(ctx, canvas, segments = 6) {
-  if (segments < 3) return;
+  // 2026-07-20: lowered from <3 to <2 so a plain 2-way point mirror (the simplest reading of
+  // "mirror around the center") is reachable via the existing slider, instead of requiring a
+  // separate dedicated "center mirror" toggle.
+  if (segments < 2) return;
   const w = canvas.width;
   const h = canvas.height;
   
@@ -211,6 +214,68 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
     }
 
     ctx.drawImage(tempCanvas, -cx, -cy);
+    ctx.restore();
+  }
+}
+
+// 6b. Mirror Mode (screen-split mirroring) - 2026-07-20, added alongside a review of
+// applyKaleidoscope (which already covers "mirror around the center" via its N-segment radial
+// mirror; lowered its minimum from 3 to 2 segments there for a plain point-mirror option instead
+// of duplicating that here). This is the distinct one: reflect a rectangular half/quadrant onto
+// the rest of the canvas, like a body of water reflecting what's above it, rather than a radial
+// kaleidoscope. Revised 2026-07-20 from a 2-value top/bottom-only toggle into a single clearer
+// 4-state parameter matching how many "screens" (mirrored copies) are visible:
+//   0 = off (1 screen, no mirror)
+//   1 = left-right mirror (2 screens): left half is the source, right half is its flipped copy
+//   2 = up-down mirror (2 screens): top half is the source, bottom half is its flipped copy
+//   3 = left-right + up-down mirror (4 screens): top-left quadrant is the source, mirrored into
+//       the other three quadrants (a quad/tile mirror)
+export function applyMirrorMode(ctx, canvas, mode = 0) {
+  if (mode < 0.5) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  const halfW = w / 2;
+  const halfH = h / 2;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+  if (mode < 1.5) {
+    // Left-right: right half becomes a flipped copy of the left half.
+    ctx.clearRect(halfW, 0, halfW, h);
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(tempCanvas, 0, 0, halfW, h, 0, 0, halfW, h);
+    ctx.restore();
+  } else if (mode < 2.5) {
+    // Up-down: bottom half becomes a flipped copy of the top half.
+    ctx.clearRect(0, halfH, w, halfH);
+    ctx.save();
+    ctx.translate(0, h);
+    ctx.scale(1, -1);
+    ctx.drawImage(tempCanvas, 0, 0, w, halfH, 0, 0, w, halfH);
+    ctx.restore();
+  } else {
+    // Quad: top-left quadrant is the source, mirrored into the other three.
+    ctx.clearRect(halfW, 0, halfW, h);
+    ctx.clearRect(0, halfH, halfW, halfH);
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(tempCanvas, 0, 0, halfW, halfH, 0, 0, halfW, halfH);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(0, h);
+    ctx.scale(1, -1);
+    ctx.drawImage(tempCanvas, 0, 0, halfW, halfH, 0, 0, halfW, halfH);
+    ctx.restore();
+    ctx.save();
+    ctx.translate(w, h);
+    ctx.scale(-1, -1);
+    ctx.drawImage(tempCanvas, 0, 0, halfW, halfH, 0, 0, halfW, halfH);
     ctx.restore();
   }
 }

@@ -12,6 +12,7 @@ export const FX_PARAM_RANGES = {
   feedbackRotate:      { min: -0.05, max: 0.05 },
   distortionIntensity: { min: 0,     max: 40  },
   kaleidoscopeSegment: { min: 0,     max: 12  },
+  mirrorMode:          { min: 0,     max: 3   }, // 0=off, 1=left-right, 2=up-down, 3=quad (4 screens)
   chromaticOffset:     { min: 0,     max: 30  },
   rotateX:             { min: -180,  max: 180 },
   rotateY:             { min: -180,  max: 180 },

@@ -20,16 +20,19 @@ import {
   Shape3DParticlesGenerator,
   LighthouseGenerator,
   ShockwaveBurstGenerator,
-  GlassCrackGenerator
+  GlassCrackGenerator,
+  DotDesignGenerator,
+  NoiseGlitchGenerator
 } from './Generators.js';
 
-import { 
-  applyGlow, 
-  FeedbackTrail, 
+import {
+  applyGlow,
+  FeedbackTrail,
   applyDistortion,
   applyVignette,
   applyFilmGrain,
   applyKaleidoscope,
+  applyMirrorMode,
   applyChromaticAberration
 } from './Effects.js';
 
@@ -81,6 +84,7 @@ export class Layer {
       distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
       distortionSpeed: 1.5,
       kaleidoscopeSegment: 0,
+      mirrorMode: 0,     // 0 = off, 1 = left-right (2 screens), 2 = up-down (2 screens), 3 = quad (4 screens)
       chromaticOffset: 0,
       
       // 3D Transforms
@@ -133,6 +137,8 @@ export class Layer {
       case 'lighthouse': return 'Lighthouse Beacon';
       case 'shockwave-burst': return 'Shockwave Burst';
       case 'glass-crack': return 'Glass Crack';
+      case 'dot-design': return 'Dot Design';
+      case 'noise-glitch': return 'Noise Glitch';
       default: return 'Custom Layer';
     }
   }
@@ -160,6 +166,8 @@ export class Layer {
       case 'lighthouse': return new LighthouseGenerator();
       case 'shockwave-burst': return new ShockwaveBurstGenerator();
       case 'glass-crack': return new GlassCrackGenerator();
+      case 'dot-design': return new DotDesignGenerator();
+      case 'noise-glitch': return new NoiseGlitchGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }
@@ -260,11 +268,14 @@ export class Layer {
       case 'cube-3d':
         return 'pulsing-heart';
       case 'geometry':
+      case 'dot-design':
         return 'cosmic-spin';
       case 'growing-sketch':
         return 'growing-spiral';
       case 'lightning':
         return 'hyper-strobe';
+      case 'noise-glitch':
+        return 'glitch-chaos';
       default:
         return 'static-none';
     }
@@ -584,9 +595,14 @@ export class Layer {
       applyGlow(this.ctx, this.canvas, this.effects.glowIntensity, this.effects.glowMix);
     }
 
-    // Apply Kaleidoscope
-    if (this.effects.kaleidoscopeSegment >= 3) {
+    // Apply Kaleidoscope (2026-07-20: 3 -> 2, see applyKaleidoscope's own comment)
+    if (this.effects.kaleidoscopeSegment >= 2) {
       applyKaleidoscope(this.ctx, this.canvas, this.effects.kaleidoscopeSegment);
+    }
+
+    // Apply Mirror Mode
+    if (this.effects.mirrorMode > 0) {
+      applyMirrorMode(this.ctx, this.canvas, this.effects.mirrorMode);
     }
 
     // Apply Chromatic Aberration

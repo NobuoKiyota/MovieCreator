@@ -108,6 +108,15 @@ function adjustColorLightness(hex, lightness) {
   return `hsl(${h}, ${s}%, ${Math.round(lightness)}%)`;
 }
 
+// Same computation as adjustColorLightness, but returns numeric {r,g,b} instead of a CSS string -
+// for callers that need to build rgba(...) manually (e.g. per-cell dynamic alpha). NOT the same as
+// parseHexToRgb(adjustColorLightness(...)) - that combination silently returns white, since
+// parseHexToRgb only accepts "#rrggbb" and adjustColorLightness returns an "hsl(...)" string.
+function colorLightnessToRgb(hex, lightness) {
+  const { h, s } = hexToHsl(hex);
+  return hslToRgb(h, s, Math.max(0, Math.min(100, lightness)));
+}
+
 /**
  * Like adjustColorLightness, but also rotates the hue by hueOffsetDeg - used for
  * per-particle color variance (colorVariance param). Returns both the CSS string (for
@@ -155,6 +164,15 @@ export class BaseGenerator {
   draw(ctx, width, height, time) {}
 
   getParameterConfig() {
+    return [];
+  }
+
+  // Optional: names of this generator's own params (must appear in getParameterConfig()) that
+  // define the "shape" of the pattern as opposed to its styling (color, size, speed, ...). Lets
+  // the UI offer a "reroll pattern only" action that varies just these, leaving every other
+  // dialed-in choice untouched - see Controls.js randomizePatternOnly. Empty by default; a
+  // generator only needs to override this if a meaningful params/styling split exists for it.
+  getPatternParamNames() {
     return [];
   }
 }
@@ -1170,7 +1188,11 @@ export class FogGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'density', label: 'Density', type: 'range', min: 2, max: 30, step: 1 },
+      // min was 2 - too few puffs makes visible brightness a near coin-flip frame to frame
+      // (measured max pixel brightness swinging 11-255/255 across identical replays at
+      // density:2, amplified further by feedbackDecay echoing whatever moment it caught -
+      // 2026-07-20 user report, root-caused via repeated real-playback sampling).
+      { name: 'density', label: 'Density', type: 'range', min: 8, max: 30, step: 1 },
       { name: 'size', label: 'Size', type: 'range', min: 100, max: 600, step: 10 },
       { name: 'speed', label: 'Drift Speed', type: 'range', min: 0, max: 2, step: 0.05 },
       { name: 'fadeSpeed', label: 'Fade Duration', type: 'range', min: 0.001, max: 0.015, step: 0.0005 },
@@ -2779,6 +2801,367 @@ export class GlassCrackGenerator extends BaseGenerator {
     if (ringGrowProgress > 0) {
       for (const ring of this.rings) {
         this.drawCrackLine(ctx, ring, ringGrowProgress, hueSat, lightness, 1.6);
+      }
+    }
+
+    ctx.restore();
+  }
+}
+
+// 22. Dot Design Generator - kaleidoscopic dot-matrix / pixel-grid pattern. Deliberately a
+// different visual grammar from the particle-field generators (Particles/Meteor/Snowflake/Dry
+// Ice/Shape3D all read as close variants of "things floating") - see the 2026-07-20 catalog
+// diversification discussion in CLAUDE.md.
+//
+// 2026-07-20 revision: the original single "noise field folded into a symmetry wedge" mode
+// looked good but only ever produced organic mandala blobs - user feedback wanted legible,
+// nameable motions (expanding circle, converging circle, screen wipe/benchmark-style fill,
+// expanding star, a moving arrow). Rewired around five explicit `patternMode`s, four of which
+// (Radial/Sweep/Star/Arrow) share a "traveling wavefront" model: each dot gets a 0..1 distance
+// value in the same space as a `progress` ramp (0->1 over `cycleDuration`, optionally reversed),
+// and lights up once the front reaches it - deterministic and cleanly loopable. Mode 4 keeps the
+// original noise-kaleidoscope behavior unchanged as a fifth option.
+//
+// 2026-07-20 second revision: added three more modes (Sequential Fill, Ripple, Random Sparkle)
+// plus an optional Famicom-style multi-color palette mode (colorMode) - each lit dot picks a
+// stable-per-cell shade from a small retro-style palette instead of the single Color param, for
+// a retro pixel-art look.
+//
+// 2026-07-20 third revision: the first cut of colorMode used a fixed 6-hue NES-like palette
+// (red/yellow/green/cyan/violet/pink) independent of the Color param - feedback was that this
+// read as "too random"/disconnected from the layer's own color. Replaced with a palette DERIVED
+// from Color: same hue and saturation, posterized into a handful of discrete lightness steps
+// around colorLightness. This is what actually reads as "retro" (real consoles used a small
+// FIXED set of shades per sprite, not a smooth gradient) while staying visibly one color family -
+// a literal "up to 256 colors" master palette would look like ordinary anti-aliased shading, not
+// retro, so the point isn't the color COUNT but the discrete/quantized steps.
+function buildRetroPalette(hex, centerLightness) {
+  const { h, s } = hexToHsl(hex);
+  const lightnessSteps = [-32, -18, -6, 6, 18, 32];
+  return lightnessSteps.map(delta => hslToRgb(h, s, Math.max(8, Math.min(92, centerLightness + delta))));
+}
+
+export class DotDesignGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      // 0=Radial, 1=Sweep, 2=Star Burst, 3=Arrow, 4=Noise Kaleidoscope, 5=Sequential Fill,
+      // 6=Ripple, 7=Random Sparkle
+      patternMode: 0,
+      reverse: 0,           // 0 = expand/forward, 1 = converge/reverse direction
+      cycleDuration: 4000,  // ms; duration of one full reveal cycle, loops seamlessly
+      sweepAngle: 0,        // travel direction in degrees, used by Sweep, Arrow and Sequential Fill
+      gridSize: 22,         // dot columns across the shorter canvas dimension
+      dotShape: 0,          // 0 = square (pixel-art look), 1 = circle (softer dot-matrix look)
+      symmetry: 6,          // Star Burst spike count / Noise Kaleidoscope mirror-fold count
+      noiseScale: 1.2,      // spatial noise frequency - drives Noise Kaleidoscope directly, and
+                             // a subtle edge-roughening texture on the other modes' wavefront
+      edgeJitter: 8,        // how much noise roughens the wavefront edge (0 = razor-sharp)
+      patternSeedX: 0,      // sampling-origin offset into the (fixed, session-wide) noise field -
+      patternSeedY: 0,      // same symmetry/scale but a different seed reads as a different pattern
+      threshold: 45,        // Noise Kaleidoscope only: brightness cutoff (0-100)
+      fillAmount: 70,       // dot size as % of its grid cell
+      colorMode: 0,         // 0 = single Color below, 1 = Famicom-style retro palette derived FROM
+                             // Color (same hue/saturation, a handful of posterized lightness
+                             // shades) - each dot gets a stable-per-cell shade from that palette
+      colorLightness: 60,
+      color: '#22d3ee'
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'patternMode', label: 'Pattern Mode (0=Radial,1=Sweep,2=Star,3=Arrow,4=Noise,5=Fill,6=Ripple,7=Sparkle)', type: 'range', min: 0, max: 7, step: 1 },
+      { name: 'reverse', label: 'Reverse (0=Expand,1=Converge)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 1000, max: 15000, step: 500 },
+      { name: 'sweepAngle', label: 'Sweep/Arrow/Fill Angle', type: 'range', min: 0, max: 360, step: 1 },
+      { name: 'gridSize', label: 'Grid Size', type: 'range', min: 8, max: 48, step: 1 },
+      { name: 'dotShape', label: 'Dot Shape (0=Square,1=Circle)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'symmetry', label: 'Symmetry / Star Points', type: 'range', min: 1, max: 12, step: 1 },
+      { name: 'noiseScale', label: 'Pattern Scale', type: 'range', min: 0.2, max: 4, step: 0.1 },
+      { name: 'edgeJitter', label: 'Edge Roughness', type: 'range', min: 0, max: 30, step: 1 },
+      { name: 'patternSeedX', label: 'Pattern Seed X', type: 'range', min: -1000, max: 1000, step: 1 },
+      { name: 'patternSeedY', label: 'Pattern Seed Y', type: 'range', min: -1000, max: 1000, step: 1 },
+      { name: 'threshold', label: 'Noise Density Threshold', type: 'range', min: 0, max: 90, step: 1 },
+      { name: 'fillAmount', label: 'Dot Fill %', type: 'range', min: 20, max: 100, step: 1 },
+      { name: 'colorMode', label: 'Color Mode (0=Single,1=Famicom Palette)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  // "Pattern" here means which motion/shape is playing and its core geometry, as opposed to
+  // styling (color, grid resolution, dot shape/fill, edge texture) - lets Controls.js offer a
+  // "reroll pattern only" action that leaves everything else the user already dialed in untouched.
+  getPatternParamNames() {
+    return ['patternMode', 'reverse', 'sweepAngle', 'symmetry', 'noiseScale', 'patternSeedX', 'patternSeedY'];
+  }
+
+  draw(ctx, width, height, time) {
+    const gridSize = Math.max(1, Math.round(this.params.gridSize));
+    const cellSize = Math.min(width, height) / gridSize;
+    const cols = Math.ceil(width / cellSize);
+    const rows = Math.ceil(height / cellSize);
+    const cx = width / 2, cy = height / 2;
+    const baseRgb = colorLightnessToRgb(this.params.color, this.params.colorLightness);
+    const useFamicomPalette = this.params.colorMode >= 0.5;
+    const retroPalette = useFamicomPalette ? buildRetroPalette(this.params.color, this.params.colorLightness) : null;
+    const dotSize = cellSize * (this.params.fillAmount / 100);
+    const isCircle = this.params.dotShape >= 0.5;
+    const seedX = this.params.patternSeedX || 0;
+    const seedY = this.params.patternSeedY || 0;
+    const mode = Math.round(this.params.patternMode);
+    const reverse = this.params.reverse >= 0.5;
+
+    const cycleDuration = Math.max(1, this.params.cycleDuration);
+    let progress = (time % cycleDuration) / cycleDuration;
+    if (reverse) progress = 1 - progress;
+
+    const angleRad = (this.params.sweepAngle * Math.PI) / 180;
+    const maxRadius = Math.sqrt(cx * cx + cy * cy); // reaches the farthest corner at any angle
+    const symmetryFolds = Math.max(1, Math.round(this.params.symmetry));
+    const wedgeAngle = (Math.PI * 2) / symmetryFolds;
+    const t = time * 0.0003;
+
+    // Deterministic per-cell pseudo-random value in [0,1), driven by the (fixed, session-wide)
+    // noise field so cell N always gets the same value every cycle - required for a seamless
+    // loop (Sequential Fill's order and Random Sparkle's onset/duration must never reshuffle
+    // between cycles, only Random-LFO/pattern-reroll via patternSeedX/Y should change them).
+    const cellRand = (row, col, salt) => {
+      const n = noiseInst.noise2D((col * 12.9898 + seedX + salt), (row * 78.233 + seedY + salt));
+      return (n + 1) / 2;
+    };
+
+    ctx.save();
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const x = col * cellSize + cellSize / 2;
+        const y = row * cellSize + cellSize / 2;
+        const dx = x - cx, dy = y - cy;
+
+        let lit = false;
+        let alpha = 1;
+
+        if (mode === 7) {
+          // Random Sparkle: each cell has its own fixed onset time within the cycle (from a
+          // per-cell hash, not live Math.random - a live-random spawn/despawn scheme can't loop
+          // seamlessly) and flickers in then fades out over a short window, like a firefly.
+          const onset = cellRand(row, col, 0);
+          const sparkDuration = 0.08 + cellRand(row, col, 500) * 0.14; // 8-22% of the cycle
+          const localT = ((progress - onset) % 1 + 1) % 1;
+          if (localT < sparkDuration) {
+            const u = localT / sparkDuration;
+            alpha = u < 0.2 ? u / 0.2 : (1 - u) / 0.8; // quick rise, slow natural fade
+            lit = alpha > 0.02;
+          }
+
+        } else if (mode === 6) {
+          // Ripple: a thin ring travels outward from center (water-ripple look), dots light up
+          // briefly as the ring passes through then go dark again - unlike Radial, which fills
+          // and stays filled.
+          const dotDist = Math.sqrt(dx * dx + dy * dy) / maxRadius;
+          const ringWidth = 0.1;
+          const jitter = this.params.edgeJitter > 0
+            ? noiseInst.noise2D((x + seedX) * this.params.noiseScale * 0.01, (y + seedY) * this.params.noiseScale * 0.01) * (this.params.edgeJitter / 100)
+            : 0;
+          const dist = Math.abs(progress - dotDist + jitter);
+          if (dist < ringWidth) {
+            alpha = 1 - dist / ringWidth;
+            lit = alpha > 0.05;
+          }
+
+        } else if (mode === 5) {
+          // Sequential Fill: cells reveal one after another in a fixed raster order (rotated to
+          // the configured angle via along-axis projection), like a loading grid / benchmark bars.
+          const along = dx * Math.cos(angleRad) + dy * Math.sin(angleRad);
+          const across = -dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
+          // Normalize by the rectangle's actual half-extent along each rotated axis (NOT the
+          // diagonal maxRadius) - otherwise across barely varies across its real range and every
+          // row collapses into a handful of bands, reading as a diagonal smear instead of bars.
+          const acrossExtent = Math.max(1, cx * Math.abs(Math.sin(angleRad)) + cy * Math.abs(Math.cos(angleRad)));
+          const alongExtent = Math.max(1, cx * Math.abs(Math.cos(angleRad)) + cy * Math.abs(Math.sin(angleRad)));
+          // Sort primarily by the across-axis "row" (quantized), then by along-axis position, so
+          // whole bands complete before the next one starts rather than a smooth diagonal front.
+          const bandCount = Math.max(1, Math.round(rows));
+          const bandIndex = Math.min(bandCount - 1, Math.floor((across / acrossExtent + 1) / 2 * bandCount));
+          const bandFrac = Math.min(1, Math.max(0, (along / alongExtent + 1) / 2));
+          const dotDist = (bandIndex + bandFrac) / bandCount;
+          const edge = progress - dotDist;
+          lit = edge >= 0;
+          alpha = lit ? Math.max(0.4, Math.min(1, edge * 10 + 0.4)) : 0;
+
+        } else if (mode === 4) {
+          // Noise Kaleidoscope: fold angle into one symmetry wedge and mirror it, so the noise
+          // field samples the same wedge repeated/reflected around the circle instead of plain
+          // unstructured noise (original 2026-07-20 behavior, unchanged).
+          const r = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          let folded = ((angle % wedgeAngle) + wedgeAngle) % wedgeAngle;
+          if (folded > wedgeAngle / 2) folded = wedgeAngle - folded;
+          const foldedX = Math.cos(folded) * r + seedX;
+          const foldedY = Math.sin(folded) * r + seedY;
+          const n = noiseInst.noise2D(foldedX * this.params.noiseScale * 0.01, foldedY * this.params.noiseScale * 0.01 + t);
+          const brightness = (n + 1) / 2 * 100;
+          lit = brightness >= this.params.threshold;
+          alpha = Math.min(1, (brightness - this.params.threshold) / (100 - this.params.threshold) + 0.15);
+
+        } else if (mode === 3) {
+          // Arrow: a triangular chevron band traveling across the canvas at the configured angle,
+          // entering and exiting off-screen each cycle.
+          const along = dx * Math.cos(angleRad) + dy * Math.sin(angleRad);
+          const across = -dx * Math.sin(angleRad) + dy * Math.cos(angleRad);
+          const travel = maxRadius * 2.4;
+          const tipPos = progress * travel - maxRadius * 1.2;
+          const behindTip = tipPos - along; // > 0 = inside the arrow's body, behind its tip
+          const arrowLength = maxRadius * 0.7;
+          if (behindTip >= 0 && behindTip <= arrowLength) {
+            const halfWidth = (maxRadius * 0.5) * (behindTip / arrowLength); // 0 at tip, widest at tail
+            lit = Math.abs(across) <= halfWidth;
+          }
+
+        } else {
+          // Radial (0) / Sweep (1) / Star Burst (2): share a "traveling wavefront" model - each
+          // dot gets a 0..1 distance in the same space as `progress`; lit once the front reaches it.
+          let dotDist;
+          if (mode === 0) {
+            dotDist = Math.sqrt(dx * dx + dy * dy) / maxRadius;
+          } else if (mode === 1) {
+            const proj = dx * Math.cos(angleRad) + dy * Math.sin(angleRad);
+            dotDist = (proj / maxRadius + 1) / 2; // normalize [-maxRadius,maxRadius] -> [0,1]
+          } else {
+            const r = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const spikeMul = 0.65 + 0.35 * Math.cos(angle * symmetryFolds); // spiky silhouette
+            dotDist = r / (maxRadius * spikeMul);
+          }
+
+          // A touch of noise on the comparison point keeps the front from reading as a perfectly
+          // mathematical circle/line/star, plus a brightness boost right at the leading edge.
+          const jitter = this.params.edgeJitter > 0
+            ? noiseInst.noise2D((x + seedX) * this.params.noiseScale * 0.01, (y + seedY) * this.params.noiseScale * 0.01) * (this.params.edgeJitter / 100)
+            : 0;
+          const edge = progress + jitter - dotDist;
+          lit = edge >= 0;
+          alpha = lit ? Math.max(0.35, Math.min(1, edge * 8)) : 0;
+        }
+
+        if (!lit) continue;
+        const rgb = useFamicomPalette
+          ? retroPalette[Math.min(retroPalette.length - 1, Math.max(0, Math.floor(cellRand(row, col, 1000) * retroPalette.length)))]
+          : baseRgb;
+        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+        if (isCircle) {
+          ctx.beginPath();
+          ctx.arc(x, y, dotSize / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillRect(x - dotSize / 2, y - dotSize / 2, dotSize, dotSize);
+        }
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// 23. Noise Glitch Generator - procedural digital-corruption look (displaced scanline bands, RGB
+// channel split, block noise) with a calm baseline plus occasional random "bursts" of heavier
+// glitching, rather than constant chaos every frame - matches this app's general "reduce gacha,
+// favor an intentional-looking baseline" design philosophy (see CLAUDE.md パラメータ制御指針).
+export class NoiseGlitchGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.burstTimer = 0; // frames remaining in the current burst, 0 = calm baseline
+  }
+
+  defaultParams() {
+    return {
+      sliceHeight: 10,       // scanline slice height in px
+      bandCount: 5,          // number of displaced bands drawn per frame during a burst
+      displaceAmount: 40,    // max horizontal pixel displacement per band during a burst
+      burstChance: 0.015,    // probability per frame of a new burst starting
+      burstDuration: 10,     // frames a burst lasts
+      colorSplit: 5,         // RGB channel split offset in px during a burst
+      scanlineOpacity: 20,   // persistent background scanline overlay strength (0-100)
+      blockDensity: 2,       // corruption blocks drawn per frame during a burst
+      colorLightness: 55,
+      color: '#ff2079'
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'sliceHeight', label: 'Slice Height', type: 'range', min: 2, max: 40, step: 1 },
+      { name: 'bandCount', label: 'Band Count', type: 'range', min: 1, max: 15, step: 1 },
+      { name: 'displaceAmount', label: 'Displace Amount', type: 'range', min: 5, max: 150, step: 5 },
+      { name: 'burstChance', label: 'Burst Chance', type: 'range', min: 0, max: 0.1, step: 0.005 },
+      { name: 'burstDuration', label: 'Burst Duration (f)', type: 'range', min: 2, max: 40, step: 1 },
+      { name: 'colorSplit', label: 'Color Split', type: 'range', min: 0, max: 30, step: 1 },
+      { name: 'scanlineOpacity', label: 'Scanline Opacity', type: 'range', min: 0, max: 60, step: 1 },
+      { name: 'blockDensity', label: 'Block Density', type: 'range', min: 0, max: 10, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  reset() {
+    this.burstTimer = 0;
+  }
+
+  update(time, frameCount, width, height) {
+    if (this.burstTimer > 0) {
+      this.burstTimer--;
+    } else if (Math.random() < this.params.burstChance) {
+      this.burstTimer = Math.max(1, Math.round(this.params.burstDuration));
+    }
+  }
+
+  draw(ctx, width, height, time) {
+    const isBursting = this.burstTimer > 0;
+    const rgb = colorLightnessToRgb(this.params.color, this.params.colorLightness);
+
+    ctx.save();
+
+    // 1. Displaced horizontal bands with a colored RGB-channel-split fringe. Calm baseline shows
+    // one faint, barely-displaced band (a signal is still "alive"); a burst shows the full
+    // configured count at full displacement/color-split.
+    const bandCount = isBursting ? Math.round(this.params.bandCount) : 1;
+    const dispMul = isBursting ? 1.0 : 0.12;
+    const alphaMul = isBursting ? 1.0 : 0.35;
+    const splitMul = isBursting ? 1.0 : 0.2;
+
+    for (let i = 0; i < bandCount; i++) {
+      const bandY = Math.random() * height;
+      const bandH = this.params.sliceHeight * (0.5 + Math.random());
+      const offsetX = (Math.random() * 2 - 1) * this.params.displaceAmount * dispMul;
+      const alpha = (0.5 + Math.random() * 0.5) * alphaMul;
+      const split = this.params.colorSplit * splitMul;
+
+      ctx.fillStyle = `rgba(${rgb.r}, 60, 60, ${alpha * 0.6})`;
+      ctx.fillRect(offsetX - split, bandY, width, bandH);
+      ctx.fillStyle = `rgba(60, ${rgb.g}, 60, ${alpha * 0.6})`;
+      ctx.fillRect(offsetX, bandY, width, bandH);
+      ctx.fillStyle = `rgba(60, 60, ${rgb.b}, ${alpha * 0.6})`;
+      ctx.fillRect(offsetX + split, bandY, width, bandH);
+    }
+
+    // 2. Block corruption (small bright rectangles), only during a burst.
+    if (isBursting) {
+      const blocks = Math.round(this.params.blockDensity);
+      for (let i = 0; i < blocks; i++) {
+        const bw = 20 + Math.random() * 120;
+        const bh = 5 + Math.random() * 30;
+        const bx = Math.random() * width;
+        const by = Math.random() * height;
+        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${0.7 + Math.random() * 0.3})`;
+        ctx.fillRect(bx, by, bw, bh);
+      }
+    }
+
+    // 3. Faint persistent scanlines across the whole frame, always on regardless of burst state.
+    const scanAlpha = this.params.scanlineOpacity / 100;
+    if (scanAlpha > 0) {
+      ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${scanAlpha})`;
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1);
       }
     }
 

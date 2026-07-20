@@ -109,6 +109,7 @@ export class Controls {
       feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',     ...R.feedbackRotate,      step: 0.001, type: 'range' },
       distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',     ...R.distortionIntensity, step: 1,     type: 'range' },
       kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, step: 1,     type: 'range' },
+      mirrorMode:          { name: 'mirrorMode',          label: 'Mirror Mode',    ...R.mirrorMode,          step: 1,     type: 'range' },
       chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     step: 0.5,   type: 'range' },
       rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             step: 1,     type: 'range' },
       rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             step: 1,     type: 'range' },
@@ -1593,6 +1594,7 @@ export class Controls {
     randomizerHeader.style.gap = '0.75rem';
 
     const currentSpread = layer.randomSpread !== undefined ? layer.randomSpread : 50;
+    const hasPatternParams = !!(layer.generator.getPatternParamNames && layer.generator.getPatternParamNames().length > 0);
     randomizerHeader.innerHTML = `
       <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
         <span style="font-size: 0.75rem; color: var(--color-text-muted); font-weight: 600; white-space: nowrap;">LFO Spread</span>
@@ -1600,6 +1602,7 @@ export class Controls {
         <span class="spread-val-display" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-accent); width: 35px; text-align: right;">${currentSpread}%</span>
       </div>
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
+      ${hasPatternParams ? `<button class="btn btn-secondary btn-small btn-randomize-pattern" title="Reroll only the pattern shape - color/size/speed/etc. stay as-is" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🔀 Pattern</button>` : ''}
       <div style="display: flex; gap: 0.25rem;">
         <button class="btn btn-secondary btn-small btn-score-stats" title="View Learning Progress & Stats" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📊</button>
         <button class="btn btn-secondary btn-small btn-opinion-sheet" title="Edit Score/Move Tendencies (Opinion Sheet)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📝</button>
@@ -1610,6 +1613,7 @@ export class Controls {
     const spreadSlider = randomizerHeader.querySelector('.random-spread-slider');
     const spreadDisplay = randomizerHeader.querySelector('.spread-val-display');
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
+    const btnRandomPattern = randomizerHeader.querySelector('.btn-randomize-pattern');
     const btnRate = randomizerHeader.querySelector('.btn-score-rate');
     const btnStats = randomizerHeader.querySelector('.btn-score-stats');
     const btnOpinionSheet = randomizerHeader.querySelector('.btn-opinion-sheet');
@@ -1625,6 +1629,14 @@ export class Controls {
       this.rebuildInspector(); // Redraw UI fields to reflect values
       this.mainApp.renderSingleFrame();
     });
+
+    if (btnRandomPattern) {
+      btnRandomPattern.addEventListener('click', () => {
+        this.randomizePatternOnly(layer);
+        this.rebuildInspector();
+        this.mainApp.renderSingleFrame();
+      });
+    }
 
     btnRate.addEventListener('click', async () => {
       const result = await this.showRatingDialog(layer);
@@ -2870,6 +2882,22 @@ export class Controls {
           continue;
         }
 
+        // 9b. mirrorMode: a deliberate manual composition choice, not something that should get
+        // rolled on randomly - force off, same treatment as Kaleidoscope/Noise Warp/Chromatic.
+        if (fxName === 'mirrorMode') {
+          candidateEffects['mirrorMode'] = 0;
+          candidateModulations['mirrorMode'] = {
+            enabled: false,
+            min: 0,
+            max: 0,
+            timePct: 50,
+            behavior: 'return',
+            keyframeEnabled: false,
+            keyframes: []
+          };
+          continue;
+        }
+
         // 10. chromaticOffset: Chromatic Aberration - almost never used, set to 0.
         if (fxName === 'chromaticOffset') {
           candidateEffects['chromaticOffset'] = 0;
@@ -3635,6 +3663,44 @@ export class Controls {
     };
 
     renderStep1();
+  }
+
+  // Standalone counterpart to the snapToStep() closure inside randomizeLayer - same logic, kept
+  // as a real method so randomizePatternOnly (and anything else outside that closure) can reuse
+  // it without duplicating randomizeLayer's internals.
+  snapToStep(val, config) {
+    if (!config.step) return val;
+    const snapped = config.min + Math.round((val - config.min) / config.step) * config.step;
+    return Math.max(config.min, Math.min(config.max, snapped));
+  }
+
+  // Rerolls only a generator's declared "pattern" params (BaseGenerator.getPatternParamNames -
+  // e.g. Dot Design's symmetry/noiseScale/patternSeed), leaving color, grid resolution, speed,
+  // and every other styling choice untouched. 2026-07-20 user feedback: Dot Design's pattern is
+  // genuinely interesting to reroll on its own, but the existing full Random LFO changes
+  // everything at once, discarding styling choices the user already liked along with it.
+  randomizePatternOnly(layer) {
+    const patternNames = layer.generator.getPatternParamNames ? layer.generator.getPatternParamNames() : [];
+    if (patternNames.length === 0) return;
+
+    const genConfigs = layer.generator.getParameterConfig();
+    for (const paramName of patternNames) {
+      const config = genConfigs.find(c => c.name === paramName);
+      if (!config || config.type !== 'range') continue;
+
+      const newVal = this.snapToStep(config.min + Math.random() * (config.max - config.min), config);
+      layer.generator.params[paramName] = newVal;
+
+      // Keep an un-animated parameter's LFO bounds/jitter centered on the new value, same as
+      // randomizeLayer does for every other param - otherwise the next LFO/jitter pass would
+      // silently pull it back toward the stale pre-reroll value.
+      const mod = layer.modulations[paramName];
+      if (mod && !mod.enabled && !mod.keyframeEnabled) {
+        mod.min = newVal;
+        mod.max = newVal;
+        mod.jitterBase = newVal;
+      }
+    }
   }
 
   // Circular hue distance between two hex colors, normalized to 0 (same hue) .. 1 (opposite hue,
