@@ -1,10 +1,10 @@
 @echo off
-chcp 65001 > NUL
-title MovieCreator Pipeline GUI Launcher
-echo 🎬 Starting MovieCreator Pipeline Control Center...
-python "%~dp0scripts\pipeline_gui.py"
-if %ERRORLEVEL% NEQ 0 (
+setlocal
+cd /d "%~dp0"
+echo Starting MovieCreator Pipeline GUI...
+python scripts\pipeline_gui.py
+if errorlevel 1 (
     echo.
-    echo ❌ エラーが発生しました。キーを押して終了してください...
-    pause > NUL
+    echo [ERROR] Pipeline GUI exited with an error. Press any key to exit...
+    pause > nul
 )
