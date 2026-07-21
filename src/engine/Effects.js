@@ -172,29 +172,16 @@ export function applyFilmGrain(ctx, width, height, opacity = 0.05) {
 }
 
 // 6. Kaleidoscope Symmetry Mirror
-export function applyKaleidoscope(ctx, canvas, segments = 6) {
-  // 2026-07-20: lowered from <3 to <2 so a plain 2-way point mirror (the simplest reading of
-  // "mirror around the center") is reachable via the existing slider, instead of requiring a
-  // separate dedicated "center mirror" toggle.
-  if (segments < 2) return;
-  const w = canvas.width;
-  const h = canvas.height;
-  
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = w;
-  tempCanvas.height = h;
-  const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.drawImage(canvas, 0, 0);
-
-  ctx.clearRect(0, 0, w, h);
-
+// Shared by applyKaleidoscope (zoom>1, always alternating) and Mirror Mode's radial presets
+// (zoom=1, i.e. an undistorted 1:1 copy of the reference wedge, no magnification): clips the
+// canvas into `segments` equal angular wedges and draws a rotated copy of the WHOLE source per
+// wedge. Because the whole source rotates before clipping, what lands in wedge i is actually
+// the same reference content from wedge 0, rotated into position i - a "copy the reference
+// wedge, rotating by 360/segments degrees each time" fan, not an independent redraw per wedge.
+function drawRadialWedgeCopies(ctx, sourceCanvas, w, h, segments, { zoom = 1, alternate = false } = {}) {
   const angle = (Math.PI * 2) / segments;
   const cx = w / 2;
   const cy = h / 2;
-  // Sample a magnified crop of the source per wedge, not a near-1:1 copy - otherwise
-  // the mirrored wedges mostly overlap with the original center content and the
-  // "kaleidoscope" repetition barely reads as a distinct pattern.
-  const zoom = 1.6;
 
   for (let i = 0; i < segments; i++) {
     ctx.save();
@@ -207,15 +194,36 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
     ctx.closePath();
     ctx.clip();
 
-    if (i % 2 === 1) {
+    if (alternate && i % 2 === 1) {
       ctx.scale(-zoom, zoom);
     } else {
       ctx.scale(zoom, zoom);
     }
 
-    ctx.drawImage(tempCanvas, -cx, -cy);
+    ctx.drawImage(sourceCanvas, -cx, -cy);
     ctx.restore();
   }
+}
+
+export function applyKaleidoscope(ctx, canvas, segments = 6) {
+  // 2026-07-20: lowered from <3 to <2 so a plain 2-way point mirror (the simplest reading of
+  // "mirror around the center") is reachable via the existing slider, instead of requiring a
+  // separate dedicated "center mirror" toggle.
+  if (segments < 2) return;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Sample a magnified crop of the source per wedge, not a near-1:1 copy - otherwise
+  // the mirrored wedges mostly overlap with the original center content and the
+  // "kaleidoscope" repetition barely reads as a distinct pattern.
+  drawRadialWedgeCopies(ctx, tempCanvas, w, h, segments, { zoom: 1.6, alternate: true });
 }
 
 // 6b. Mirror Mode (screen-split mirroring) - 2026-07-20, added alongside a review of
@@ -230,6 +238,22 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
 //   2 = up-down mirror (2 screens): top half is the source, bottom half is its flipped copy
 //   3 = left-right + up-down mirror (4 screens): top-left quadrant is the source, mirrored into
 //       the other three quadrants (a quad/tile mirror)
+// Extended 2026-07-20 with radial N-way presets (modes 4-9) built on the same
+// drawRadialWedgeCopies fan used by applyKaleidoscope, but zoom=1 (an undistorted 1:1 copy
+// of the reference wedge, not Kaleidoscope's magnified sampling) - "オリジナルを中心点から
+// 分割し、360/N度ずつ回転コピー". Each fold count has a plain rotate-only variant and an
+// alternating-mirror variant (odd wedges additionally flipped, closer to true kaleidoscope optics):
+//   4 = 6-way, 5 = 6-way alternating, 6 = 8-way, 7 = 8-way alternating,
+//   8 = 12-way, 9 = 12-way alternating
+const RADIAL_MIRROR_MODES = {
+  4: { segments: 6, alternate: false },
+  5: { segments: 6, alternate: true },
+  6: { segments: 8, alternate: false },
+  7: { segments: 8, alternate: true },
+  8: { segments: 12, alternate: false },
+  9: { segments: 12, alternate: true }
+};
+
 export function applyMirrorMode(ctx, canvas, mode = 0) {
   if (mode < 0.5) return;
   const w = canvas.width;
@@ -258,7 +282,7 @@ export function applyMirrorMode(ctx, canvas, mode = 0) {
     ctx.scale(1, -1);
     ctx.drawImage(tempCanvas, 0, 0, w, halfH, 0, 0, w, halfH);
     ctx.restore();
-  } else {
+  } else if (mode < 3.5) {
     // Quad: top-left quadrant is the source, mirrored into the other three.
     ctx.clearRect(halfW, 0, halfW, h);
     ctx.clearRect(0, halfH, halfW, halfH);
@@ -277,6 +301,14 @@ export function applyMirrorMode(ctx, canvas, mode = 0) {
     ctx.scale(-1, -1);
     ctx.drawImage(tempCanvas, 0, 0, halfW, halfH, 0, 0, halfW, halfH);
     ctx.restore();
+  } else {
+    // Radial N-way: 6/8/12-fold rotate-copy of the reference wedge, each with a plain and an
+    // alternating-mirror variant. See RADIAL_MIRROR_MODES above.
+    const cfg = RADIAL_MIRROR_MODES[Math.round(mode)];
+    if (cfg) {
+      ctx.clearRect(0, 0, w, h);
+      drawRadialWedgeCopies(ctx, tempCanvas, w, h, cfg.segments, { zoom: 1, alternate: cfg.alternate });
+    }
   }
 }
 

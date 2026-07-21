@@ -57,6 +57,7 @@ export class Controls {
     this.btnKeyCopyEl = document.getElementById('btn-key-copy');
     this.btnKeyPasteEl = document.getElementById('btn-key-paste');
     this.timelineSnapSelectEl = document.getElementById('timeline-snap-select');
+    this.timelineSnapValueSelectEl = document.getElementById('timeline-snap-value-select');
     this.timelineTemplateSelectEl = document.getElementById('timeline-template-select');
     this.btnKeySaveTemplateEl = document.getElementById('btn-key-save-template');
     this.btnTemplateExportEl = document.getElementById('btn-template-export');
@@ -869,8 +870,19 @@ export class Controls {
           newFrame = Math.max(0, Math.min(maxFrames, newFrame));
         }
 
-        const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
-        
+        let newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
+
+        // Value-axis snap (vertical) - mirrors the frame-axis snap above, but as a percent of
+        // the parameter's own range since ranges vary wildly (0-1 opacity vs 0-1000 radius).
+        const snapValuePct = this.timelineSnapValueSelectEl ? this.timelineSnapValueSelectEl.value : 'off';
+        if (snapValuePct !== 'off') {
+          const step = (config.max - config.min) * (parseFloat(snapValuePct) / 100);
+          if (step > 0) {
+            newVal = config.min + Math.round((newVal - config.min) / step) * step;
+            newVal = Math.max(config.min, Math.min(config.max, newVal));
+          }
+        }
+
         kf.frame = newFrame;
         kf.value = newVal;
 
@@ -933,7 +945,17 @@ export class Controls {
         newFrame = Math.max(0, Math.min(maxFrames, newFrame));
       }
 
-      const newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
+      let newVal = Math.max(config.min, Math.min(config.max, config.min + (1 - (pos.y - topMargin) / graphHeight) * (config.max - config.min)));
+
+      // Value-axis snap (vertical) - see the matching drag-handler comment above.
+      const snapValuePctDbl = this.timelineSnapValueSelectEl ? this.timelineSnapValueSelectEl.value : 'off';
+      if (snapValuePctDbl !== 'off') {
+        const step = (config.max - config.min) * (parseFloat(snapValuePctDbl) / 100);
+        if (step > 0) {
+          newVal = config.min + Math.round((newVal - config.min) / step) * step;
+          newVal = Math.max(config.min, Math.min(config.max, newVal));
+        }
+      }
 
       // Add and sort
       const newKf = { frame: newFrame, value: newVal, easing: 'linear' };
@@ -1084,6 +1106,7 @@ export class Controls {
       this.btnKeyCopyEl.disabled = true;
       this.btnKeyPasteEl.disabled = true;
       this.timelineSnapSelectEl.disabled = true;
+      if (this.timelineSnapValueSelectEl) this.timelineSnapValueSelectEl.disabled = true;
       if (this.timelineTemplateSelectEl) this.timelineTemplateSelectEl.disabled = true;
       if (this.btnKeySaveTemplateEl) this.btnKeySaveTemplateEl.disabled = true;
 
@@ -1170,6 +1193,7 @@ export class Controls {
     this.btnKeyCopyEl.disabled = false;
     this.btnKeyPasteEl.disabled = !this.copiedKeyframes;
     this.timelineSnapSelectEl.disabled = false;
+    if (this.timelineSnapValueSelectEl) this.timelineSnapValueSelectEl.disabled = false;
     if (this.timelineTemplateSelectEl) this.timelineTemplateSelectEl.disabled = false;
     if (this.btnKeySaveTemplateEl) this.btnKeySaveTemplateEl.disabled = false;
 

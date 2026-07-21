@@ -84,7 +84,7 @@ export class Layer {
       distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
       distortionSpeed: 1.5,
       kaleidoscopeSegment: 0,
-      mirrorMode: 0,     // 0 = off, 1 = left-right (2 screens), 2 = up-down (2 screens), 3 = quad (4 screens)
+      mirrorMode: 0,     // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt) (see Effects.js)
       chromaticOffset: 0,
       
       // 3D Transforms
