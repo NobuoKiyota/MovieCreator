@@ -329,7 +329,8 @@ export class Controls {
         height: h,
         bgMode: this.exportBgEl.value,
         fadeOutDuration: parseFloat(this.masterFadeOutEl.value) || 0,
-        alsoExportProRes: !!(this.exportProResEl && this.exportProResEl.checked)
+        alsoExportProRes: !!(this.exportProResEl && this.exportProResEl.checked),
+        filename: this.buildExportFilename()
       };
       this.mainApp.exportVideo(options);
     });
@@ -1466,6 +1467,25 @@ export class Controls {
       slider.value = currentVal;
       valDisplay.textContent = currentVal % 1 === 0 ? currentVal.toString() : currentVal.toFixed(4);
     }
+  }
+
+  /**
+   * Builds the export filename base (no extension): the front-most visible layer's name plus
+   * a timestamp, e.g. "Dot Design07 (Imported)_20260721_184230". "Front-most" matches what the
+   * Layers panel shows at the top of the list - the last entry in layerManager.layers (layers
+   * are composited/rendered in array order, so the last one draws on top). Falls back to
+   * "MovieCreator" if there are no visible layers.
+   */
+  buildExportFilename() {
+    const visibleLayers = this.layerManager.layers.filter(l => l.visible);
+    const topLayer = visibleLayers[visibleLayers.length - 1];
+    const presetPart = topLayer ? topLayer.name : 'MovieCreator';
+
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+    return `${presetPart}_${datePart}`;
   }
 
   /**

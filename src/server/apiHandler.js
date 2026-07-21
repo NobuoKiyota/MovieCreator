@@ -252,6 +252,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
   const projectsDir = path.resolve(workspaceRoot, 'projects');
   const presetsDir = path.resolve(workspaceRoot, 'presets');
   const dataDir = path.resolve(workspaceRoot, 'data');
+  const outputDir = path.resolve(workspaceRoot, 'output');
   const scoresPath = path.join(dataDir, 'scores.json');
 
   // ディレクトリがなければ自動作成する
@@ -264,6 +265,9 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     }
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
+    }
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
     if (!fs.existsSync(scoresPath)) {
       fs.writeFileSync(scoresPath, '[]', 'utf-8');
@@ -596,6 +600,47 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           cleanup();
         }
       });
+    });
+    return;
+  }
+
+  // 8. POST /api/save-export - 書き出した動画(MP4/WebM/MOV)をブラウザのダウンロードフォルダではなく
+  // ワークスペース直下のoutput/へ直接保存する。ブラウザのdownload属性は保存先ディレクトリを
+  // JS側から指定できない(ブラウザの設定に依存する)ため、サーバー側でfsに書き込むことで
+  // 自宅/会社PCどちらでも常に同じ場所に集約する。開発サーバー(npm run dev)経由でのみ有効。
+  if (req.method === 'POST' && pathname === '/api/save-export') {
+    const chunks = [];
+    req.on('data', chunk => { chunks.push(chunk); });
+    req.on('end', () => {
+      const fileBuffer = Buffer.concat(chunks);
+      if (fileBuffer.length === 0) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Request body (video binary) is empty' }));
+        return;
+      }
+
+      const requestedName = searchParams.get('filename') || 'export';
+      const ext = path.extname(requestedName) || '.mp4';
+      const baseNoExt = requestedName.slice(0, requestedName.length - ext.length);
+      const filename = `${getSafeFilename(baseNoExt, 'export')}${ext}`;
+      const filePath = path.join(outputDir, filename);
+
+      // ディレクトリトラバーサル防止 (念のためベース名チェック)
+      if (path.basename(filename) !== filename) {
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Invalid file path manipulation detected' }));
+        return;
+      }
+
+      try {
+        fs.writeFileSync(filePath, fileBuffer);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, file: filename, path: filePath }));
+      } catch (err) {
+        console.error('[API Server] /api/save-export write error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: `Failed to write export file: ${err.message}` }));
+      }
     });
     return;
   }

@@ -11,3 +11,7 @@ data/*.corrupted-*.json
 # ProRes 4444変換用ffmpegバイナリ(PCごとに手動配置、CLAUDE.md参照)と変換時の一時ファイル
 tools/ffmpeg/
 .tmp_transcode/
+
+# 書き出し動画の保存先(/api/save-export、VideoRecorder.js参照)。*.mp4は元々除外済みだが
+# 透過WebM/ProRes MOVも同じフォルダに出力されるためディレクトリごと除外する。
+output/

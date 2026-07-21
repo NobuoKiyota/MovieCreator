@@ -245,13 +245,20 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
 // alternating-mirror variant (odd wedges additionally flipped, closer to true kaleidoscope optics):
 //   4 = 6-way, 5 = 6-way alternating, 6 = 8-way, 7 = 8-way alternating,
 //   8 = 12-way, 9 = 12-way alternating
+// Extended further 2026-07-21 (user requested going beyond 12-way) with 10 = 16-way,
+// 11 = 16-way alternating, 12 = 20-way, 13 = 20-way alternating - same fan mechanism, just a
+// finer wedge angle (360/16=22.5°, 360/20=18°).
 const RADIAL_MIRROR_MODES = {
   4: { segments: 6, alternate: false },
   5: { segments: 6, alternate: true },
   6: { segments: 8, alternate: false },
   7: { segments: 8, alternate: true },
   8: { segments: 12, alternate: false },
-  9: { segments: 12, alternate: true }
+  9: { segments: 12, alternate: true },
+  10: { segments: 16, alternate: false },
+  11: { segments: 16, alternate: true },
+  12: { segments: 20, alternate: false },
+  13: { segments: 20, alternate: true }
 };
 
 export function applyMirrorMode(ctx, canvas, mode = 0) {

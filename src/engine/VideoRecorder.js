@@ -154,6 +154,17 @@ export class VideoRecorder {
       for (let frame = 0; frame < totalFrames; frame++) {
         if (hasEncoderError) break;
 
+        // Backpressure: keep the encoder's internal queue small instead of letting frames pile
+        // up faster than it can drain them. A large backlog is exactly the condition under which
+        // 'realtime' latencyMode is permitted (per the WebCodecs spec) to silently drop frames to
+        // keep pace - unacceptable for an offline, frame-accurate export where every frame must
+        // land in the output. Wait for real drainage (not a single event-loop tick) before adding
+        // more work to the queue.
+        while (encoder.encodeQueueSize > 4 && !hasEncoderError) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (hasEncoderError) break;
+
         const time = (frame / fps) * 1000;
         const frameTimeUs = Math.round((frame / fps) * 1_000_000);
 
@@ -176,11 +187,6 @@ export class VideoRecorder {
         encoder.encode(videoFrame, { keyFrame });
         videoFrame.close();
 
-        // Yield to event loop every 2 frames (prevents encoder queue overflow)
-        if (frame % 2 === 0 || encoder.encodeQueueSize > 10) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-
         if (onProgress) {
           onProgress(Math.round((frame / totalFrames) * 100));
         }
@@ -193,7 +199,7 @@ export class VideoRecorder {
 
         const buffer = muxer.target.buffer;
         const blob = new Blob([buffer], { type: chosenCodec.mime });
-        this.downloadBlob(blob, `${filename}.${chosenCodec.ext}`);
+        await this.saveOrDownloadBlob(blob, `${filename}.${chosenCodec.ext}`);
       } else {
         alert('MP4 encoding failed during render. Please try WebM export instead (background mode → Transparent).');
       }
@@ -225,9 +231,9 @@ export class VideoRecorder {
     };
 
     const recorderPromise = new Promise((resolve) => {
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'video/webm' });
-        this.downloadBlob(blob, `${filename}.webm`);
+        await this.saveOrDownloadBlob(blob, `${filename}.webm`);
         resolve();
       };
     });
@@ -373,7 +379,7 @@ export class VideoRecorder {
         const buffer = muxer.finalize();
         if (buffer) {
           const blob = new Blob([buffer], { type: 'video/webm' });
-          this.downloadBlob(blob, `${filename}.webm`);
+          await this.saveOrDownloadBlob(blob, `${filename}.webm`);
           if (alsoExportProRes) {
             await this.transcodeToProRes(blob, filename);
           }
@@ -410,10 +416,33 @@ export class VideoRecorder {
         throw new Error(errBody.error || `Transcode request failed (HTTP ${response.status})`);
       }
       const movBlob = await response.blob();
-      this.downloadBlob(movBlob, `${filename}.mov`);
+      await this.saveOrDownloadBlob(movBlob, `${filename}.mov`);
     } catch (err) {
       console.error('ProRes 4444 transcode failed:', err);
       alert(`ProRes 4444 transcode failed: ${err.message}\n(Transparent WebM was still exported successfully.)`);
+    }
+  }
+
+  /**
+   * Saves an exported file to the workspace's output/ directory via the dev-server API
+   * (bypasses the browser's own download-location setting, so exports land in the same
+   * place regardless of which PC/browser produced them). Falls back to a normal browser
+   * download if the API is unavailable (production build with no server middleware, dev
+   * server not running, disk write failure, etc.) so an export is never silently lost.
+   */
+  async saveOrDownloadBlob(blob, filename) {
+    try {
+      const response = await fetch(`/api/save-export?filename=${encodeURIComponent(filename)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob
+      });
+      if (!response.ok) {
+        throw new Error(`Save request failed (HTTP ${response.status})`);
+      }
+    } catch (err) {
+      console.warn('Saving to output/ via API failed, falling back to browser download:', err);
+      this.downloadBlob(blob, filename);
     }
   }
 
