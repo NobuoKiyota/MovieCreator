@@ -83,21 +83,63 @@ const LAYER_NAME_TO_TYPE = {
 };
 const TYPE_TO_LAYER_NAME = Object.fromEntries(Object.entries(LAYER_NAME_TO_TYPE).map(([name, type]) => [type, name]));
 
+// Layer types registered into the opinion sheet *after* it was first authored (see
+// registerNewLayerColumn) can't be added to the hardcoded LAYER_NAME_TO_TYPE above without a code
+// change every time, so their name<->type mapping is persisted here instead and merged on top of
+// the hardcoded map on every request - this is what lets a brand new generator (added to
+// Generators.js/LayerManager.js/index.html, per the "adding a new generator" steps in CLAUDE.md)
+// get picked up by the Opinion Sheet Editor automatically instead of hitting a "not recognized"
+// error, without anyone having to remember to also edit this file.
+function getCustomLayerNameMapPath(dataDir) {
+  return path.join(dataDir, 'opinion_sheet_layer_map.json');
+}
+
+function loadCustomLayerNameMap(dataDir) {
+  const p = getCustomLayerNameMapPath(dataDir);
+  if (!fs.existsSync(p)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+  } catch (err) {
+    console.error('[API Server] opinion_sheet_layer_map.json is corrupted, ignoring:', err.message);
+    return {};
+  }
+}
+
+function saveCustomLayerNameMap(dataDir, map) {
+  fs.writeFileSync(getCustomLayerNameMapPath(dataDir), JSON.stringify(map, null, 2), 'utf-8');
+}
+
+// The map actually used to resolve row-3 header text to an internal layer type code - the
+// hardcoded 21 plus anything auto-registered later.
+function getCombinedLayerNameMap(dataDir) {
+  return { ...LAYER_NAME_TO_TYPE, ...loadCustomLayerNameMap(dataDir) };
+}
+
 function isBlankOrDash(val) {
   return val === null || val === undefined || (typeof val === 'string' && (val.trim() === '' || val.trim() === '-'));
+}
+
+// A literal "-" (not blank) is the explicit "this parameter doesn't apply to this layer" marker
+// used throughout the sheet - readOpinionRows uses this (not isBlankOrDash) to decide whether to
+// skip a row, so a genuinely blank cell (no score/move entered yet, e.g. right after
+// registerNewLayerColumn adds a new column) still shows up in the editor ready to fill in,
+// instead of silently vanishing the same way a real "-" would.
+function isDash(val) {
+  return typeof val === 'string' && val.trim() === '-';
 }
 
 /**
  * 行3(0-indexed row 2)をD列(0-indexed col 3)から3列おきにスキャンし、認識したレイヤータイプごとの
  * Score/Move/Comment列(0-indexed)を返す。export_move_scores.pyのlayer_cols構築ロジックと同一。
+ * nameToType は getCombinedLayerNameMap() の結果(ハードコード分 + 自動登録分)を渡すこと。
  */
-function parseLayerColumns(rows) {
+function parseLayerColumns(rows, nameToType) {
   const layerCols = {};
   const headerRow = rows[2] || [];
   for (let col = 3; col < headerRow.length; col += 3) {
     const name = headerRow[col];
     if (!name) continue;
-    const layerType = LAYER_NAME_TO_TYPE[String(name).trim()];
+    const layerType = nameToType[String(name).trim()];
     if (layerType) {
       layerCols[layerType] = { score: col, move: col + 1, comment: col + 2 };
     }
@@ -106,14 +148,15 @@ function parseLayerColumns(rows) {
 }
 
 /**
- * ワークブックから該当レイヤーの実データ行(「-」/空欄でスキップされる非該当パラメータは除外)を
- * 抽出する。rowは書き戻し先を特定するための1-indexed実行番号。
+ * ワークブックから該当レイヤーの実データ行を抽出する(「-」で明示的に非該当マークされた行のみ除外。
+ * 空欄は「該当するがまだ未評価」を意味し、score/moveをnullにしたまま結果に含める)。
+ * rowは書き戻し先を特定するための1-indexed実行番号。
  */
-function readOpinionRows(workbook, layerType) {
+function readOpinionRows(workbook, layerType, nameToType) {
   const ws = workbook.Sheets[OPINION_SHEET_NAME];
   if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-  const layerCols = parseLayerColumns(rows);
+  const layerCols = parseLayerColumns(rows, nameToType);
   const cols = layerCols[layerType];
   if (!cols) throw new Error(`Layer type not recognized in opinion sheet: ${layerType}`);
 
@@ -128,7 +171,7 @@ function readOpinionRows(workbook, layerType) {
     const scoreVal = row[cols.score];
     const moveVal = row[cols.move];
     const commentVal = row[cols.comment];
-    if (isBlankOrDash(scoreVal) && isBlankOrDash(moveVal)) continue; // param not applicable to this layer
+    if (isDash(scoreVal) || isDash(moveVal)) continue; // explicitly marked not applicable to this layer
 
     result.push({
       row: r + 1,
@@ -146,11 +189,11 @@ function readOpinionRows(workbook, layerType) {
  * 指定レイヤーの行群にScore/Move/Commentを書き戻す。updatesの各要素のrowはreadOpinionRowsが
  * 返した1-indexed行番号をそのまま使う。
  */
-function writeOpinionRows(workbook, layerType, updates) {
+function writeOpinionRows(workbook, layerType, updates, nameToType) {
   const ws = workbook.Sheets[OPINION_SHEET_NAME];
   if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-  const layerCols = parseLayerColumns(rows);
+  const layerCols = parseLayerColumns(rows, nameToType);
   const cols = layerCols[layerType];
   if (!cols) throw new Error(`Layer type not recognized in opinion sheet: ${layerType}`);
 
@@ -172,14 +215,14 @@ function writeOpinionRows(workbook, layerType, updates) {
  * 全レイヤー分のMove列を再スキャンし、data/move_scores.jsonを再生成する。export_move_scores.py
  * を手動実行しなくても保存時点で常に最新化されるようにするため、同じロジックをここに移植。
  */
-function regenerateMoveScores(workbook, dataDir) {
+function regenerateMoveScores(workbook, dataDir, nameToType) {
   const ws = workbook.Sheets[OPINION_SHEET_NAME];
   if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
-  const layerCols = parseLayerColumns(rows);
+  const layerCols = parseLayerColumns(rows, nameToType);
 
   const mapping = {};
-  for (const layerType of Object.values(LAYER_NAME_TO_TYPE)) mapping[layerType] = {};
+  for (const layerType of Object.values(nameToType)) mapping[layerType] = {};
 
   for (let r = 4; r < rows.length; r++) {
     const row = rows[r] || [];
@@ -200,6 +243,90 @@ function regenerateMoveScores(workbook, dataDir) {
   const outPath = path.join(dataDir, 'move_scores.json');
   fs.writeFileSync(outPath, JSON.stringify(mapping, null, 2), 'utf-8');
   return mapping;
+}
+
+/**
+ * Appends a brand-new Score/Move/Comment column block to the opinion sheet for a layer type it
+ * has never seen before, so newly added generators (Milky Way, and anything added after it) stop
+ * needing a manual Excel edit before the Opinion Sheet Editor / Move-score gating can see them.
+ *
+ * - Adds one new 3-column block at the end of the header row (row 3 = display name, row 4 =
+ *   Score/Move/Comment), with `displayName` as the label.
+ * - For every existing param row: if its Parameter name (column B) is one of this layer's own
+ *   params (from `paramList`), the new column's cells are left blank (= "applicable, not yet
+ *   scored" - readOpinionRows only skips a row when a layer's cells are blank/dash *there*, so a
+ *   blank cell here means it'll show up in the editor ready to fill in). Rows under the "Common
+ *   FX" category are always left blank too, since every layer goes through the same FX pipeline.
+ *   Anything else gets "-" (not applicable), matching how the existing 21 columns are marked.
+ * - Any of this layer's own params that don't already have a row anywhere get one appended after
+ *   the last existing row (Category left as 'Generator' even though it lands after the FX
+ *   section - readOpinionRows/parseLayerColumns only look at columns A/B for these rows, not
+ *   position, so this is functionally fine, just not as tidy for someone reading the raw Excel).
+ *   Every *other* already-registered layer's cells on these brand new rows are marked "-" as they
+ *   didn't have this param at all.
+ *
+ * Mutates `ws` in place; does not touch the workbook. Returns nothing - caller re-reads via
+ * readOpinionRows() with the now-updated nameToType map to hand back the fresh rows.
+ */
+function registerNewLayerColumn(workbook, layerType, displayName, paramList, nameToType) {
+  const ws = workbook.Sheets[OPINION_SHEET_NAME];
+  if (!ws) throw new Error(`Sheet not found: ${OPINION_SHEET_NAME}`);
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  const existingLayerCols = parseLayerColumns(rows, nameToType);
+
+  // Next free 3-column block, right after the last registered layer's Comment column.
+  let maxCol = 2; // column C (label) is the last fixed column before the first layer block at D
+  for (const cols of Object.values(existingLayerCols)) {
+    maxCol = Math.max(maxCol, cols.comment);
+  }
+  const newCol = maxCol + 1;
+
+  XLSX.utils.sheet_add_aoa(ws, [[displayName]], { origin: { r: 2, c: newCol } });
+  XLSX.utils.sheet_add_aoa(ws, [['Score', 'Move', 'Comment']], { origin: { r: 3, c: newCol } });
+
+  const ownParamNames = new Set((paramList || []).map(p => String(p.name)));
+  const foundNames = new Set();
+  let lastRowIndex = 4; // 0-indexed; rows.length may already exceed this
+
+  for (let r = 4; r < rows.length; r++) {
+    lastRowIndex = Math.max(lastRowIndex, r);
+    const row = rows[r] || [];
+    const colA = row[0];
+    if (colA && String(colA).trim().startsWith('---')) continue; // category banner row
+    const paramName = row[1];
+    if (!paramName) continue;
+    const pName = String(paramName).trim();
+
+    const isCommonFx = colA && String(colA).trim() === 'Common FX';
+    if (isCommonFx || ownParamNames.has(pName)) {
+      if (ownParamNames.has(pName)) foundNames.add(pName);
+      continue; // leave this layer's 3 new cells blank - applicable, not yet scored
+    }
+    XLSX.utils.sheet_add_aoa(ws, [['-', '-', '-']], { origin: { r, c: newCol } });
+  }
+
+  // Any of this layer's own params with no existing row anywhere get a fresh one appended at the
+  // bottom, with every other already-registered layer marked "-" (this param didn't exist for
+  // them) and this layer's own cells left blank (applicable, not yet scored).
+  let nextRow = lastRowIndex + 1;
+  for (const p of (paramList || [])) {
+    const pName = String(p.name);
+    if (foundNames.has(pName)) continue;
+    const label = p.label ? String(p.label) : pName;
+    XLSX.utils.sheet_add_aoa(ws, [['Generator', pName, label]], { origin: { r: nextRow, c: 0 } });
+    for (const cols of Object.values(existingLayerCols)) {
+      XLSX.utils.sheet_add_aoa(ws, [['-', '-', '-']], { origin: { r: nextRow, c: cols.score } });
+    }
+    nextRow++;
+  }
+
+  // sheet_add_aoa keeps !ref in sync with the cells it touches, but make sure the sheet's
+  // recorded range actually extends far enough right/down in case some writes above landed
+  // beyond whatever !ref previously covered (e.g. no rows were appended this call).
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  range.e.c = Math.max(range.e.c, newCol + 2);
+  range.e.r = Math.max(range.e.r, nextRow - 1);
+  ws['!ref'] = XLSX.utils.encode_range(range);
 }
 
 /**
@@ -448,7 +575,9 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     return;
   }
 
-  // 6. GET /api/opinion-sheet - 指定レイヤータイプのScore/Move/Comment行を読み込む
+  // 6. GET /api/opinion-sheet - 指定レイヤータイプのScore/Move/Comment行を読み込む。
+  // レイヤータイプが未登録の場合、displayName/paramsクエリが渡っていれば新しい列を自動追加する
+  // (registerNewLayerColumn参照) - 新規ジェネレーター追加のたびにこのファイルを手動で触らずに済む。
   if (req.method === 'GET' && pathname === '/api/opinion-sheet') {
     try {
       const layerType = searchParams.get('layer');
@@ -460,7 +589,33 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
         throw new Error(`Opinion sheet not found: ${excelPath}`);
       }
       const workbook = XLSX.readFile(excelPath);
-      const rows = readOpinionRows(workbook, layerType);
+      let nameToType = getCombinedLayerNameMap(dataDir);
+      let rows;
+      try {
+        rows = readOpinionRows(workbook, layerType, nameToType);
+      } catch (notFoundErr) {
+        const displayName = searchParams.get('displayName');
+        const paramsRaw = searchParams.get('params');
+        if (!displayName || !paramsRaw) throw notFoundErr;
+
+        let paramList;
+        try {
+          paramList = JSON.parse(paramsRaw);
+        } catch (_) {
+          throw new Error('params query parameter must be valid JSON');
+        }
+
+        registerNewLayerColumn(workbook, layerType, displayName, paramList, nameToType);
+        const customMap = loadCustomLayerNameMap(dataDir);
+        customMap[displayName] = layerType;
+        saveCustomLayerNameMap(dataDir, customMap);
+        XLSX.writeFile(workbook, excelPath, { compression: true });
+
+        nameToType = getCombinedLayerNameMap(dataDir);
+        regenerateMoveScores(workbook, dataDir, nameToType);
+        rows = readOpinionRows(workbook, layerType, nameToType);
+        console.log(`[API Server] Auto-registered new opinion sheet column for layer type "${layerType}" ("${displayName}")`);
+      }
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ layerType, rows }));
     } catch (err) {
@@ -491,14 +646,15 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           throw new Error(`Opinion sheet not found: ${excelPath}`);
         }
         const workbook = XLSX.readFile(excelPath);
-        writeOpinionRows(workbook, layerType, updates);
+        const nameToType = getCombinedLayerNameMap(dataDir);
+        writeOpinionRows(workbook, layerType, updates, nameToType);
         // 2026-07-20: SheetJSの無料版はスタイル情報を完全には保持できず、フォーマットは簡略化される
         // (ユーザー確認済み・許容範囲。データ本体は正しく保持される)。compression:trueが無いと
         // ファイルサイズが約7倍に膨張するため必須。
         XLSX.writeFile(workbook, excelPath, { compression: true });
 
         // 保存直後にdata/move_scores.jsonも再生成し、export_move_scores.pyの手動実行を不要にする
-        regenerateMoveScores(workbook, dataDir);
+        regenerateMoveScores(workbook, dataDir, nameToType);
 
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ success: true }));

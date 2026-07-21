@@ -3168,3 +3168,360 @@ export class NoiseGlitchGenerator extends BaseGenerator {
     ctx.restore();
   }
 }
+
+// 24. Milky Way Generator - a dense star field masked into a soft, wavy band ("erased" through a
+// blurred band shape rather than hand-placed star-by-star), with a noise-driven cloud/dust haze
+// laid over it and a handful of dynamic sparks spilling off the band. Rewritten 2026-07-22: the
+// original approach placed hundreds of individual star sprites every frame, each re-creating a
+// radial gradient (drawParticleShape's fillSoftGlow) - genuinely expensive at that count, and no
+// amount of extra circles gets you the textured, cloud-like look of a real Milky Way photo. The
+// star FIELD itself is now baked once to an offscreen canvas and reused via drawImage() (the same
+// "bake once, blit many" idea as particleShapes.js's texture cache / Effects.js's offscreen
+// composites), so density can be pushed far higher for a fraction of the per-frame cost, and the
+// band is that same field revealed more densely through a soft mask rather than a separate set of
+// stars - which is also closer to how a real galactic plane actually looks (denser/brighter stars
+// along the same sky, not a different population of them).
+export class MilkyWayGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.starFieldCanvas = null;
+    this.starFieldKey = null;
+    this.bandCanvas = document.createElement('canvas');
+    this.cloudBlobs = null;
+    this.cloudKey = null;
+    this.sparks = [];
+    this.spawnTimer = 0;
+  }
+
+  defaultParams() {
+    return {
+      starDensity: 900, // stars baked into the field texture once - cheap to push high, not a per-frame cost
+      starSizeMax: 2.2,
+      bgBrightness: 30, // % opacity of the ambient sky (the star field shown unmasked)
+      bandBrightness: 100, // % opacity of the star field where the band mask reveals it, drawn additively over the sky
+      bandWidth: 220,
+      taper: 18, // % of width faded in/out at each horizontal edge, for a streamlined tapered look
+      perspective: 60, // 0-100: how strongly the band/sparks thicken & brighten toward the "near" end - a depth cue baked into the drawing itself, since the FX panel's Rotate only tilts the whole already-flat layer and can't add per-point perspective
+      perspectiveFlip: 0, // 0 = near end at x=width (right), 1 = near end at x=0 (left)
+      waveAmplitude: 90,
+      waveFreq: 0.0022,
+      waveSpeed: 1.0,
+      cloudDensity: 55, // 0-100: strength of the noise-driven dust/cloud haze over the band
+      cloudScale: 1.0, // relative size of the cloud puffs (lower = larger, lazier)
+      scatterRate: 3,
+      scatterSpeed: 1.2,
+      scatterLifetime: 90,
+      scatterSize: 4,
+      scatterShapeType: 7, // See particleShapes.js PARTICLE_SHAPE_TYPES (0-11); default 'sparkle-cross'
+      glow: 16,
+      color: '#c7d2fe',
+      colorLightness: 65
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'starDensity', label: 'Star Density', type: 'range', min: 100, max: 3000, step: 50 },
+      { name: 'starSizeMax', label: 'Max Star Size', type: 'range', min: 0.5, max: 6, step: 0.1 },
+      { name: 'bgBrightness', label: 'Sky Brightness %', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'bandBrightness', label: 'Band Brightness %', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'bandWidth', label: 'Band Width', type: 'range', min: 30, max: 500, step: 5 },
+      { name: 'taper', label: 'Edge Taper %', type: 'range', min: 2, max: 45, step: 1 },
+      { name: 'perspective', label: 'Perspective Depth %', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'perspectiveFlip', label: 'Perspective Flip (0/1)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'waveAmplitude', label: 'Wave Amplitude', type: 'range', min: 0, max: 300, step: 5 },
+      { name: 'waveFreq', label: 'Wave Frequency', type: 'range', min: 0.0005, max: 0.008, step: 0.0001 },
+      { name: 'waveSpeed', label: 'Wave Speed', type: 'range', min: 0.1, max: 4.0, step: 0.1 },
+      { name: 'cloudDensity', label: 'Dust Cloud Density', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'cloudScale', label: 'Dust Cloud Scale', type: 'range', min: 0.3, max: 3.0, step: 0.1 },
+      { name: 'scatterRate', label: 'Spill Frequency', type: 'range', min: 0, max: 10, step: 0.5 },
+      { name: 'scatterSpeed', label: 'Spill Fall Speed', type: 'range', min: 0.1, max: 6.0, step: 0.1 },
+      { name: 'scatterLifetime', label: 'Spill Lifetime', type: 'range', min: 20, max: 300, step: 5 },
+      { name: 'scatterSize', label: 'Spill Particle Size', type: 'range', min: 1, max: 20, step: 0.5 },
+      { name: 'scatterShapeType', label: `Spill Shape (0-${PARTICLE_SHAPE_COUNT - 1})`, type: 'range', min: 0, max: PARTICLE_SHAPE_COUNT - 1, step: 1 },
+      { name: 'glow', label: 'Glow Blur', type: 'range', min: 0, max: 50, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  // Undulating band centerline, shared by the band mask, cloud placement and spill spawning. Two
+  // stacked noise octaves give a lazier, less mechanical wave than a single sine would.
+  streakY(x, time, height) {
+    const t = time * this.params.waveSpeed * 0.0002;
+    const n1 = noiseInst.noise2D(x * this.params.waveFreq, t);
+    const n2 = noiseInst.noise2D(x * this.params.waveFreq * 2.3, t * 0.7) * 0.5;
+    return height / 2 + (n1 + n2) * this.params.waveAmplitude;
+  }
+
+  // Depth-cue multiplier for a point at horizontal fraction t (0=left, 1=right) along the band:
+  // ramps from thin/dim ("far") at one end up to thick/bright ("near", up to ~2.6x) at the other.
+  // This is what actually reads as perspective - the FX panel's Rotate/RotateX/RotateY only apply
+  // one uniform affine transform to the whole already-flattened layer image (see LayerManager's
+  // apply3DTransform), so they can tilt or skew the band as a rigid flat plane but can never make
+  // one end of it thicker than the other; that per-point falloff has to come from here.
+  perspectiveScale(t) {
+    const p = this.params.perspective / 100;
+    if (p <= 0) return 1;
+    const dirT = this.params.perspectiveFlip ? (1 - t) : t;
+    const nearMul = 2.6, farMul = 0.2;
+    const raw = farMul + (nearMul - farMul) * dirT;
+    return 1 + (raw - 1) * p;
+  }
+
+  // Bakes `starDensity` stars once into an offscreen canvas sized to the frame, so the actual
+  // per-frame draw() is just a couple of drawImage() calls no matter how dense the field is.
+  // Re-baked only when the frame size or a param that affects the field's own look changes.
+  ensureStarField(width, height) {
+    const key = [width, height, Math.round(this.params.starDensity), this.params.starSizeMax, this.params.color, this.params.colorLightness].join('|');
+    if (this.starFieldCanvas && this.starFieldKey === key) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const fctx = canvas.getContext('2d');
+    const count = Math.round(this.params.starDensity);
+
+    for (let i = 0; i < count; i++) {
+      // Depth variety: most stars small/dim ("far"), a handful large/bright ("near") - weighting
+      // toward the small end (depthT^2.2) so bright foreground stars stay a minority accent.
+      const depthT = Math.pow(Math.random(), 2.2);
+      const size = 0.35 + depthT * (this.params.starSizeMax - 0.35);
+      const alpha = 0.25 + depthT * 0.75;
+      // Slight per-star hue jitter (cool blue-white to warm) instead of one flat tint, for realism.
+      const hueOffset = (Math.random() - 0.5) * 40;
+      const lightness = Math.min(97, this.params.colorLightness + depthT * 30);
+      const starColor = jitterHue(this.params.color, lightness, hueOffset);
+
+      fctx.setTransform(1, 0, 0, 1, Math.random() * width, Math.random() * height);
+      fctx.globalAlpha = alpha;
+      drawParticleShape(fctx, 0, size, { themeColor: starColor.css, parsedColor: starColor.rgb });
+    }
+    fctx.setTransform(1, 0, 0, 1, 0, 0);
+    fctx.globalAlpha = 1;
+
+    this.starFieldCanvas = canvas;
+    this.starFieldKey = key;
+  }
+
+  // A handful of large, soft "cloud" puffs following the band. Positions are generated once per
+  // frame size (stable across frames); each frame just re-evaluates their y from the live
+  // streakY() so they drift with the band, and a slow noise-driven alpha flicker keeps the haze
+  // from looking perfectly static without needing to redraw per-star detail.
+  ensureCloudBlobs(width, height) {
+    const key = `${width}|${height}`;
+    if (this.cloudBlobs && this.cloudKey === key) return;
+
+    const blobs = [];
+    const count = 26;
+    for (let i = 0; i < count; i++) {
+      const x = (i / count) * width + (Math.random() - 0.5) * (width / count) * 1.5;
+      blobs.push({
+        x,
+        perpOffset: (Math.random() - 0.5) * 1.4,
+        radiusMul: 0.6 + Math.random() * 1.2,
+        seed: Math.random() * 1000
+      });
+    }
+    this.cloudBlobs = blobs;
+    this.cloudKey = key;
+  }
+
+  // Spawns right on the band and falls/drifts away from it, like glitter spilling off a moving
+  // ribbon, rather than bursting outward in every direction.
+  createSpark(width, height, time) {
+    const x = Math.random() * width;
+    const y = this.streakY(x, time, height);
+    const lifetime = Math.max(10, this.params.scatterLifetime);
+    return {
+      x, y,
+      vx: (Math.random() - 0.5) * this.params.scatterSpeed * 0.4,
+      vy: this.params.scatterSpeed * (0.3 + Math.random() * 0.7),
+      life: 1.0,
+      decay: 1 / lifetime,
+      seed: Math.random() * 1000,
+      rot: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.05
+    };
+  }
+
+  update(time, frameCount, width, height) {
+    // Spilling sparks: spawn on a timer, age by life, fall away from the band, then despawn.
+    this.spawnTimer++;
+    const threshold = Math.max(3, 40 - this.params.scatterRate * 3.5);
+    if (this.params.scatterRate > 0 && this.spawnTimer >= threshold) {
+      this.spawnTimer = 0;
+      this.sparks.push(this.createSpark(width, height, time));
+    }
+
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const p = this.sparks[i];
+      p.life -= p.decay;
+      if (p.life <= 0) {
+        this.sparks.splice(i, 1);
+        continue;
+      }
+      // Gentle side-to-side flutter, like glitter drifting down through the air.
+      const noiseVal = noiseInst.noise2D(p.x * 0.01, (time + p.seed) * 0.0015);
+      p.x += p.vx + noiseVal * 0.4;
+      p.y += p.vy;
+      p.vy += 0.01; // slight gravity so the fall accelerates a touch the further it spills
+      p.rot += p.rotSpeed;
+    }
+  }
+
+  draw(ctx, width, height, time) {
+    this.ensureStarField(width, height);
+    this.ensureCloudBlobs(width, height);
+
+    ctx.save();
+    const baseLightness = this.params.colorLightness;
+    const rgb = colorLightnessToRgb(this.params.color, baseLightness);
+    const themeColor = adjustColorLightness(this.params.color, baseLightness);
+
+    // 1. Ambient sky: the whole baked star field at low opacity, unmasked.
+    if (this.params.bgBrightness > 0) {
+      ctx.globalAlpha = this.params.bgBrightness / 100;
+      ctx.drawImage(this.starFieldCanvas, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+
+    // 2. The band: "erase" the same star field down to a soft, wavy, tapered ribbon shape via
+    // destination masking on a scratch canvas, then composite that back on top of the sky,
+    // additively, at higher brightness - the band is the SAME stars, just revealed more
+    // densely/brightly, rather than a separate hand-placed population.
+    const band = this.bandCanvas;
+    if (band.width !== width || band.height !== height) {
+      band.width = width;
+      band.height = height;
+    }
+    const bctx = band.getContext('2d');
+    bctx.clearRect(0, 0, width, height);
+
+    const taperFrac = Math.max(0.02, Math.min(0.49, this.params.taper / 100));
+    const grad = bctx.createLinearGradient(0, 0, width, 0);
+    grad.addColorStop(0, 'rgba(255,255,255,0)');
+    grad.addColorStop(taperFrac, 'rgba(255,255,255,1)');
+    grad.addColorStop(1 - taperFrac, 'rgba(255,255,255,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+
+    // Sample the centerline and half-width once, then walk the top edge left->right and the
+    // bottom edge right->left to close a single ribbon polygon.
+    const step = 6;
+    const halfWAt = (x) => (this.params.bandWidth / 2) * this.perspectiveScale(x / width);
+    const centerAt = [];
+    for (let x = 0; x <= width; x += step) centerAt.push({ x, cy: this.streakY(x, time, height), hw: halfWAt(x) });
+
+    bctx.beginPath();
+    bctx.moveTo(centerAt[0].x, centerAt[0].cy - centerAt[0].hw);
+    for (let i = 1; i < centerAt.length; i++) bctx.lineTo(centerAt[i].x, centerAt[i].cy - centerAt[i].hw);
+    for (let i = centerAt.length - 1; i >= 0; i--) bctx.lineTo(centerAt[i].x, centerAt[i].cy + centerAt[i].hw);
+    bctx.closePath();
+    bctx.fillStyle = grad;
+    bctx.filter = `blur(${Math.max(4, this.params.bandWidth * 0.12).toFixed(1)}px)`;
+    bctx.fill();
+    bctx.filter = 'none';
+
+    bctx.globalCompositeOperation = 'source-in';
+    bctx.drawImage(this.starFieldCanvas, 0, 0);
+    bctx.globalCompositeOperation = 'source-over';
+
+    if (this.params.glow > 0) {
+      ctx.shadowBlur = this.params.glow;
+      ctx.shadowColor = themeColor;
+    }
+    ctx.globalCompositeOperation = 'lighter'; // additive - light on top of light, not a flat overwrite
+    ctx.globalAlpha = this.params.bandBrightness / 100;
+    ctx.drawImage(band, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = 0;
+
+    // 3. Dust/cloud haze along the band - a handful of large, soft, slowly flickering blobs
+    // instead of per-star detail, for the organic non-repeating texture a pile of circles can't give.
+    if (this.params.cloudDensity > 0) {
+      for (const b of this.cloudBlobs) {
+        const hw = halfWAt(b.x);
+        const cy = this.streakY(b.x, time, height) + b.perpOffset * hw;
+        const flicker = 0.5 + noiseInst.noise2D(b.seed, time * 0.00015) * 0.5;
+        const radius = this.params.bandWidth * 0.55 * this.params.cloudScale * b.radiusMul;
+        const alpha = (this.params.cloudDensity / 100) * 0.22 * flicker;
+        if (alpha <= 0.005 || radius <= 1) continue;
+        const g2 = ctx.createRadialGradient(b.x, cy, 0, b.x, cy, radius);
+        g2.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`);
+        g2.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+        ctx.fillStyle = g2;
+        ctx.beginPath();
+        ctx.arc(b.x, cy, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 4. Sparks spilling off the band - life-driven fade-in/brighten/fade-out arc, the same
+    // aging pattern as FlameGenerator/DryIceGenerator's particle life.
+    if (this.params.glow > 0) {
+      ctx.shadowBlur = this.params.glow;
+      ctx.shadowColor = themeColor;
+    }
+    for (let p of this.sparks) {
+      const fadeIn = Math.min(1, (1 - p.life) / 0.15);
+      const alpha = p.life * fadeIn;
+      const size = this.params.scatterSize * fadeIn * (0.6 + p.life * 0.4) * this.perspectiveScale(p.x / width);
+      if (alpha <= 0.01 || size <= 0.1) continue;
+
+      const lifeLightness = p.life > 0.7
+        ? baseLightness + (96 - baseLightness) * ((p.life - 0.7) / 0.3)
+        : baseLightness * (0.3 + 0.7 * (p.life / 0.7));
+      const sparkColor = jitterHue(this.params.color, lifeLightness, 0);
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = alpha;
+      drawParticleShape(ctx, Math.round(this.params.scatterShapeType), size, {
+        themeColor: sparkColor.css,
+        parsedColor: sparkColor.rgb,
+        seed: p.seed
+      });
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+}
+
+// 25. Color Wash Generator - a plain full-canvas HSL fill, meant to be stacked as the topmost
+// layer with a Photoshop-style Blend Mode (Hue/Color/Saturation/Luminosity/Overlay/... - see the
+// layer's Blend Mode dropdown) to recolor everything beneath it. Unlike the `color` hex picker
+// every other generator uses, `hue`/`saturation`/`lightness` here are plain type:'range' numbers,
+// so they get full LFO/keyframe/Randomizer/Move-score support for free through the existing
+// modulation system - a practical way to animate "the scene's overall color" over time without
+// retrofitting the keyframe timeline's numeric-only graph to understand hex colors directly.
+export class ColorWashGenerator extends BaseGenerator {
+  defaultParams() {
+    return {
+      hue: 260,
+      saturation: 70,
+      lightness: 50,
+      intensity: 0 // 0-100: overall strength of the fill - 0 = fully transparent (no effect on layers below), 100 = fully opaque
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'hue', label: 'Hue', type: 'range', min: 0, max: 360, step: 1 },
+      { name: 'saturation', label: 'Saturation', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'lightness', label: 'Lightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'intensity', label: 'Intensity', type: 'range', min: 0, max: 100, step: 1 }
+    ];
+  }
+
+  draw(ctx, width, height, time) {
+    if (this.params.intensity <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.params.intensity / 100;
+    ctx.fillStyle = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+}

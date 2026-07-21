@@ -127,6 +127,28 @@ export function applyDistortion(ctx, canvas, time, params = {}) {
   }
 }
 
+// Hue Rotate
+// Rotates the hue of the already-rendered layer via the native CSS/Canvas hue-rotate() filter.
+// Lets `color` itself become an LFO/keyframe/Move-scored target through the common FX pipeline
+// (see FX_PARAM_RANGES.hueRotate) without touching any generator's own color param or needing an
+// RGB split - every layer type gets this for free, the same way distortion/glow/etc. already work.
+export function applyHueRotate(ctx, canvas, degrees) {
+  if (degrees === 0) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = w;
+  tempCanvas.height = h;
+  tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.filter = `hue-rotate(${degrees}deg)`;
+  ctx.drawImage(tempCanvas, 0, 0);
+  ctx.filter = 'none';
+}
+
 // 4. Vignette Master Effect
 // Darkens the corners of the canvas to draw attention to the center.
 export function applyVignette(ctx, width, height, opacity = 0.4) {

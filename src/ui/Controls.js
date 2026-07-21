@@ -112,6 +112,7 @@ export class Controls {
       kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, step: 1,     type: 'range' },
       mirrorMode:          { name: 'mirrorMode',          label: 'Mirror Mode',    ...R.mirrorMode,          step: 1,     type: 'range' },
       chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     step: 0.5,   type: 'range' },
+      hueRotate:           { name: 'hueRotate',           label: 'Hue Rotate',     ...R.hueRotate,           step: 1,     type: 'range' },
       rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             step: 1,     type: 'range' },
       rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             step: 1,     type: 'range' },
       rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',       ...R.rotateZ,             step: 1,     type: 'range' },
@@ -1516,7 +1517,7 @@ export class Controls {
       const visibleClass = layer.visible ? '' : 'hidden-state';
 
       row.innerHTML = `
-        <div class="layer-simple-drag">☰</div>
+        <div class="layer-simple-drag" draggable="true" title="Drag to reorder">☰</div>
         <button class="btn-layer-simple-eye ${visibleClass}" title="Toggle Visibility">${eyeIcon}</button>
         <span class="layer-simple-title layer-name-text">${layer.name}</span>
         <span class="layer-simple-badge">${layer.type.split('-')[0]}</span>
@@ -1554,6 +1555,45 @@ export class Controls {
         }
         this.rebuildLayersList();
         this.rebuildInspector();
+        this.mainApp.renderSingleFrame();
+      });
+
+      // Drag-to-reorder: grab only from the ☰ handle (native HTML5 drag), drop on any other row
+      // to move this layer there. Was previously dead UI - the handle had cursor:grab styling and
+      // the row-click handler already excluded it, but no drag events were ever wired up and
+      // LayerManager.reorderLayers() sat unused. Indices are translated back to the real
+      // (non-reversed) layer array, since this list renders top-of-stack first.
+      const dragHandle = row.querySelector('.layer-simple-drag');
+      dragHandle.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', String(layer.id));
+        e.dataTransfer.effectAllowed = 'move';
+        row.classList.add('dragging');
+      });
+      dragHandle.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+      });
+
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        row.classList.add('drag-over');
+      });
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drag-over');
+      });
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        const draggedId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+        if (!draggedId || draggedId === layer.id) return;
+
+        const layers = this.layerManager.layers;
+        const oldIndex = layers.findIndex(l => l.id === draggedId);
+        const newIndex = layers.findIndex(l => l.id === layer.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        this.layerManager.reorderLayers(oldIndex, newIndex);
+        this.rebuildLayersList();
         this.mainApp.renderSingleFrame();
       });
 
@@ -1648,6 +1688,7 @@ export class Controls {
       <button class="btn btn-secondary btn-small btn-randomize" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🎲 Random LFO</button>
       ${hasPatternParams ? `<button class="btn btn-secondary btn-small btn-randomize-pattern" title="Reroll only the pattern shape - color/size/speed/etc. stay as-is" style="padding: 0.25rem 0.65rem; font-size: 0.75rem;">🔀 Pattern</button>` : ''}
       <div style="display: flex; gap: 0.25rem;">
+        <button class="btn btn-secondary btn-small btn-reset-layer" title="Reset parameters & FX to defaults" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">↺</button>
         <button class="btn btn-secondary btn-small btn-score-stats" title="View Learning Progress & Stats" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📊</button>
         <button class="btn btn-secondary btn-small btn-opinion-sheet" title="Edit Score/Move Tendencies (Opinion Sheet)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; min-width: 28px;">📝</button>
         <button class="btn btn-secondary btn-small btn-score-rate" title="Rate this generation (1-10 + comment)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">⭐ Rate</button>
@@ -1658,9 +1699,22 @@ export class Controls {
     const spreadDisplay = randomizerHeader.querySelector('.spread-val-display');
     const btnRandom = randomizerHeader.querySelector('.btn-randomize');
     const btnRandomPattern = randomizerHeader.querySelector('.btn-randomize-pattern');
+    const btnResetLayer = randomizerHeader.querySelector('.btn-reset-layer');
     const btnRate = randomizerHeader.querySelector('.btn-score-rate');
     const btnStats = randomizerHeader.querySelector('.btn-score-stats');
     const btnOpinionSheet = randomizerHeader.querySelector('.btn-opinion-sheet');
+
+    btnResetLayer.addEventListener('click', async () => {
+      const ok = await this.showConfirmDialog(
+        'Reset Layer',
+        `"${layer.name}" のパラメータ・共通FX・モーションを全てデフォルトに戻します。元に戻せません。続行しますか？`
+      );
+      if (!ok) return;
+      layer.resetToDefaults();
+      this.rebuildInspector();
+      this.mainApp.renderSingleFrame();
+      this.showToast('↺ Layer reset to defaults', 'success');
+    });
 
     spreadSlider.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
@@ -1768,12 +1822,25 @@ export class Controls {
         <option value="growing-spiral" ${savedPreset === 'growing-spiral' ? 'selected' : ''}>Growing Spiral (螺旋巨大化)</option>
         <option value="glitch-chaos" ${savedPreset === 'glitch-chaos' ? 'selected' : ''}>Glitch Chaos (グリッチカオス)</option>
       </select>
+      <button class="btn btn-secondary btn-small btn-clear-automation" title="Clear all LFO/KeyFrame/Randomizer flags for this layer (keeps current values)" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; white-space: nowrap;">🧹 Clear All</button>
     `;
 
     presetRow.querySelector('select').addEventListener('change', (e) => {
       layer.applyPreset(e.target.value);
       this.rebuildInspector(); // Dynamic redrawing to show automation toggles
       this.mainApp.renderSingleFrame();
+    });
+
+    presetRow.querySelector('.btn-clear-automation').addEventListener('click', async () => {
+      const ok = await this.showConfirmDialog(
+        'Clear All Automation',
+        `"${layer.name}" の全パラメータのLFO・KeyFrame・Randomizer(🎲)を解除します(現在の数値はそのまま維持されます)。続行しますか？`
+      );
+      if (!ok) return;
+      layer.clearAllAutomation();
+      this.rebuildInspector();
+      this.mainApp.renderSingleFrame();
+      this.showToast('🧹 LFO/KeyFrame/Randomizer cleared', 'success');
     });
 
     this.inspectorContentEl.appendChild(presetRow);
@@ -1806,6 +1873,17 @@ export class Controls {
           <option value="multiply" ${layer.blendMode === 'multiply' ? 'selected' : ''}>Multiply</option>
           <option value="difference" ${layer.blendMode === 'difference' ? 'selected' : ''}>Difference</option>
           <option value="exclusion" ${layer.blendMode === 'exclusion' ? 'selected' : ''}>Exclusion</option>
+          <option value="overlay" ${layer.blendMode === 'overlay' ? 'selected' : ''}>Overlay</option>
+          <option value="soft-light" ${layer.blendMode === 'soft-light' ? 'selected' : ''}>Soft Light</option>
+          <option value="hard-light" ${layer.blendMode === 'hard-light' ? 'selected' : ''}>Hard Light</option>
+          <option value="color-dodge" ${layer.blendMode === 'color-dodge' ? 'selected' : ''}>Color Dodge</option>
+          <option value="color-burn" ${layer.blendMode === 'color-burn' ? 'selected' : ''}>Color Burn</option>
+          <option value="darken" ${layer.blendMode === 'darken' ? 'selected' : ''}>Darken</option>
+          <option value="lighten" ${layer.blendMode === 'lighten' ? 'selected' : ''}>Lighten</option>
+          <option value="hue" ${layer.blendMode === 'hue' ? 'selected' : ''}>Hue (色相のみ置換)</option>
+          <option value="saturation" ${layer.blendMode === 'saturation' ? 'selected' : ''}>Saturation (彩度のみ置換)</option>
+          <option value="color" ${layer.blendMode === 'color' ? 'selected' : ''}>Color (色相+彩度を置換)</option>
+          <option value="luminosity" ${layer.blendMode === 'luminosity' ? 'selected' : ''}>Luminosity (明度のみ置換)</option>
         </select>
       </div>
     `;
@@ -2436,9 +2514,17 @@ export class Controls {
               // duration with no independent speed knob, so the only lever is to stop reaching
               // for one at all and fall back to a (speed-clampable) plain LFO instead.
               // motion_too_slow constraint: nudge the odds up so more parameters actually move.
-              const effectiveTemplateChance = hasMotionTooFast
-                ? 0
-                : (hasMotionTooSlow ? Math.min(1, this.RANDOM_TEMPLATE_CHANCE + 0.3) : this.RANDOM_TEMPLATE_CHANCE);
+              const baseTemplateChance = hasMotionTooSlow
+                ? Math.min(1, this.RANDOM_TEMPLATE_CHANCE + 0.3)
+                : this.RANDOM_TEMPLATE_CHANCE;
+              // Move score used to only ever suppress (isLowMove above) - any value above that
+              // threshold (2-5) was treated identically, so the opinion sheet's 0-5 scale had no
+              // visible effect once a parameter cleared it. Scale the chance up with how strongly
+              // the sheet says this parameter benefits from motion, so Move=5 ("moves great")
+              // actually ends up animated far more often than Move=2 ("barely worth it") instead
+              // of the two being indistinguishable. Move<=2 or no data at all: no change.
+              const moveBoost = (moveScore !== undefined && moveScore > 2) ? (moveScore - 2) / 3 : 0;
+              const effectiveTemplateChance = hasMotionTooFast ? 0 : Math.min(1, baseTemplateChance + moveBoost * 0.6);
 
               if (templateApplied) {
                 candidateModulations[config.name] = candidateMod;
@@ -4649,7 +4735,19 @@ export class Controls {
 
     let rows = [];
     try {
-      const res = await fetch(`/api/opinion-sheet?layer=${encodeURIComponent(layer.type)}`);
+      // displayName/params are only actually used by the server when `layer.type` isn't already
+      // registered in the opinion sheet - a brand new generator this session (see
+      // registerNewLayerColumn in apiHandler.js). Harmless to always send them; an already-known
+      // layer type just ignores them and returns its existing rows as before.
+      const ownParams = layer.generator.getParameterConfig()
+        .filter(c => c.type === 'range' || c.type === 'color')
+        .map(c => ({ name: c.name, label: c.label }));
+      const qs = new URLSearchParams({
+        layer: layer.type,
+        displayName: layer.getDefaultName(layer.type),
+        params: JSON.stringify(ownParams)
+      });
+      const res = await fetch(`/api/opinion-sheet?${qs.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       rows = data.rows;

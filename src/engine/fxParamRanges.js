@@ -14,6 +14,7 @@ export const FX_PARAM_RANGES = {
   kaleidoscopeSegment: { min: 0,     max: 12  },
   mirrorMode:          { min: 0,     max: 13  }, // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt),10/11=16-way(+alt),12/13=20-way(+alt)
   chromaticOffset:     { min: 0,     max: 30  },
+  hueRotate:           { min: -180,  max: 180 }, // degrees, native CSS/Canvas hue-rotate() filter - lets `color` itself become an LFO/keyframe/Move-scored target without touching any generator's own color param
   rotateX:             { min: -180,  max: 180 },
   rotateY:             { min: -180,  max: 180 },
   rotateZ:             { min: -180,  max: 180 },

@@ -22,7 +22,9 @@ import {
   ShockwaveBurstGenerator,
   GlassCrackGenerator,
   DotDesignGenerator,
-  NoiseGlitchGenerator
+  NoiseGlitchGenerator,
+  MilkyWayGenerator,
+  ColorWashGenerator
 } from './Generators.js';
 
 import {
@@ -33,7 +35,8 @@ import {
   applyFilmGrain,
   applyKaleidoscope,
   applyMirrorMode,
-  applyChromaticAberration
+  applyChromaticAberration,
+  applyHueRotate
 } from './Effects.js';
 
 export class Layer {
@@ -43,7 +46,10 @@ export class Layer {
     this.name = this.getDefaultName(type);
     this.visible = true;
     this.opacity = 1.0;
-    this.blendMode = 'lighter'; // Default to additive blending for neon wow-effect
+    // Default to additive blending for neon wow-effect, except Color Wash - it's meant to
+    // recolor whatever's beneath it (Photoshop-style "Color" blend: replaces hue+saturation,
+    // keeps luminosity), and 'lighter' would just add brightness instead of tinting anything.
+    this.blendMode = type === 'color-wash' ? 'color' : 'lighter';
     
     // Create dedicated offscreen canvas for isolated layer drawing
     this.canvas = document.createElement('canvas');
@@ -64,35 +70,7 @@ export class Layer {
     this.feedbackHandler = new FeedbackTrail();
     
     // Default effect settings (including Rotation, Scale, Strobe)
-    this.effects = {
-      // Transforms
-      positionX: 0,      // spawn position offset, fraction of canvas width (-1 to 1, 0 = center)
-      positionY: 0,      // spawn position offset, fraction of canvas height (-1 to 1, 0 = center)
-      rotation: 0,       // degrees (-360 to 360)
-      scale: 1.0,        // 0.1 to 5.0
-      strobe: 0,         // Speed / Frequency (0 to 30 Hz)
-      
-      // Glow
-      glowIntensity: 0,  // 0 to 50
-      glowMix: 0.5,
-      // Feedback trails
-      feedbackDecay: 0.0, // 0.0 (off) to 0.95
-      feedbackScale: 1.002,
-      feedbackRotate: 0.005,
-      // Distortion
-      distortionIntensity: 0, // 0 to 40
-      distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
-      distortionSpeed: 1.5,
-      kaleidoscopeSegment: 0,
-      mirrorMode: 0,     // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt),10/11=16-way(+alt),12/13=20-way(+alt) (see Effects.js)
-      chromaticOffset: 0,
-      
-      // 3D Transforms
-      rotateX: 0,
-      rotateY: 0,
-      rotateZ: 0,
-      translateZ: 0
-    };
+    this.effects = this.getDefaultEffects();
 
     // Keep track of opacity multiplied by strobe
     this.currentRenderOpacity = 1.0;
@@ -112,6 +90,40 @@ export class Layer {
     // Apply aesthetic default dynamic motion presets for instant "WOW" on Add Layer
     this.currentPresetName = this.getDefaultPresetName(type);
     this.applyPreset(this.currentPresetName);
+  }
+
+  // Shared by the constructor and resetToDefaults() so the two can't drift apart.
+  getDefaultEffects() {
+    return {
+      // Transforms
+      positionX: 0,      // spawn position offset, fraction of canvas width (-1 to 1, 0 = center)
+      positionY: 0,      // spawn position offset, fraction of canvas height (-1 to 1, 0 = center)
+      rotation: 0,       // degrees (-360 to 360)
+      scale: 1.0,        // 0.1 to 5.0
+      strobe: 0,         // Speed / Frequency (0 to 30 Hz)
+
+      // Glow
+      glowIntensity: 0,  // 0 to 50
+      glowMix: 0.5,
+      // Feedback trails
+      feedbackDecay: 0.0, // 0.0 (off) to 0.95
+      feedbackScale: 1.002,
+      feedbackRotate: 0.005,
+      // Distortion
+      distortionIntensity: 0, // 0 to 40
+      distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
+      distortionSpeed: 1.5,
+      kaleidoscopeSegment: 0,
+      mirrorMode: 0,     // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt),10/11=16-way(+alt),12/13=20-way(+alt) (see Effects.js)
+      chromaticOffset: 0,
+      hueRotate: 0,      // degrees (-180 to 180), see Effects.js applyHueRotate
+
+      // 3D Transforms
+      rotateX: 0,
+      rotateY: 0,
+      rotateZ: 0,
+      translateZ: 0
+    };
   }
 
   getDefaultName(type) {
@@ -139,6 +151,8 @@ export class Layer {
       case 'glass-crack': return 'Glass Crack';
       case 'dot-design': return 'Dot Design';
       case 'noise-glitch': return 'Noise Glitch';
+      case 'milky-way': return 'Milky Way';
+      case 'color-wash': return 'Color Wash';
       default: return 'Custom Layer';
     }
   }
@@ -168,6 +182,8 @@ export class Layer {
       case 'glass-crack': return new GlassCrackGenerator();
       case 'dot-design': return new DotDesignGenerator();
       case 'noise-glitch': return new NoiseGlitchGenerator();
+      case 'milky-way': return new MilkyWayGenerator();
+      case 'color-wash': return new ColorWashGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }
@@ -251,6 +267,35 @@ export class Layer {
     });
     for (let name in FX_PARAM_RANGES) {
       this.applySpawnJitterOne(name);
+    }
+  }
+
+  // Restores this layer to a fresh "just added" state: generator params back to
+  // defaultParams(), common FX back to getDefaultEffects(), and re-applies this layer type's
+  // default motion preset (the same "instant WOW" preset a brand new layer of this type gets on
+  // creation - see the constructor). Rebuilds modulations from scratch so their ranges/jitterBase
+  // line up with the restored defaults rather than the old (now-discarded) values. Layer id,
+  // name, position in the stack, and visibility/blendMode/opacity are untouched.
+  resetToDefaults() {
+    this.generator.params = this.generator.defaultParams();
+    this.effects = this.getDefaultEffects();
+    this.randomSpread = 30;
+    this.modulations = {};
+    this.initModulations();
+    this.currentPresetName = this.getDefaultPresetName(this.type);
+    this.applyPreset(this.currentPresetName);
+  }
+
+  // Clears every LFO/keyframe/spawn-jitter automation flag across both generator params and
+  // common FX, leaving the actual static values (and everything else) untouched - unlike
+  // resetToDefaults(), this only strips motion, not the tuned look.
+  clearAllAutomation() {
+    for (let key in this.modulations) {
+      const mod = this.modulations[key];
+      mod.enabled = false;
+      mod.keyframeEnabled = false;
+      mod.keyframes = [];
+      mod.spawnJitter = false;
     }
   }
 
@@ -588,6 +633,11 @@ export class Layer {
         frequency: this.effects.distortionFrequency,
         speed: this.effects.distortionSpeed
       });
+    }
+
+    // Apply Hue Rotate
+    if (this.effects.hueRotate !== 0) {
+      applyHueRotate(this.ctx, this.canvas, this.effects.hueRotate);
     }
 
     // Apply Glow
