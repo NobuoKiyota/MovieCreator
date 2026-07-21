@@ -8,6 +8,17 @@
 - `npm run build` — `dist/` に本番ビルド出力
 - `npm run preview` — ビルド成果物のプレビュー
 
+### Python ツール＆自動化パイプライン
+
+- 依存ライブラリのインストール:
+  `pip install opencv-python tweepy line-bot-sdk flask requests`
+- **販売パッケージ一括生成**:
+  `python scripts/package_builder.py` — `exports/` 内の動画からサムネイル・商用ライセンス(JP/EN)を生成し `MovieCreator_AssetPack.zip` を自動構築。
+- **LINE承認 ➔ X(Twitter) 連動投稿パイプライン**:
+  1. `scripts/config.example.json` を `scripts/config.json` にコピーし各APIキーを設定。
+  2. `python scripts/sns_autopilot.py` — ランダムに動画を選択し、軽量プレビュー(5秒)生成＋AI PR文作成＋LINEへ承認 Flex Message を送信。
+  3. `python scripts/server_bot.py` — LINE Webhook サーバーを起動。LINEでの「👍 承認」ボタン押下時に `tweepy` 経由でXに動画付き自動投稿。
+
 ## 構成
 
 - `src/main.js` — エントリポイント

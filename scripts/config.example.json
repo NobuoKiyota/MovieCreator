@@ -1,0 +1,22 @@
+{
+  "line": {
+    "channel_access_token": "YOUR_LINE_CHANNEL_ACCESS_TOKEN",
+    "channel_secret": "YOUR_LINE_CHANNEL_SECRET",
+    "user_id": "YOUR_LINE_USER_ID"
+  },
+  "twitter": {
+    "api_key": "YOUR_TWITTER_API_KEY",
+    "api_secret": "YOUR_TWITTER_API_SECRET",
+    "access_token": "YOUR_TWITTER_ACCESS_TOKEN",
+    "access_token_secret": "YOUR_TWITTER_ACCESS_TOKEN_SECRET",
+    "bearer_token": "YOUR_TWITTER_BEARER_TOKEN"
+  },
+  "ai": {
+    "gemini_api_key": "YOUR_GEMINI_API_KEY",
+    "model": "gemini-2.5-flash"
+  },
+  "server": {
+    "port": 5000,
+    "public_url": "https://your-ngrok-domain.ngrok-free.app"
+  }
+}
