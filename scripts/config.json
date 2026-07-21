@@ -1,0 +1,22 @@
+{
+  "line": {
+    "channel_access_token": "PnNTM21nLdDUWqZSGTBF7rhZRHZHHhq2ZS5FppsEnisIE9PFZ7/G08GBiyHwKbS/zoxPPFn4zhpxt9Xc7BtWSswaHrDaqqxuhuqPgYE4fJXJGPuAuFW5zph2iArtS6bMi3GE/21enuYiqSi+Phwj6AdB04t89/1O/w1cDnyilFU=",
+    "channel_secret": "1ff75eec5d90b981a680cc1cbb1b1163",
+    "user_id": "U784c08bc0160f4036ed70b942c8742a5"
+  },
+  "twitter": {
+    "api_key": "YOUR_TWITTER_API_KEY",
+    "api_secret": "YOUR_TWITTER_API_SECRET",
+    "access_token": "YOUR_TWITTER_ACCESS_TOKEN",
+    "access_token_secret": "YOUR_TWITTER_ACCESS_TOKEN_SECRET",
+    "bearer_token": "YOUR_TWITTER_BEARER_TOKEN"
+  },
+  "ai": {
+    "gemini_api_key": "YOUR_GEMINI_API_KEY",
+    "model": "gemini-2.5-flash"
+  },
+  "server": {
+    "port": 5000,
+    "public_url": "https://your-ngrok-domain.ngrok-free.app"
+  }
+}
