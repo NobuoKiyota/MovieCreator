@@ -20,7 +20,7 @@
   `python scripts/package_builder.py` — `exports/` 内の動画からサムネイル・商用ライセンス(JP/EN)を生成し `MovieCreator_AssetPack.zip` を自動構築。
 - **LINE承認 ➔ X(Twitter) 連動投稿パイプライン**:
   1. `scripts/config.example.json` を `scripts/config.json` にコピーし各APIキーを設定。
-  2. `python scripts/sns_autopilot.py` — ランダムに動画を選択し、軽量プレビュー(5秒)生成＋AI PR文作成＋LINEへ承認 Flex Message を送信。
+  2. `python scripts/sns_autopilot.py` — ランダムに動画を選択し、5秒軽量プレビュー生成 ＋ AI（Gemini API）によるマルチアングル手記（🛠️開発日記/💡映像演出ノウハウ/🎨素材紹介から有益な内容を自動選出・日英バイリンガル生成）＋ LINE承認 Flex Message 送信。
   3. `python scripts/server_bot.py` — LINE Webhook サーバーを起動。LINEでの「👍 承認」ボタン押下時に `tweepy` 経由でXに動画付き自動投稿。
 
 ## 構成
@@ -190,6 +190,11 @@
 - 仕組み: エクスポート画面の「P4444」チェックボックス(`index.html` `#export-prores`)をONにすると、`VideoRecorder.js`の`exportWebMAlpha`が通常の`.webm`ダウンロード後に`transcodeToProRes()`を呼び、生成済みWebM blobを`POST /api/transcode-prores`(`src/server/apiHandler.js`)に送信する。サーバー側は`child_process.spawn`でffmpeg(`-c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le`)を実行し、変換結果の`.mov`をレスポンスとして返す。ブラウザ側は受け取ったMOVを追加でダウンロードする(WebM変換失敗時もWebM自体は正常に手元に残る)。
 - **ffmpegバイナリはPCごとに個別配置**(`tools/ffmpeg/ffmpeg.exe`、`.gitignore`対象でgit同期されない)。`findFfmpegBinary()`がまずこのベンダリングパスを探し、無ければPATH上の`ffmpeg`にフォールバックする。新しいPCでこの機能を使う場合は、ffmpeg実行ファイル(`prores_ks`エンコーダ入りビルド)を該当PCの`tools/ffmpeg/`に手動配置するか、システムPATHにffmpegを通しておくこと。
 - 変換時の一時ファイル(`.tmp_transcode/`、`.gitignore`対象)はリクエストごとに書き込み・変換後即削除される。
+
+## 動画書き出し先とファイル名
+
+- 書き出し(MP4/透過WebM/ProRes MOV)は、ブラウザの標準ダウンロード先ではなく**ワークスペース直下の`output/`(`.gitignore`対象)へサーバー側で直接保存される**(`npm run dev`時のみ。`POST /api/save-export`、`src/server/apiHandler.js`)。ブラウザのdownload属性では保存先ディレクトリをJS側から指定できないため、自宅/会社PC・ブラウザの設定差異に関わらず常に同じ場所に集約する目的。本番ビルド等でAPIが使えない場合は`VideoRecorder.js`の`saveOrDownloadBlob()`が通常のブラウザダウンロードに自動フォールバックする。
+- ファイル名は「最前面(表示中レイヤーのうち`layerManager.layers`配列の末尾、Layersパネル最上段に表示されるもの)のレイヤー名 + 日時(`YYYYMMDD_HHMMSS`)」(`Controls.js`の`buildExportFilename()`)。バッチジェネレーターの一括書き出しは対象外(`MovieCreator_Batch_<type>_var<N>_<timestamp>`のまま)。
 
 ## マルチPC運用(自宅・会社)
 

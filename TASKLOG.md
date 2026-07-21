@@ -13,6 +13,12 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-21 19:30 [Antigravity] 完了: sns_autopilot.py の AI手記プロンプトを高度化。開発日記(DevLog)・演出テクニックノウハウ・素材紹介から有益な内容を自動選出・生成するエンジンを実装
+
+- 2026-07-21 19:28 [Antigravity] 着手: sns_autopilot.py の AI文章生成エンジンを高度化。開発日記(DevLog)・技術Tips・演出ノウハウのマルチアングル自動手記プロンプトを構築
+
+- 2026-07-21 19:27 [Claude Code] 完了: 動画書き出し先とファイル名の変更。①`POST /api/save-export`(`apiHandler.js`)を新設し、書き出したMP4/透過WebM/ProRes MOVをブラウザの標準ダウンロード先ではなく`output/`(ワークスペース直下、新規`.gitignore`対象)へサーバー側で直接保存するように変更。ブラウザのdownload属性は保存先ディレクトリをJSから指定できずブラウザ設定に依存するため、自宅/会社PCどちらでも常に同じ場所に集約する狙い。`VideoRecorder.js`に`saveOrDownloadBlob()`を追加し既存の`downloadBlob()`呼び出し全箇所(MP4/WebMフォールバック/透過WebM/ProRes MOV)を置き換え、API失敗時(本番ビルド等)は自動的に従来のブラウザダウンロードへフォールバック。②ファイル名を`MovieCreator_Render_<timestamp>`から「最前面(表示中)レイヤー名+日時(YYYYMMDD_HHMMSS)」に変更(`Controls.js`の`buildExportFilename()`、複数レイヤー表示中は`layerManager.layers`配列末尾=Layersパネル最上段のレイヤーを採用)。ブラウザで単一レイヤー・複数レイヤー表示の両パターンで実際にExportボタンを押し、`output/`に`<レイヤー名>_<日時>.mp4`が生成されること・コンソールエラーが無いことを確認(検証用の短尺テストファイルは確認後に削除済み)。バッチジェネレーターの一括書き出しは命名対象外(既存の`MovieCreator_Batch_...`のまま)だが、保存先が`output/`になる恩恵は自動的に受ける。CLAUDE.mdに新セクション追記。またMirror Modeの16面・20面(+交互)追加(前回セッション、`RADIAL_MIRROR_MODES`10-13追加)もあわせて未コミットのまま含まれる。
+
 - 2026-07-21 19:17 [Antigravity] 修正: pipeline_gui.py 内のボタンフォントサイズ小数指定(9.5)を整数(10)へ完全修正
 
 - 2026-07-21 19:15 [Antigravity] 完了: パイプライン統合GUI(pipeline_gui.py)にMovieCreatorメインWebアプリ(npm run dev)のワンクリック起動・常駐・ブラウザ連携機能を追加統合

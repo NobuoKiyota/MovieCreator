@@ -116,15 +116,47 @@ def extract_preview_clip(video_path, output_preview_path, duration_sec=5.0):
 
 
 def generate_pr_comment_with_ai(gemini_api_key, video_filename):
-    """AI (Gemini API / Fallback) による VJ/ジェネレーティブアート向けPR文自動生成"""
+    """AI (Gemini API / Fallback) による 有益な開発日記・技術ノウハウ・PR文自動生成"""
+
+    # 3つの異なる切り口（コンテンツタイプ）からランダム選出
+    angles = [
+        {
+            "type": "DevLog (開発日記 / アプリ紹介)",
+            "context": (
+                "Webブラウザ上で動作するサイバーパンク生成映像クリエイター『MovieCreator』の開発進捗ログです。\n"
+                "「ブラウザ上で60fps決定論的WebCodecs書き出しができる」「多面万華鏡ミラーや自己進化型変異ランダマイザーを搭載」などの技術的魅力や、"
+                "作例動画として今回の素材を提示し、クリエイターコミュニティにインスピレーションを与える内容にしてください。"
+            )
+        },
+        {
+            "type": "Technique & VFX Tips (映像演出ノウハウ)",
+            "context": (
+                "VJ演出や配信オーバーレイ画面で使えるレイヤー合成やエフェクトのノウハウ投稿です。\n"
+                "「多面ミラーとKaleidoscopeを組み合わせ、Differenceブレンドで重ねることで幾何学的で深みのある光の干渉が得られる」などの実践的ワンポイント解説を含めてください。"
+            )
+        },
+        {
+            "type": "Product Showcase (素材パック・作品紹介)",
+            "context": (
+                "BOOTHやGumroad等で提供・配信されている高品質なネオン＆サイバーパンク背景ループ素材の紹介です。\n"
+                "VJパフォーマンス、ライブ配信、MV制作などでいかに映えるか、用途や演出効果を具体的かつスタイリッシュに提示してください。"
+            )
+        }
+    ]
+
+    chosen_angle = random.choice(angles)
+    print(f"[AI Profile] 切り口: {chosen_angle['type']}")
+
     prompt = (
-        f"あなたはサイバーパンク/ネオン調のジェネレーティブ・アートやVJ素材のトッププロモーターです。\n"
-        f"動画素材 '{video_filename}' の魅力を伝えるX(Twitter)投稿用の短文PRテキストを作成してください。\n\n"
+        f"あなたはサイバーパンク/ネオン調の生成映像クリエイター兼『MovieCreator』の開発者です。\n"
+        f"今回の動画作品 '{video_filename}' の映像（またはその制作プロセス）に関して、X (Twitter) 向けの魅力的なポストを作成してください。\n\n"
+        f"【今回の投稿切り口】\n"
+        f"{chosen_angle['context']}\n\n"
         f"【要件】\n"
-        f"1. 日本語と英語の両方を含めること。\n"
-        f"2. クールでスタイリッシュ、VJ演出や映像制作に使いたくなるような言葉遣い。\n"
-        f"3. 関連ハッシュタグ (#MovieCreator #GenerativeArt #VJ #Cyberpunk #MotionGraphics 等) を3〜5個付けること。\n"
-        f"4. Xの文字数制限に収まるコンパクトな長さ（200文字以内）にすること。\n"
+        f"1. 単なる宣伝や自己満足にならず、読んだクリエイターやVJが『面白い！参考になる！使ってみたい！』と感じる有益な視点を入れること。\n"
+        f"2. 日本語と英語の両方（バイリンガル表記）を含めること。\n"
+        f"3. 関連ハッシュタグ (#MovieCreator #DevLog #GenerativeArt #VJ #CreativeCoding #Cyberpunk から3〜5個) を末尾に付けること。\n"
+        f"4. Xの文字数制限に確実に収まるコンパクトでスタイリッシュな文章（全体の合計220文字以内）にすること。\n"
     )
 
     if gemini_api_key and gemini_api_key != "YOUR_GEMINI_API_KEY":
@@ -138,24 +170,33 @@ def generate_pr_comment_with_ai(gemini_api_key, video_filename):
             if resp.status_code == 200:
                 data = resp.json()
                 text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                print("[AI] Gemini API による PRコメントの生成に成功しました。")
+                print("[AI] Gemini API による有益DevLog/PRコメントの生成に成功しました。")
                 return text
             else:
                 print(f"[Warning] Gemini API エラー ({resp.status_code}): {resp.text}")
         except Exception as e:
             print(f"[Warning] Gemini API 呼び出し例外: {e}")
 
-    # AI API 未設定時のデフォルトフォールバック文章
-    fallback_text = (
-        f"✨ New Generative Visual Loop Release! ✨\n"
-        f"ネオン＆サイバーパンクな幾何学ループ素材 '{video_filename}' 配信中！\n"
-        f"VJ演出や動画制作の背景素材に最適です🔥\n\n"
-        f"Check out our new cyberpunk motion graphic loop.\n"
-        f"Perfect for VJing, live streaming, and music videos!\n\n"
-        f"#MovieCreator #GenerativeArt #VJ #MotionGraphics #Cyberpunk"
-    )
-    print("[AI] フォールバック用テンプレートテキストを使用します。")
+    # AI API 未設定時のフォールバック文章
+    fallback_templates = [
+        (
+            f"🛠️ [DevLog] Building MovieCreator!\n"
+            f"ブラウザだけで60fps決定論的WebCodecs書き出しができる映像生成アプリを開発中💻\n"
+            f"多面ミラー×Dot Designのレイヤー合成作例 '{video_filename}' です🔥\n\n"
+            f"Building an in-browser generative video maker. Layering radial mirror + dot patterns for VJ loops!\n\n"
+            f"#MovieCreator #DevLog #GenerativeArt #VJ #CreativeCoding"
+        ),
+        (
+            f"💡 [VFX Tip] Layer Blending Trick\n"
+            f"多面万華鏡と独立エフェクトをDiffernce合成で重ねると重層的な光の干渉パターンが作れます✨ 素材: '{video_filename}'\n\n"
+            f"Combine multi-radial mirror & kaleidoscope with Difference blend mode to create complex cyber patterns!\n\n"
+            f"#MovieCreator #VJ #MotionGraphics #CreativeCoding #Cyberpunk"
+        )
+    ]
+    fallback_text = random.choice(fallback_templates)
+    print("[AI] フォールバック用高クオリティテンプレートを使用します。")
     return fallback_text
+
 
 
 def create_line_flex_message(post_id, preview_url, pr_text):
