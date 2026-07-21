@@ -13,6 +13,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-21 19:17 [Antigravity] 修正: pipeline_gui.py 内のボタンフォントサイズ小数指定(9.5)を整数(10)へ完全修正
+
 - 2026-07-21 19:15 [Antigravity] 完了: パイプライン統合GUI(pipeline_gui.py)にMovieCreatorメインWebアプリ(npm run dev)のワンクリック起動・常駐・ブラウザ連携機能を追加統合
 
 - 2026-07-21 19:15 [Antigravity] 着手: パイプライン統合GUI(pipeline_gui.py)にMovieCreatorメインWebアプリ(npm run dev)の起動・停止・ブラウザ連動機能を追加

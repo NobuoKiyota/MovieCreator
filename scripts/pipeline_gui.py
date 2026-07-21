@@ -132,7 +132,7 @@ class PipelineGUI:
         btn_pack = tk.Button(
             ctrl_card, text="📦 販売パッケージ一括生成\n(package_builder.py)",
             bg="#313244", fg="#89b4fa", activebackground="#45475a", activeforeground="#ffffff",
-            font=("Segoe UI", 9.5, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
             command=self.run_package_builder
         )
         btn_pack.grid(row=1, column=0, padx=4, pady=3, sticky="ew")
@@ -140,7 +140,7 @@ class PipelineGUI:
         btn_autopilot = tk.Button(
             ctrl_card, text="🚀 SNS Autopilot 実行\n(sns_autopilot.py)",
             bg="#313244", fg="#a6e3a1", activebackground="#45475a", activeforeground="#ffffff",
-            font=("Segoe UI", 9.5, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
             command=self.run_sns_autopilot
         )
         btn_autopilot.grid(row=1, column=1, padx=4, pady=3, sticky="ew")
@@ -148,7 +148,7 @@ class PipelineGUI:
         self.btn_server = tk.Button(
             ctrl_card, text="🟢 Webhook サーバー起動\n(server_bot.py)",
             bg="#313244", fg="#fab387", activebackground="#45475a", activeforeground="#ffffff",
-            font=("Segoe UI", 9.5, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
             command=self.toggle_server
         )
         self.btn_server.grid(row=1, column=2, padx=4, pady=3, sticky="ew")
@@ -172,8 +172,9 @@ class PipelineGUI:
 
         self.lbl_server_status = tk.Label(
             ctrl_card, text="Server: OFFLINE", bg=self.card_bg, fg="#f38ba8",
-            font=("Segoe UI", 9.5, "bold")
+            font=("Segoe UI", 10, "bold")
         )
+
         self.lbl_server_status.grid(row=2, column=2, padx=4, pady=(6, 0))
 
         ctrl_card.columnconfigure(0, weight=1)
