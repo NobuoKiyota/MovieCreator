@@ -166,7 +166,7 @@ class PipelineGUI:
 
         self.log_text = scrolledtext.ScrolledText(
             log_card, bg="#11111b", fg="#a6e3a1", insertbackground="white",
-            font=("Consolas", 9.5), bd=0, relief="flat"
+            font=("Consolas", 10), bd=0, relief="flat"
         )
         self.log_text.pack(fill="both", expand=True)
 
