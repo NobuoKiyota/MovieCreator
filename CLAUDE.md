@@ -15,7 +15,7 @@
 - **パイプライン統合コントロールパネル GUI (推奨)**:
   - `run_pipeline_gui.bat`（ダブルクリックでGUI起動）
   - または `python scripts/pipeline_gui.py`
-  - 1画面で「📦 パッケージ生成」「🚀 SNS Autopilot」「🌐 Webhook サーバー起動/停止」「⚙️ config編集」を一括操作・リアルタイムログ監視。
+  - 1画面で「🎨 MovieCreator メインWeb UI (npm run dev)」「📦 パッケージ生成」「🚀 SNS Autopilot」「🌐 Webhook サーバー起動/停止」「⚙️ config編集」を一括操作・リアルタイムログ監視。
 - **販売パッケージ一括生成**:
   `python scripts/package_builder.py` — `exports/` 内の動画からサムネイル・商用ライセンス(JP/EN)を生成し `MovieCreator_AssetPack.zip` を自動構築。
 - **LINE承認 ➔ X(Twitter) 連動投稿パイプライン**:

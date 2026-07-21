@@ -13,6 +13,10 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
+- 2026-07-21 19:15 [Antigravity] 完了: パイプライン統合GUI(pipeline_gui.py)にMovieCreatorメインWebアプリ(npm run dev)のワンクリック起動・常駐・ブラウザ連携機能を追加統合
+
+- 2026-07-21 19:15 [Antigravity] 着手: パイプライン統合GUI(pipeline_gui.py)にMovieCreatorメインWebアプリ(npm run dev)の起動・停止・ブラウザ連動機能を追加
+
 - 2026-07-21 19:08 [Antigravity] 修正: run_pipeline_gui.bat のマルチバイト文字・絵文字によるcmd.exeコマンド構文誤認エラーを修正。純粋ASCII構文へ変更
 
 - 2026-07-21 19:07 [Antigravity] 修正: pipeline_gui.py の ScrolledText フォントサイズ指定エラー(9.5->10)を修正し、run_pipeline_gui.bat にエラー保持処理(pause)を追加
