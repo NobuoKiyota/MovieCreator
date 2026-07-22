@@ -2841,11 +2841,94 @@ function buildRetroPalette(hex, centerLightness) {
   return lightnessSteps.map(delta => hslToRgb(h, s, Math.max(8, Math.min(92, centerLightness + delta))));
 }
 
+const ALPHABET_STROKES = {
+  A: [[[-0.4, 0.55], [0, -0.55], [0.4, 0.55]], [[-0.2, 0.1], [0.2, 0.1]]],
+  B: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.1, -0.55], [0.35, -0.27], [-0.4, 0]], [[-0.4, 0], [0.15, 0], [0.38, 0.27], [-0.4, 0.55]]],
+  C: [[[0.35, -0.35], [0, -0.55], [-0.35, -0.2], [-0.35, 0.2], [0, 0.55], [0.35, 0.35]]],
+  D: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.15, -0.55], [0.38, -0.15], [0.38, 0.15], [0.15, 0.55], [-0.4, 0.55]]],
+  E: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.35, -0.55]], [[-0.4, 0], [0.2, 0]], [[-0.4, 0.55], [0.35, 0.55]]],
+  F: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.35, -0.55]], [[-0.4, 0], [0.2, 0]]],
+  G: [[[0.35, -0.35], [0, -0.55], [-0.35, -0.2], [-0.35, 0.2], [0, 0.55], [0.35, 0.55], [0.35, 0.05], [0.1, 0.05]]],
+  H: [[[-0.4, -0.55], [-0.4, 0.55]], [[0.4, -0.55], [0.4, 0.55]], [[-0.4, 0], [0.4, 0]]],
+  I: [[[0, -0.55], [0, 0.55]], [[-0.2, -0.55], [0.2, -0.55]], [[-0.2, 0.55], [0.2, 0.55]]],
+  J: [[[0.2, -0.55], [0.2, 0.35], [0, 0.55], [-0.25, 0.35]]],
+  K: [[[-0.4, -0.55], [-0.4, 0.55]], [[0.3, -0.55], [-0.4, 0], [0.3, 0.55]]],
+  L: [[[-0.4, -0.55], [-0.4, 0.55], [0.35, 0.55]]],
+  M: [[[-0.4, 0.55], [-0.4, -0.55], [0, -0.05], [0.4, -0.55], [0.4, 0.55]]],
+  N: [[[-0.4, 0.55], [-0.4, -0.55], [0.4, 0.55], [0.4, -0.55]]],
+  O: [[[0, -0.55], [0.35, -0.27], [0.35, 0.27], [0, 0.55], [-0.35, 0.27], [-0.35, -0.27], [0, -0.55]]],
+  P: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.15, -0.55], [0.35, -0.27], [-0.4, 0]]],
+  Q: [[[0, -0.55], [0.35, -0.27], [0.35, 0.27], [0, 0.55], [-0.35, 0.27], [-0.35, -0.27], [0, -0.55]], [[0.1, 0.2], [0.35, 0.55]]],
+  R: [[[-0.4, -0.55], [-0.4, 0.55]], [[-0.4, -0.55], [0.15, -0.55], [0.35, -0.27], [-0.4, 0]], [[0, 0], [0.35, 0.55]]],
+  S: [[[0.3, -0.35], [0, -0.55], [-0.3, -0.27], [0, 0], [0.3, 0.27], [0, 0.55], [-0.3, 0.35]]],
+  T: [[[0, -0.55], [0, 0.55]], [[-0.4, -0.55], [0.4, -0.55]]],
+  U: [[[-0.4, -0.55], [-0.4, 0.27], [0, 0.55], [0.4, 0.27], [0.4, -0.55]]],
+  V: [[[-0.4, -0.55], [0, 0.55], [0.4, -0.55]]],
+  W: [[[-0.4, -0.55], [-0.3, 0.55], [0, -0.1], [0.3, 0.55], [0.4, -0.55]]],
+  X: [[[-0.4, -0.55], [0.4, 0.55]], [[0.4, -0.55], [-0.4, 0.55]]],
+  Y: [[[-0.4, -0.55], [0, 0], [0.4, -0.55]], [[0, 0], [0, 0.55]]],
+  Z: [[[-0.4, -0.55], [0.4, -0.55], [-0.4, 0.55], [0.4, 0.55]]]
+};
+
+const ANKH_STROKES = [
+  [[0, -0.1], [0, 0.6]],
+  [[-0.3, -0.1], [0.3, -0.1]],
+  (() => {
+    const pts = [];
+    const cx = 0, cy = -0.35;
+    const rx = 0.18, ry = 0.22;
+    for (let i = 0; i <= 12; i++) {
+      const angle = -Math.PI / 2 + (i * Math.PI * 2) / 12;
+      pts.push([cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)]);
+    }
+    return pts;
+  })()
+];
+
+const EYE_OF_HORUS_STROKES = [
+  [[-0.5, -0.45], [-0.25, -0.55], [0.25, -0.45], [0.5, -0.35]],
+  [[-0.5, -0.05], [-0.25, -0.25], [0.25, -0.25], [0.5, -0.05]],
+  [[-0.5, -0.05], [-0.15, 0.15], [0.25, 0.15], [0.5, -0.05]],
+  [[0.03, -0.22], [0.03, 0.15]],
+  [[-0.03, -0.22], [-0.03, 0.15]],
+  [[0.15, 0.1], [0.15, 0.5]],
+  [[0.15, 0.1], [0.05, 0.3], [-0.15, 0.4], [-0.25, 0.3]]
+];
+
+const DJED_STROKES = [
+  [[-0.06, -0.55], [-0.06, 0.55]],
+  [[0.06, -0.55], [0.06, 0.55]],
+  [[-0.2, 0.55], [0.2, 0.55]],
+  [[-0.22, -0.4], [0.22, -0.4]],
+  [[-0.25, -0.25], [0.25, -0.25]],
+  [[-0.28, -0.1], [0.28, -0.1]],
+  [[-0.31, 0.05], [0.31, 0.05]]
+];
+
+function buildRomanNumeralStrokes(value) {
+  const I = (x) => [[ [x, -0.55], [x, 0.55] ]];
+  const V = (x) => [[ [x - 0.2, -0.55], [x, 0.55] ], [ [x, 0.55], [x + 0.2, -0.55] ]];
+  const X = (x) => [[ [x - 0.2, -0.55], [x + 0.2, 0.55] ], [ [x + 0.2, -0.55], [x - 0.2, 0.55] ]];
+  switch (value) {
+    case 1: return I(0);
+    case 2: return [...I(-0.15), ...I(0.15)];
+    case 3: return [...I(-0.25), ...I(0), ...I(0.25)];
+    case 4: return [...I(-0.2), ...V(0.15)];
+    case 5: return V(0);
+    case 6: return [...V(-0.15), ...I(0.2)];
+    case 7: return [...V(-0.25), ...I(0.1), ...I(0.35)];
+    case 8: return [...V(-0.35), ...I(0), ...I(0.22), ...I(0.44)];
+    case 9: return [...I(-0.2), ...X(0.15)];
+    case 10: return X(0);
+    default: return I(0);
+  }
+}
+
 export class DotDesignGenerator extends BaseGenerator {
   defaultParams() {
     return {
       // 0=Radial, 1=Sweep, 2=Star Burst, 3=Arrow, 4=Noise Kaleidoscope, 5=Sequential Fill,
-      // 6=Ripple, 7=Random Sparkle
+      // 6=Ripple, 7=Random Sparkle, 8=Star, 9=Alphabet, 10=Roman Numeral, 11=Hieroglyph
       patternMode: 0,
       reverse: 0,           // 0 = expand/forward, 1 = converge/reverse direction
       cycleDuration: 4000,  // ms; duration of one full reveal cycle, loops seamlessly
@@ -2870,12 +2953,12 @@ export class DotDesignGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'patternMode', label: 'Pattern Mode (0=Radial,1=Sweep,2=Star,3=Arrow,4=Noise,5=Fill,6=Ripple,7=Sparkle)', type: 'range', min: 0, max: 7, step: 1 },
-      { name: 'reverse', label: 'Reverse (0=Expand,1=Converge)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'patternMode', label: 'Pattern Mode', type: 'range', min: 0, max: 11, step: 1 },
+      { name: 'reverse', label: 'Reverse', type: 'range', min: 0, max: 1, step: 1 },
       { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 1000, max: 15000, step: 500 },
       { name: 'sweepAngle', label: 'Sweep/Arrow/Fill Angle', type: 'range', min: 0, max: 360, step: 1 },
       { name: 'gridSize', label: 'Grid Size', type: 'range', min: 8, max: 48, step: 1 },
-      { name: 'dotShape', label: 'Dot Shape (0=Square,1=Circle)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'dotShape', label: 'Dot Shape', type: 'range', min: 0, max: 1, step: 1 },
       { name: 'symmetry', label: 'Symmetry / Star Points', type: 'range', min: 1, max: 12, step: 1 },
       { name: 'noiseScale', label: 'Pattern Scale', type: 'range', min: 0.2, max: 4, step: 0.1 },
       { name: 'edgeJitter', label: 'Edge Roughness', type: 'range', min: 0, max: 30, step: 1 },
@@ -2883,7 +2966,7 @@ export class DotDesignGenerator extends BaseGenerator {
       { name: 'patternSeedY', label: 'Pattern Seed Y', type: 'range', min: -1000, max: 1000, step: 1 },
       { name: 'threshold', label: 'Noise Density Threshold', type: 'range', min: 0, max: 90, step: 1 },
       { name: 'fillAmount', label: 'Dot Fill %', type: 'range', min: 20, max: 100, step: 1 },
-      { name: 'colorMode', label: 'Color Mode (0=Single,1=Famicom Palette)', type: 'range', min: 0, max: 1, step: 1 },
+      { name: 'colorMode', label: 'Color Mode', type: 'range', min: 0, max: 1, step: 1 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -2930,6 +3013,73 @@ export class DotDesignGenerator extends BaseGenerator {
       const n = noiseInst.noise2D((col * 12.9898 + seedX + salt), (row * 78.233 + seedY + salt));
       return (n + 1) / 2;
     };
+
+    let activeSegments = [];
+    if (mode >= 8) {
+      let strokes = [];
+      const charSeed = Math.abs(Math.round(seedX * 13 + seedY * 37));
+
+      if (mode === 8) {
+        // Star (五芒星)
+        const r = 0.65;
+        const pts = [];
+        for (let i = 0; i <= 5; i++) {
+          const idx = (i * 2) % 5;
+          const angle = -Math.PI / 2 + (idx * Math.PI * 2) / 5;
+          pts.push([r * Math.cos(angle), r * Math.sin(angle)]);
+        }
+        strokes = [pts];
+      } else if (mode === 9) {
+        // Alphabet
+        const chars = Object.keys(ALPHABET_STROKES);
+        const charKey = chars[charSeed % chars.length];
+        strokes = ALPHABET_STROKES[charKey] || [];
+      } else if (mode === 10) {
+        // Roman Numeral
+        const romanIdx = (charSeed % 10) + 1;
+        strokes = buildRomanNumeralStrokes(romanIdx);
+      } else if (mode === 11) {
+        // Hieroglyph
+        const hieroglyphs = [ANKH_STROKES, EYE_OF_HORUS_STROKES, DJED_STROKES];
+        strokes = hieroglyphs[charSeed % hieroglyphs.length];
+      }
+
+      let totalLength = 0;
+      const segmentList = [];
+
+      for (const stroke of strokes) {
+        for (let i = 0; i < stroke.length - 1; i++) {
+          const p1 = stroke[i];
+          const p2 = stroke[i + 1];
+          const sdx = p2[0] - p1[0];
+          const sdy = p2[1] - p1[1];
+          const len = Math.sqrt(sdx * sdx + sdy * sdy);
+          segmentList.push({ p1, p2, len });
+          totalLength += len;
+        }
+      }
+
+      const targetLen = progress * totalLength;
+      let currentLen = 0;
+
+      for (const seg of segmentList) {
+        if (currentLen + seg.len <= targetLen) {
+          activeSegments.push(seg);
+          currentLen += seg.len;
+        } else {
+          const rem = targetLen - currentLen;
+          if (rem > 0 && seg.len > 0) {
+            const ratio = rem / seg.len;
+            const p2 = [
+              seg.p1[0] + (seg.p2[0] - seg.p1[0]) * ratio,
+              seg.p1[1] + (seg.p2[1] - seg.p1[1]) * ratio
+            ];
+            activeSegments.push({ p1: seg.p1, p2, len: rem });
+          }
+          break;
+        }
+      }
+    }
 
     ctx.save();
     for (let row = 0; row < rows; row++) {
@@ -3017,6 +3167,34 @@ export class DotDesignGenerator extends BaseGenerator {
             const halfWidth = (maxRadius * 0.5) * (behindTip / arrowLength); // 0 at tip, widest at tail
             lit = Math.abs(across) <= halfWidth;
           }
+
+        } else if (mode >= 8) {
+          // Stroke-based vectors (Star, Alphabet, Roman Numeral, Hieroglyph)
+          const nx = dx / maxRadius;
+          const ny = dy / maxRadius;
+          let minDist = Infinity;
+          for (let i = 0; i < activeSegments.length; i++) {
+            const seg = activeSegments[i];
+            const ax = seg.p1[0], ay = seg.p1[1];
+            const bx = seg.p2[0], by = seg.p2[1];
+            const sdx = bx - ax, sdy = by - ay;
+            const lenSq = sdx * sdx + sdy * sdy;
+            let dist;
+            if (lenSq === 0) {
+              dist = Math.sqrt((nx - ax) * (nx - ax) + (ny - ay) * (ny - ay));
+            } else {
+              let t = ((nx - ax) * sdx + (ny - ay) * sdy) / lenSq;
+              t = Math.max(0, Math.min(1, t));
+              const hx = ax + t * sdx;
+              const hy = ay + t * sdy;
+              dist = Math.sqrt((nx - hx) * (nx - hx) + (ny - hy) * (ny - hy));
+            }
+            if (dist < minDist) minDist = dist;
+          }
+          const normalizedCellSize = cellSize / maxRadius;
+          const strokeWidth = normalizedCellSize * (this.params.fillAmount / 100) * 0.95;
+          lit = minDist <= strokeWidth;
+          alpha = lit ? 1 : 0;
 
         } else {
           // Radial (0) / Sweep (1) / Star Burst (2): share a "traveling wavefront" model - each

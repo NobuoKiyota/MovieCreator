@@ -9,6 +9,9 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-22 20:29 [Antigravity] 完了: Dot DesignのPattern Mode追加（星/文字/記号の一筆書き）およびパラメータUI整理
+- 2026-07-22 20:24 [Antigravity] 着手: Dot DesignのPattern Mode追加（星/文字/記号の一筆書き）およびパラメータUI整理
+- 2026-07-22 19:33 [Antigravity] 着手: ホームページ作成方式（GitHub Pages＋リッチHTML vs 外部サービス）の調査と提案
 - 2026-07-22 19:02 [Antigravity] 完了: 動画合成・量産アプリ「video_mixer.py」および起動バッチ、pipeline_gui.pyへの統合完了
 - 2026-07-22 18:56 [Antigravity] 着手: 動画合成・量産アプリ「video_mixer.py」の設計と実装計画作成
 - 2026-07-22 18:32 [Antigravity] X手動投稿アシスタント（コピー＆ブラウザ起動）の統合とGUIレイアウト調整完了 (b9847b5)
