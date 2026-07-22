@@ -115,7 +115,7 @@ def extract_preview_clip(video_path, output_preview_path, duration_sec=5.0):
         return False
 
 
-def generate_pr_comment_with_ai(gemini_api_key, video_filename):
+def generate_pr_comment_with_ai(gemini_api_key, video_filename, user_feedback=None):
     """AI (Gemini API / Fallback) による 有益な開発日記・技術ノウハウ・PR文自動生成"""
 
     # 3つの異なる切り口（コンテンツタイプ）からランダム選出
@@ -124,7 +124,7 @@ def generate_pr_comment_with_ai(gemini_api_key, video_filename):
             "type": "DevLog (開発日記 / アプリ紹介)",
             "context": (
                 "Webブラウザ上で動作するサイバーパンク生成映像クリエイター『MovieCreator』の開発進捗ログです。\n"
-                "「ブラウザ上で60fps決定論的WebCodecs書き出しができる」「多面万華鏡ミラーや自己進化型変異ランダマイザーを搭載」などの技術的魅力や、"
+                "「ブラウザ上で60fps決定論的WebCodecs書き出しができる」「多面万華鏡ミラーや自己進化型変異ランダマイザーを搭載」などの技術的魅力や, "
                 "作例動画として今回の素材を提示し、クリエイターコミュニティにインスピレーションを与える内容にしてください。"
             )
         },
@@ -148,7 +148,7 @@ def generate_pr_comment_with_ai(gemini_api_key, video_filename):
     print(f"[AI Profile] 切り口: {chosen_angle['type']}")
 
     prompt = (
-        f"あなたはサイバーパンク/ネオン調の生成映像クリエイター兼『MovieCreator』の開発者です。\n"
+        f"あなたはサイバーパンク/ネオン調 of 生成映像クリエイター兼『MovieCreator』の開発者です。\n"
         f"今回の動画作品 '{video_filename}' の映像（またはその制作プロセス）に関して、X (Twitter) 向けの魅力的なポストを作成してください。\n\n"
         f"【今回の投稿切り口】\n"
         f"{chosen_angle['context']}\n\n"
@@ -158,6 +158,13 @@ def generate_pr_comment_with_ai(gemini_api_key, video_filename):
         f"3. 関連ハッシュタグ (#MovieCreator #DevLog #GenerativeArt #VJ #CreativeCoding #Cyberpunk から3〜5個) を末尾に付けること。\n"
         f"4. Xの文字数制限に確実に収まるコンパクトでスタイリッシュな文章（全体の合計220文字以内）にすること。\n"
     )
+
+    if user_feedback:
+        prompt += (
+            f"\n【ユーザーからの追加指示・注文】\n"
+            f"※以下の注文を最優先で反映し、ポスト文を構成してください：\n"
+            f"\"{user_feedback}\"\n"
+        )
 
     if gemini_api_key and gemini_api_key != "YOUR_GEMINI_API_KEY":
         try:

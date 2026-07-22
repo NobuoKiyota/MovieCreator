@@ -619,7 +619,7 @@ class PipelineGUI:
         """添削・掲載ダイアログの表示"""
         win = tk.Toplevel(self.root)
         win.title("📝 X (Twitter) 投稿レビュー ＆ 掲載")
-        win.geometry("650x550")
+        win.geometry("650x620")
         win.configure(bg=self.bg_color)
         win.grab_set()
 
@@ -685,6 +685,66 @@ class PipelineGUI:
 
         editor.bind("<KeyRelease>", update_char_count)
         update_char_count() # 初期呼び出し
+
+        # AI指示＆再考フレーム
+        ai_frame = ttk.Frame(win, padding=5)
+        ai_frame.pack(fill="x", padx=15, pady=(5, 10))
+
+        lbl_instruction = ttk.Label(ai_frame, text="🤖 AIへの追加指示・注文 (例: もっと技術寄りに、短くして、ハッシュタグ減らして等):", style="Status.TLabel")
+        lbl_instruction.pack(anchor="w")
+
+        # 指示の入力欄とボタンを配置するコンテナ
+        ai_input_frame = ttk.Frame(ai_frame)
+        ai_input_frame.pack(fill="x", pady=2)
+
+        entry_feedback = ttk.Entry(ai_input_frame, font=("Segoe UI", 10))
+        entry_feedback.pack(side="left", fill="x", expand=True, padx=(0, 5))
+
+        def on_regenerate():
+            feedback = entry_feedback.get().strip()
+            if not feedback:
+                messagebox.showwarning("警告", "AIへの指示・注文を入力してください。")
+                return
+
+            config = load_config(CONFIG_PATH) or {}
+            gemini_key = config.get("ai", {}).get("gemini_api_key")
+            filename = os.path.basename(original_path)
+
+            btn_regen.config(state="disabled", text="再考中...")
+            entry_feedback.config(state="disabled")
+            editor.config(state="disabled")
+
+            def regen_worker():
+                try:
+                    new_text = generate_pr_comment_with_ai(gemini_key, filename, user_feedback=feedback)
+                    
+                    def update_ui():
+                        editor.config(state="normal")
+                        editor.delete("1.0", tk.END)
+                        editor.insert(tk.END, new_text)
+                        update_char_count()
+                        
+                        entry_feedback.config(state="normal")
+                        btn_regen.config(state="normal", text="🔄 再考してもらう")
+                        messagebox.showinfo("再考完了", "AIが新しい文章案を提案しました！")
+                        
+                    win.after(0, update_ui)
+                except Exception as ex:
+                    def handle_error():
+                        editor.config(state="normal")
+                        entry_feedback.config(state="normal")
+                        btn_regen.config(state="normal", text="🔄 再考してもらう")
+                        messagebox.showerror("エラー", f"再考の生成中にエラーが発生しました:\n{ex}")
+                    win.after(0, handle_error)
+
+            threading.Thread(target=regen_worker, daemon=True).start()
+
+        btn_regen = tk.Button(
+            ai_input_frame, text="🔄 再考してもらう", bg=self.accent_purple, fg="#11111b",
+            font=("Segoe UI", 9, "bold"), bd=0, padx=12, pady=4, cursor="hand2",
+            command=on_regenerate
+        )
+        btn_regen.pack(side="right")
 
         # アクションボタンフレーム
         btn_frame = ttk.Frame(win, padding=15)
