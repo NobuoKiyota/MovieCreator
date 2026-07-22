@@ -203,6 +203,15 @@ class PipelineGUI:
         )
         btn_output.grid(row=3, column=2, padx=4, pady=(8, 0), sticky="ew")
 
+        # ボタン行 4 (動画合成＆量産)
+        btn_mixer = tk.Button(
+            ctrl_card, text="🎬 動画合成 ＆ 量産ツール起動 (video_mixer.py)",
+            bg="#fab387", fg="#11111b", activebackground="#f5c2e7", activeforeground="#11111b",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
+            command=self.run_video_mixer
+        )
+        btn_mixer.grid(row=4, column=0, columnspan=3, padx=4, pady=(10, 0), sticky="ew")
+
         ctrl_card.columnconfigure(0, weight=1)
         ctrl_card.columnconfigure(1, weight=1)
         ctrl_card.columnconfigure(2, weight=1)
@@ -323,6 +332,10 @@ class PipelineGUI:
     def run_package_builder(self):
         """販売パッケージ一括生成"""
         self.run_script_in_thread("package_builder.py")
+
+    def run_video_mixer(self):
+        """動画合成・量産ツール起動"""
+        self.run_script_in_thread("video_mixer.py")
 
     def run_sns_autopilot(self):
         """SNS Autopilot 実行"""
