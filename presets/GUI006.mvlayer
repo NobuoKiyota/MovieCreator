@@ -1,0 +1,406 @@
+{
+  "version": "1.0",
+  "type": "movie-creator-layer-preset",
+  "layer": {
+    "type": "cube-3d",
+    "name": "GUI006",
+    "opacity": 1,
+    "blendMode": "lighter",
+    "randomSpread": 30,
+    "currentPresetName": "pulsing-heart",
+    "params": {
+      "size": 230,
+      "speedX": 5,
+      "speedY": 4,
+      "speedZ": 3.5,
+      "thickness": 2.624248888887962,
+      "fillOpacity": 0,
+      "color": "#a855f7",
+      "fillColor": "#06b6d4",
+      "colorLightness": 50,
+      "glow": 80
+    },
+    "effects": {
+      "positionX": 0,
+      "positionY": 0,
+      "rotation": 0,
+      "scale": 1.3735040000003575,
+      "strobe": 30,
+      "glowIntensity": 33.67520000001788,
+      "glowMix": 0.5,
+      "feedbackDecay": 0.64574,
+      "feedbackScale": 1.002,
+      "feedbackRotate": 0.05,
+      "distortionIntensity": 0,
+      "distortionFrequency": 0.008,
+      "distortionSpeed": 1.5,
+      "kaleidoscopeSegment": 0,
+      "mirrorMode": 3,
+      "chromaticOffset": 0,
+      "hueRotate": 3.974399999946357,
+      "rotateX": 40,
+      "rotateY": 0,
+      "rotateZ": 0,
+      "translateZ": 0
+    },
+    "modulations": {
+      "size": {
+        "enabled": false,
+        "min": 230,
+        "max": 230,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 230,
+        "jitterWidth": 20
+      },
+      "speedX": {
+        "enabled": false,
+        "min": 5,
+        "max": 5,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 5,
+        "jitterWidth": 20
+      },
+      "speedY": {
+        "enabled": false,
+        "min": 4,
+        "max": 4,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 4,
+        "jitterWidth": 20
+      },
+      "speedZ": {
+        "enabled": false,
+        "min": 3.5,
+        "max": 3.5,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 3.5,
+        "jitterWidth": 20
+      },
+      "thickness": {
+        "enabled": false,
+        "min": 1,
+        "max": 15,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": true,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 1,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 3.8000000000000003,
+            "easing": "linear"
+          },
+          {
+            "frame": 300,
+            "value": 15,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 3.8000000000000003,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 1,
+            "easing": "linear"
+          }
+        ],
+        "spawnJitter": false,
+        "jitterBase": 1,
+        "jitterWidth": 20
+      },
+      "fillOpacity": {
+        "enabled": false,
+        "min": 0,
+        "max": 0,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "colorLightness": {
+        "enabled": false,
+        "min": 0,
+        "max": 100,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 50,
+        "jitterWidth": 20
+      },
+      "glow": {
+        "enabled": false,
+        "min": 80,
+        "max": 80,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 80,
+        "jitterWidth": 20
+      },
+      "positionX": {
+        "enabled": false,
+        "min": -1,
+        "max": 1,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "positionY": {
+        "enabled": false,
+        "min": -1,
+        "max": 1,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "rotation": {
+        "enabled": false,
+        "min": 0,
+        "max": 0,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "scale": {
+        "enabled": true,
+        "min": 0.8,
+        "max": 1.4,
+        "timePct": 25,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 1,
+        "jitterWidth": 20
+      },
+      "strobe": {
+        "enabled": false,
+        "min": 30,
+        "max": 30,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 30,
+        "jitterWidth": 20
+      },
+      "glowIntensity": {
+        "enabled": true,
+        "min": 5,
+        "max": 35,
+        "timePct": 25,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "feedbackDecay": {
+        "enabled": false,
+        "min": 0.5,
+        "max": 0.85,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [
+          {
+            "frame": 0,
+            "value": 0.475,
+            "easing": "linear"
+          },
+          {
+            "frame": 180,
+            "value": 0.5700000000000001,
+            "easing": "linear"
+          },
+          {
+            "frame": 270,
+            "value": 0.95,
+            "easing": "linear"
+          },
+          {
+            "frame": 330,
+            "value": 0.95,
+            "easing": "linear"
+          },
+          {
+            "frame": 420,
+            "value": 0.665,
+            "easing": "linear"
+          },
+          {
+            "frame": 600,
+            "value": 0.475,
+            "easing": "linear"
+          }
+        ],
+        "spawnJitter": false,
+        "jitterBase": 0.5,
+        "jitterWidth": 20
+      },
+      "feedbackRotate": {
+        "enabled": false,
+        "min": 0.05,
+        "max": 0.05,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0.05,
+        "jitterWidth": 20
+      },
+      "distortionIntensity": {
+        "enabled": false,
+        "min": 0,
+        "max": 40,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "kaleidoscopeSegment": {
+        "enabled": false,
+        "min": 0,
+        "max": 12,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "mirrorMode": {
+        "enabled": false,
+        "min": 3,
+        "max": 3,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 3,
+        "jitterWidth": 20
+      },
+      "chromaticOffset": {
+        "enabled": false,
+        "min": 0,
+        "max": 30,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "hueRotate": {
+        "enabled": true,
+        "min": -90,
+        "max": 90,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": -88,
+        "jitterWidth": 20
+      },
+      "rotateX": {
+        "enabled": false,
+        "min": 40,
+        "max": 40,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 40,
+        "jitterWidth": 20
+      },
+      "rotateY": {
+        "enabled": false,
+        "min": -180,
+        "max": 180,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "rotateZ": {
+        "enabled": false,
+        "min": -180,
+        "max": 180,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      },
+      "translateZ": {
+        "enabled": false,
+        "min": -600,
+        "max": 600,
+        "timePct": 50,
+        "behavior": "return",
+        "keyframeEnabled": false,
+        "keyframes": [],
+        "spawnJitter": false,
+        "jitterBase": 0,
+        "jitterWidth": 20
+      }
+    }
+  }
+}

@@ -15,3 +15,9 @@ tools/ffmpeg/
 # 書き出し動画の保存先(/api/save-export、VideoRecorder.js参照)。*.mp4は元々除外済みだが
 # 透過WebM/ProRes MOVも同じフォルダに出力されるためディレクトリごと除外する。
 output/
+
+# Pythonキャッシュおよび自動化ツールの作業データ・一時ファイル
+scripts/__pycache__/
+X/
+data/sns_pending_post.json
+output/temp_protected_post.mp4

@@ -167,9 +167,17 @@ def build_package(export_dir, output_zip_path):
     # 1. 動画ファイルの探索
     video_extensions = ("*.mp4", "*.webm", "*.mov", "*.avi")
     video_files = []
-    for ext in video_extensions:
-        video_files.extend(glob.glob(os.path.join(export_dir, ext)))
-        video_files.extend(glob.glob(os.path.join(export_dir, ext.upper())))
+    
+    search_dirs = [export_dir]
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    output_dir = os.path.join(project_root, "output")
+    if os.path.exists(output_dir) and output_dir not in search_dirs:
+        search_dirs.append(output_dir)
+
+    for s_dir in search_dirs:
+        for ext in video_extensions:
+            video_files.extend(glob.glob(os.path.join(s_dir, ext)))
+            video_files.extend(glob.glob(os.path.join(s_dir, ext.upper())))
 
     # 重複除去
     video_files = list(set(video_files))

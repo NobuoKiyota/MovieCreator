@@ -7,6 +7,15 @@
 import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
 import { MOTION_TEMPLATES } from '../engine/motionTemplates.js';
 import { hexToHsl } from '../engine/Generators.js';
+import {
+  forceFxOff,
+  randomizeRotation,
+  randomizeScale,
+  randomizeGlowIntensity,
+  randomizeFeedbackDecay,
+  randomizeFeedbackRotate,
+  randomizeRotateX
+} from './fxRandomizerRules.js';
 
 export class Controls {
   constructor(layerManager, mainApp) {
@@ -2605,423 +2614,62 @@ export class Controls {
         tempRotation = Math.max(rotConfig.min, Math.min(rotConfig.max, tempRotation));
       }
 
+      // Per-FX-parameter randomization rules live in fxRandomizerRules.js (extracted from an
+      // 18-branch if/else-if chain that used to live inline here - see its file comment). Good-
+      // attraction centroids are closures over per-attempt state, so they're still computed here
+      // and passed in as plain values to keep those functions pure.
+      const durationVal = parseFloat(this.exportDurationEl.value) || 10;
+      const goodScaleCentroid = goodEffectCentroid('scale');
+      const goodGlowCentroid = goodEffectCentroid('glowIntensity');
+      const goodDecayCentroid = goodEffectCentroid('feedbackDecay');
+
       for (let fxName in this.fxConfigs) {
         const config = this.fxConfigs[fxName];
-        
-        let localMin = config.min;
-        let localMax = config.max;
-        const range = config.max - config.min;
+        let r;
 
-        // Apply User Directive overrides & clamping
-        
-        // 1. positionX / positionY: Basically 0,0, no modulation
-        if (fxName === 'positionX' || fxName === 'positionY') {
-          candidateEffects[fxName] = 0;
-          candidateModulations[fxName] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
+        switch (fxName) {
+          // Deliberately excluded from randomization (see CLAUDE.md's "ガチャ回避" notes) -
+          // positionX/Y (basically 0,0), strobe (almost never used), distortionIntensity/
+          // kaleidoscopeSegment/mirrorMode/chromaticOffset (almost never used / manual-only
+          // composition choices), rotateY/rotateZ (3D effects unused except X), translateZ
+          // (overlaps with Scale).
+          case 'positionX':
+          case 'positionY':
+          case 'strobe':
+          case 'distortionIntensity':
+          case 'kaleidoscopeSegment':
+          case 'mirrorMode':
+          case 'chromaticOffset':
+          case 'rotateY':
+          case 'rotateZ':
+          case 'translateZ':
+            r = forceFxOff(0);
+            break;
+          case 'rotation':
+            r = randomizeRotation({ durationVal });
+            break;
+          case 'scale':
+            r = randomizeScale({ layer, config, spread, hasScaleIssue, hasNothingVisible, hasAspectBreak, tempRotation, goodAttractionWeight, goodScaleCentroid });
+            break;
+          case 'glowIntensity':
+            r = randomizeGlowIntensity({ layer, config, spread, hasNothingVisible, hasTooChaotic, goodAttractionWeight, goodGlowCentroid });
+            break;
+          case 'feedbackDecay':
+            r = randomizeFeedbackDecay({ layer, config, spread, hasTooChaotic, goodAttractionWeight, goodDecayCentroid });
+            break;
+          case 'feedbackRotate':
+            r = randomizeFeedbackRotate();
+            break;
+          case 'rotateX':
+            r = randomizeRotateX();
+            break;
+          default:
+            // fxConfigs parameter with no randomizer rule yet (e.g. hueRotate) - leave untouched.
+            continue;
         }
 
-        // 2. rotation: Basically 0. Occasionally rotate 1 or 2 turns over export duration.
-        if (fxName === 'rotation') {
-          const isSpin = Math.random() < 0.15; // 15% chance to rotate
-          if (isSpin) {
-            const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-            const maxFrames = durationVal * 60;
-            const turns = Math.random() < 0.5 ? 1 : 2;
-            const dir = Math.random() < 0.5 ? 1 : -1;
-            const finalRot = 360 * turns * dir;
-            candidateEffects['rotation'] = 0;
-            candidateModulations['rotation'] = {
-              enabled: false,
-              min: 0,
-              max: 0,
-              timePct: 50,
-              behavior: 'repeat',
-              keyframeEnabled: true,
-              keyframes: [
-                { frame: 0, value: 0, easing: 'linear' },
-                { frame: maxFrames, value: finalRot, easing: 'linear' }
-              ]
-            };
-          } else {
-            candidateEffects['rotation'] = 0;
-            candidateModulations['rotation'] = {
-              enabled: false,
-              min: 0,
-              max: 0,
-              timePct: 50,
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-          continue;
-        }
-
-        // 3. scale: Minimum 1.0. Move very slowly when animated.
-        if (fxName === 'scale') {
-          localMin = Math.max(1.0, localMin);
-          if (hasScaleIssue || hasNothingVisible) {
-            localMin = Math.max(1.2, localMin);
-          }
-          if (hasAspectBreak && Math.abs(tempRotation) > 5) {
-            localMin = Math.max(1.42, localMin); // cover diagonal
-          }
-          
-          let baseVal = layer.effects['scale'] !== undefined ? layer.effects['scale'] : 1.0;
-          baseVal = Math.max(localMin, baseVal);
-          const goodScaleCentroid = goodEffectCentroid('scale');
-          if (goodScaleCentroid !== null && goodAttractionWeight > 0) {
-            baseVal = baseVal * (1 - goodAttractionWeight) + goodScaleCentroid * goodAttractionWeight;
-          }
-          const offset = (Math.random() * 2 - 1) * (range * spread * 0.08); // small mutation offset
-          let newVal = baseVal + offset;
-          newVal = Math.max(localMin, Math.min(localMax, newVal));
-          candidateEffects['scale'] = newVal;
-
-          const mod = layer.modulations['scale'];
-          if (mod) {
-            const candidateMod = JSON.parse(JSON.stringify(mod));
-            candidateMod.jitterBase = newVal;
-            if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
-              candidateMod.keyframes.forEach(kf => {
-                const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.05); // slowly move
-                let newKfVal = kf.value + kfOffset;
-                newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
-                kf.value = newKfVal;
-              });
-            } else if (mod.enabled) {
-              const offsetMin = (Math.random() * 2 - 1) * 0.05;
-              const offsetMax = (Math.random() * 2 - 1) * 0.05;
-              let newMin = mod.min + offsetMin;
-              let newMax = mod.max + offsetMax;
-              newMin = Math.max(localMin, Math.min(localMax, newMin));
-              newMax = Math.max(localMin, Math.min(localMax, newMax));
-              if (Math.abs(newMax - newMin) > 0.4) {
-                newMax = newMin + 0.25; // limit variance to prevent large scale breaks
-              }
-              candidateMod.min = newMin;
-              candidateMod.max = newMax;
-              candidateMod.timePct = 80 + Math.floor(Math.random() * 20); // very slow (80% - 100%)
-            } else {
-              candidateMod.min = newVal;
-              candidateMod.max = newVal;
-            }
-            candidateModulations['scale'] = candidateMod;
-          } else {
-            candidateModulations['scale'] = {
-              enabled: false,
-              min: newVal,
-              max: newVal,
-              timePct: 50,
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-          continue;
-        }
-
-        // 4. strobe: Almost never used (strobe = 0, modulation disabled)
-        if (fxName === 'strobe') {
-          candidateEffects['strobe'] = 0;
-          candidateModulations['strobe'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 5. glowIntensity: Neon Glow - make it highly visible (above 40-50)
-        if (fxName === 'glowIntensity') {
-          localMin = Math.max(40, localMin);
-          if (hasNothingVisible) {
-            localMin = Math.max(60, localMin);
-          }
-          if (hasTooChaotic) {
-            localMax = Math.min(80, localMax);
-          }
-          let baseVal = layer.effects['glowIntensity'] !== undefined ? layer.effects['glowIntensity'] : 65;
-          if (baseVal < 40) baseVal = 55 + Math.random() * 25;
-          
-          const goodGlowCentroid = goodEffectCentroid('glowIntensity');
-          if (goodGlowCentroid !== null && goodAttractionWeight > 0) {
-            baseVal = baseVal * (1 - goodAttractionWeight) + goodGlowCentroid * goodAttractionWeight;
-          }
-          
-          const offset = (Math.random() * 2 - 1) * (range * spread * 0.15);
-          let newVal = baseVal + offset;
-          newVal = Math.max(localMin, Math.min(localMax, newVal));
-          candidateEffects['glowIntensity'] = newVal;
-
-          const mod = layer.modulations['glowIntensity'];
-          if (mod) {
-            const candidateMod = JSON.parse(JSON.stringify(mod));
-            candidateMod.jitterBase = newVal;
-            if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
-              candidateMod.keyframes.forEach(kf => {
-                const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.1);
-                let newKfVal = kf.value + kfOffset;
-                newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
-                kf.value = newKfVal;
-              });
-            } else if (mod.enabled) {
-              const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.1);
-              const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.1);
-              let newMin = mod.min + offsetMin;
-              let newMax = mod.max + offsetMax;
-              newMin = Math.max(localMin, Math.min(localMax, newMin));
-              newMax = Math.max(localMin, Math.min(localMax, newMax));
-              candidateMod.min = newMin;
-              candidateMod.max = newMax;
-            } else {
-              candidateMod.min = newVal;
-              candidateMod.max = newVal;
-            }
-            candidateModulations['glowIntensity'] = candidateMod;
-          } else {
-            candidateModulations['glowIntensity'] = {
-              enabled: false,
-              min: newVal,
-              max: newVal,
-              timePct: 50,
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-          continue;
-        }
-
-        // 6. feedbackDecay: Motion Trails - highly effective. High value, slow keyframes.
-        if (fxName === 'feedbackDecay') {
-          localMin = Math.max(0.70, localMin);
-          localMax = Math.min(0.92, localMax); // Hard cap 0.92
-          if (hasTooChaotic) {
-            localMax = Math.min(0.85, localMax);
-          }
-          
-          let baseVal = layer.effects['feedbackDecay'] !== undefined ? layer.effects['feedbackDecay'] : 0.84;
-          if (baseVal < 0.70) baseVal = 0.78 + Math.random() * 0.08;
-          
-          const goodDecayCentroid = goodEffectCentroid('feedbackDecay');
-          if (goodDecayCentroid !== null && goodAttractionWeight > 0) {
-            baseVal = baseVal * (1 - goodAttractionWeight) + goodDecayCentroid * goodAttractionWeight;
-          }
-          
-          const offset = (Math.random() * 2 - 1) * (range * spread * 0.05); // very small fluctuation
-          let newVal = baseVal + offset;
-          newVal = Math.max(localMin, Math.min(localMax, newVal));
-          candidateEffects['feedbackDecay'] = newVal;
-
-          // 30% chance to auto-enable slow LFO if not modulated, as it creates great random movement elements
-          let mod = layer.modulations['feedbackDecay'];
-          if (!mod && Math.random() < 0.3) {
-            mod = {
-              enabled: true,
-              min: 0.75,
-              max: 0.88,
-              timePct: 80 + Math.floor(Math.random() * 20),
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-
-          if (mod) {
-            const candidateMod = JSON.parse(JSON.stringify(mod));
-            candidateMod.jitterBase = newVal;
-            if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
-              candidateMod.keyframes.forEach(kf => {
-                const kfOffset = (Math.random() * 2 - 1) * 0.03; // slow changes
-                let newKfVal = kf.value + kfOffset;
-                newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
-                kf.value = newKfVal;
-              });
-            } else if (mod.enabled) {
-              const offsetMin = (Math.random() * 2 - 1) * 0.02;
-              const offsetMax = (Math.random() * 2 - 1) * 0.02;
-              let newMin = mod.min + offsetMin;
-              let newMax = mod.max + offsetMax;
-              newMin = Math.max(localMin, Math.min(localMax, newMin));
-              newMax = Math.max(localMin, Math.min(localMax, newMax));
-              candidateMod.min = newMin;
-              candidateMod.max = newMax;
-              candidateMod.timePct = 80 + Math.floor(Math.random() * 20); // slow (80% - 100%)
-            } else {
-              candidateMod.min = newVal;
-              candidateMod.max = newVal;
-            }
-            candidateModulations['feedbackDecay'] = candidateMod;
-          } else {
-            candidateModulations['feedbackDecay'] = {
-              enabled: false,
-              min: newVal,
-              max: newVal,
-              timePct: 50,
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-          continue;
-        }
-
-        // 7. feedbackRotate: Trail Spin - effect is extreme, keyframes have almost no effect.
-        if (fxName === 'feedbackRotate') {
-          // Previously picked uniformly among 5 options, 4 of them nonzero (80% chance of any
-          // spin every roll, independent of Move score - this is a hardcoded FX branch, not
-          // Move-score-gated). 2026-07-20 user report: unwanted spin (e.g. 0.015) kept showing up
-          // even when 0 was clearly correct for the layer. Matches the "mostly off, occasional
-          // spice" pattern already used for rotation/rotateX just above/below.
-          const isSpin = Math.random() < 0.2;
-          const spinOpts = [-0.015, 0.015, -0.006, 0.006];
-          const val = isSpin ? spinOpts[Math.floor(Math.random() * spinOpts.length)] : 0;
-          candidateEffects['feedbackRotate'] = val;
-          candidateModulations['feedbackRotate'] = {
-            enabled: false,
-            min: val,
-            max: val,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 8. distortionIntensity: Noise Warp - almost never used, set to 0.
-        if (fxName === 'distortionIntensity') {
-          candidateEffects['distortionIntensity'] = 0;
-          candidateModulations['distortionIntensity'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 9. kaleidoscopeSegment: Kaleidoscope - almost never used, set to 0.
-        if (fxName === 'kaleidoscopeSegment') {
-          candidateEffects['kaleidoscopeSegment'] = 0;
-          candidateModulations['kaleidoscopeSegment'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 9b. mirrorMode: a deliberate manual composition choice, not something that should get
-        // rolled on randomly - force off, same treatment as Kaleidoscope/Noise Warp/Chromatic.
-        if (fxName === 'mirrorMode') {
-          candidateEffects['mirrorMode'] = 0;
-          candidateModulations['mirrorMode'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 10. chromaticOffset: Chromatic Aberration - almost never used, set to 0.
-        if (fxName === 'chromaticOffset') {
-          candidateEffects['chromaticOffset'] = 0;
-          candidateModulations['chromaticOffset'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 11. rotateY / rotateZ: Don't use 3D effects except X rotation
-        if (fxName === 'rotateY' || fxName === 'rotateZ') {
-          candidateEffects[fxName] = 0;
-          candidateModulations[fxName] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
-
-        // 12. rotateX: Rotate X - can be used if rotated slowly (30% chance)
-        if (fxName === 'rotateX') {
-          const isAnimateX = Math.random() < 0.3;
-          if (isAnimateX) {
-            candidateEffects['rotateX'] = 0;
-            candidateModulations['rotateX'] = {
-              enabled: true,
-              min: -15,
-              max: 15,
-              timePct: 80 + Math.floor(Math.random() * 20), // slow movement
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          } else {
-            candidateEffects['rotateX'] = 0;
-            candidateModulations['rotateX'] = {
-              enabled: false,
-              min: 0,
-              max: 0,
-              timePct: 50,
-              behavior: 'return',
-              keyframeEnabled: false,
-              keyframes: []
-            };
-          }
-          continue;
-        }
-
-        // 13. translateZ: Depth - overlaps with Scale, do not use.
-        if (fxName === 'translateZ') {
-          candidateEffects['translateZ'] = 0;
-          candidateModulations['translateZ'] = {
-            enabled: false,
-            min: 0,
-            max: 0,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          continue;
-        }
+        candidateEffects[fxName] = r.value;
+        candidateModulations[fxName] = r.modulation;
       }
 
       const candidateState = {

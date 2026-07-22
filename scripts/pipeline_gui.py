@@ -19,7 +19,7 @@ import threading
 import queue
 import webbrowser
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext, filedialog
 
 # Windowsコンソール出力の文字化け・UnicodeEncodeError対策
 if hasattr(sys.stdout, 'reconfigure'):
@@ -35,6 +35,15 @@ SCRIPTS_DIR = os.path.join(BASE_DIR, "scripts")
 CONFIG_PATH = os.path.join(SCRIPTS_DIR, "config.json")
 CONFIG_EXAMPLE_PATH = os.path.join(SCRIPTS_DIR, "config.example.json")
 EXPORTS_DIR = os.path.join(BASE_DIR, "exports")
+
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+
+try:
+    from sns_autopilot import generate_pr_comment_with_ai, load_config
+    from server_bot import post_to_twitter
+except ImportError:
+    pass
 
 
 class PipelineGUI:
@@ -176,6 +185,23 @@ class PipelineGUI:
         )
 
         self.lbl_server_status.grid(row=2, column=2, padx=4, pady=(6, 0))
+
+        # ボタン行 3 (成果物X投稿)
+        btn_achievement = tk.Button(
+            ctrl_card, text="🎁 成果ポスト作成 & 投稿 (SAMPLE保護合成)",
+            bg="#cba6f7", fg="#11111b", activebackground="#f5c2e7", activeforeground="#11111b",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=10, pady=6, cursor="hand2",
+            command=self.create_achievement_post
+        )
+        btn_achievement.grid(row=3, column=0, columnspan=2, padx=4, pady=(8, 0), sticky="ew")
+
+        btn_output = tk.Button(
+            ctrl_card, text="📁 output フォルダを開く",
+            bg="#181825", fg="#94e2d5", activebackground="#313244", activeforeground="#ffffff",
+            font=("Segoe UI", 9), bd=1, relief="solid", padx=10, pady=4, cursor="hand2",
+            command=self.open_output_dir
+        )
+        btn_output.grid(row=3, column=2, padx=4, pady=(8, 0), sticky="ew")
 
         ctrl_card.columnconfigure(0, weight=1)
         ctrl_card.columnconfigure(1, weight=1)
@@ -391,6 +417,244 @@ class PipelineGUI:
             command=save_config
         )
         btn_save.pack(anchor="e", padx=15, pady=(0, 12))
+
+    def open_output_dir(self):
+        """output ディレクトリをエクスプローラーで開く"""
+        output_dir = os.path.join(BASE_DIR, "output")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+        os.startfile(output_dir)
+
+    def create_achievement_post(self):
+        """成果ポスト自動化処理の実行"""
+        output_dir = os.path.join(BASE_DIR, "output")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        # 動画ファイルを選択
+        file_path = filedialog.askopenfilename(
+            title="ポストする動画を選択してください",
+            initialdir=output_dir,
+            filetypes=[("Video files", "*.mp4 *.webm *.mov *.avi"), ("All files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        # 別スレッドで合成とテキスト生成を実行
+        self.append_log(f"\n[XPost] 成果ポスト作成プロセスを開始しました: {os.path.basename(file_path)}\n")
+        
+        # 進捗インジケーター（簡易モーダルダイアログ）の表示
+        progress_win = tk.Toplevel(self.root)
+        progress_win.title("処理中...")
+        progress_win.geometry("320x130")
+        progress_win.configure(bg=self.bg_color)
+        progress_win.grab_set() # モーダルにする
+        progress_win.resizable(False, False)
+
+        # 親ウィンドウの中央に配置
+        progress_win.update_idletasks()
+        width = progress_win.winfo_width()
+        height = progress_win.winfo_height()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (width // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
+        progress_win.geometry(f"+{x}+{y}")
+
+        lbl = ttk.Label(progress_win, text="🎬 保護動画を合成 ＆ AI文案生成中...", font=("Segoe UI", 10, "bold"), background=self.bg_color, foreground=self.fg_color)
+        lbl.pack(pady=20)
+        
+        pb = ttk.Progressbar(progress_win, mode="indeterminate", length=200)
+        pb.pack(pady=5)
+        pb.start(10)
+
+        def worker():
+            temp_output = os.path.join(output_dir, "temp_protected_post.mp4")
+            
+            try:
+                # 1. ffmpegによるクロマキー合成
+                ffmpeg_exe = os.path.join(BASE_DIR, "tools", "ffmpeg", "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+                if not os.path.exists(ffmpeg_exe):
+                    ffmpeg_exe = "ffmpeg"
+                
+                sample_video = os.path.join(BASE_DIR, "exports", "SAMPLE_TEXT_10s.mp4")
+                if not os.path.exists(sample_video):
+                    raise FileNotFoundError(f"保護レイヤー動画が見つかりません: {sample_video}")
+
+                self.log_queue.put("[XPost] ffmpeg による保護レイヤーの合成を開始...\n")
+                
+                cmd = [
+                    ffmpeg_exe, "-y",
+                    "-i", file_path,
+                    "-stream_loop", "-1",
+                    "-i", sample_video,
+                    "-filter_complex", "[1:v]colorkey=0x000000:0.1:0.1[watermark];[0:v][watermark]overlay=shortest=1[outv]",
+                    "-map", "[outv]",
+                    "-map", "0:a?",
+                    "-c:v", "libx264",
+                    "-pix_fmt", "yuv420p",
+                    temp_output
+                ]
+
+                # コマンド実行（コンソール窓非表示設定）
+                startupinfo = None
+                if sys.platform == "win32":
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                
+                proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, startupinfo=startupinfo)
+                if proc.returncode != 0:
+                    raise RuntimeError(f"ffmpeg 合成に失敗しました (code {proc.returncode}):\n{proc.stderr[-500:]}")
+                
+                self.log_queue.put("[XPost] 保護レイヤーの合成完了。\n")
+
+                # 2. AI文章生成
+                self.log_queue.put("[XPost] Gemini API によるXポスト解説文の生成を開始...\n")
+                config = load_config(CONFIG_PATH) or {}
+                gemini_key = config.get("ai", {}).get("gemini_api_key")
+                filename = os.path.basename(file_path)
+                
+                pr_text = generate_pr_comment_with_ai(gemini_key, filename)
+                self.log_queue.put("[XPost] Xポスト解説文の生成完了。\n")
+
+                # メインスレッドでダイアログ表示
+                self.root.after(0, lambda: [progress_win.destroy(), self.show_x_post_review_dialog(file_path, temp_output, pr_text)])
+
+            except Exception as e:
+                self.log_queue.put(f"[XPost] エラーが発生しました: {e}\n")
+                self.root.after(0, lambda: [progress_win.destroy(), messagebox.showerror("処理エラー", str(e))])
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def show_x_post_review_dialog(self, original_path, protected_path, initial_text):
+        """添削・掲載ダイアログの表示"""
+        win = tk.Toplevel(self.root)
+        win.title("📝 X (Twitter) 投稿レビュー ＆ 掲載")
+        win.geometry("650x550")
+        win.configure(bg=self.bg_color)
+        win.grab_set()
+
+        # 親ウィンドウの中央に配置
+        win.update_idletasks()
+        width = win.winfo_width()
+        height = win.winfo_height()
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - (width // 2)
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - (height // 2)
+        win.geometry(f"+{x}+{y}")
+
+        lbl_header = ttk.Label(win, text="📝 X (Twitter) 投稿のレビューと添削", style="Header.TLabel")
+        lbl_header.pack(anchor="w", padx=15, pady=10)
+
+        # ファイル情報フレーム
+        info_frame = ttk.Frame(win, style="Card.TFrame", padding=10)
+        info_frame.pack(fill="x", padx=15, pady=5)
+
+        lbl_orig = ttk.Label(info_frame, text=f"元動画: {os.path.basename(original_path)}", style="Status.TLabel", background=self.card_bg)
+        lbl_orig.pack(anchor="w")
+
+        lbl_prot = ttk.Label(info_frame, text="※ SAMPLE保護レイヤーが自動合成されています", foreground=self.accent_purple, background=self.card_bg)
+        lbl_prot.pack(anchor="w", pady=(2, 5))
+
+        # 再生ボタン
+        def play_protected():
+            try:
+                os.startfile(protected_path)
+            except Exception as e:
+                messagebox.showerror("エラー", f"動画の再生に失敗しました: {e}")
+
+        btn_play = tk.Button(
+            info_frame, text="🎥 合成動画を再生して確認", bg=self.accent_blue, fg="#11111b",
+            font=("Segoe UI", 9, "bold"), bd=0, padx=10, pady=4, cursor="hand2",
+            command=play_protected
+        )
+        btn_play.pack(anchor="w", pady=2)
+
+        # テキストエリア
+        lbl_text = ttk.Label(win, text="🖊️ ポストする文章 (280文字以内、日本語1文字=2、英数字1文字=1換算):", style="Status.TLabel")
+        lbl_text.pack(anchor="w", padx=15, pady=(10, 2))
+
+        editor = scrolledtext.ScrolledText(win, bg="#11111b", fg=self.fg_color, insertbackground="white", font=("Segoe UI", 10), bd=0)
+        editor.pack(fill="both", expand=True, padx=15, pady=(0, 5))
+        editor.insert(tk.END, initial_text)
+
+        # 文字数カウント表示用ラベル
+        lbl_count = ttk.Label(win, text="文字数: 0 / 280 (X制限値)", foreground=self.accent_green)
+        lbl_count.pack(anchor="w", padx=15, pady=2)
+
+        def update_char_count(event=None):
+            text = editor.get("1.0", tk.END).strip()
+            # Xの簡易的な重み付き文字数カウント (全角=2文字, 半角=1文字)
+            length = 0
+            for char in text:
+                length += 2 if ord(char) > 127 else 1
+            
+            lbl_count.config(text=f"X換算文字数: {length} / 280")
+            if length > 280:
+                lbl_count.config(foreground=self.accent_red)
+            else:
+                lbl_count.config(foreground=self.accent_green)
+
+        editor.bind("<KeyRelease>", update_char_count)
+        update_char_count() # 初期呼び出し
+
+        # アクションボタンフレーム
+        btn_frame = ttk.Frame(win, padding=15)
+        btn_frame.pack(fill="x", side="bottom")
+
+        def on_post():
+            text_to_post = editor.get("1.0", tk.END).strip()
+            if not text_to_post:
+                messagebox.showwarning("警告", "投稿メッセージが空です。")
+                return
+
+            config = load_config(CONFIG_PATH) or {}
+            twitter_cfg = config.get("twitter", {})
+
+            # 投稿確認ダイアログ
+            if not messagebox.askyesno("投稿確認", "この内容で保護付き動画をXへ投稿します。よろしいですか？"):
+                return
+
+            # 投稿処理スレッド
+            self.append_log("\n[XPost] X (Twitter) への自動投稿処理を開始中...\n")
+            
+            # 投稿ボタンを一時無効化
+            btn_submit.config(state="disabled", text="投稿中...")
+
+            def post_worker():
+                try:
+                    success, result = post_to_twitter(protected_path, text_to_post, twitter_cfg)
+                    if success:
+                        self.log_queue.put(f"[XPost] 投稿成功！ URL: {result}\n")
+                        self.root.after(0, lambda: [
+                            messagebox.showinfo("成功", f"Xへの投稿が完了しました！\n{result}"),
+                            win.destroy()
+                        ])
+                    else:
+                        self.log_queue.put(f"[XPost] 投稿失敗: {result}\n")
+                        self.root.after(0, lambda: [
+                            messagebox.showerror("エラー", f"Xへの投稿に失敗しました:\n{result}"),
+                            btn_submit.config(state="normal", text="🚀 投稿する")
+                        ])
+                except Exception as ex:
+                    self.log_queue.put(f"[XPost] 投稿中に例外発生: {ex}\n")
+                    self.root.after(0, lambda: [
+                        messagebox.showerror("エラー", f"例外が発生しました:\n{ex}"),
+                        btn_submit.config(state="normal", text="🚀 投稿する")
+                    ])
+
+            threading.Thread(target=post_worker, daemon=True).start()
+
+        btn_cancel = tk.Button(
+            btn_frame, text="❌ キャンセル", bg=self.accent_red, fg="#11111b",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=15, pady=6, cursor="hand2",
+            command=win.destroy
+        )
+        btn_cancel.pack(side="left")
+
+        btn_submit = tk.Button(
+            btn_frame, text="🚀 Xへ投稿する", bg=self.accent_green, fg="#11111b",
+            font=("Segoe UI", 10, "bold"), bd=0, padx=20, pady=6, cursor="hand2",
+            command=on_post
+        )
+        btn_submit.pack(side="right")
 
 
 def main():

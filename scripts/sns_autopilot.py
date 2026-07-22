@@ -351,8 +351,15 @@ def run_autopilot(config_path):
         print("[Error] 設定が読み込めないため処理を中断します。")
         return
 
-    export_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "exports")
-    video_files = glob.glob(os.path.join(export_dir, "*.mp4")) + glob.glob(os.path.join(export_dir, "*.webm"))
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    export_dir = os.path.join(project_root, "exports")
+    output_dir = os.path.join(project_root, "output")
+    
+    video_files = []
+    if os.path.exists(output_dir):
+        video_files.extend(glob.glob(os.path.join(output_dir, "*.mp4")) + glob.glob(os.path.join(output_dir, "*.webm")))
+    if os.path.exists(export_dir):
+        video_files.extend(glob.glob(os.path.join(export_dir, "*.mp4")) + glob.glob(os.path.join(export_dir, "*.webm")))
     
     if not video_files:
         print(f"[Warning] exports/ ディレクトリ ({export_dir}) に対象の動画ファイルがありません。")
