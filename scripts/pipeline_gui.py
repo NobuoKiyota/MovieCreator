@@ -477,35 +477,68 @@ class PipelineGUI:
                 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 1080
                 cap.release()
 
-                # 2. ffmpegによるテキスト直接描画 (斜め＆半透明)
+                # 2. Pillowを使って動的に白文字（斜め＆半透明）のウォーターマーク画像を生成
+                self.log_queue.put("[XPost] 一時ウォーターマーク画像の生成を開始...\n")
+                from PIL import Image, ImageDraw, ImageFont
+                
+                temp_watermark = os.path.join(output_dir, "temp_watermark.png")
+                img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+                
+                # 文字サイズは高さの8%
+                font_size = int(height * 0.08)
+                
+                # OSに応じたフォントの読み込み
+                font_path = "C:\\Windows\\Fonts\\arial.ttf"
+                if sys.platform != "win32" or not os.path.exists(font_path):
+                    font_path = "arial.ttf"
+                
+                try:
+                    font = ImageFont.truetype(font_path, font_size)
+                except IOError:
+                    font = ImageFont.load_default()
+                
+                text = "SAMPLE"
+                
+                # 回転用の一時画像を作成
+                txt_w = font_size * 5
+                txt_h = font_size * 2
+                txt_img = Image.new('RGBA', (txt_w, txt_h), (0, 0, 0, 0))
+                txt_draw = ImageDraw.Draw(txt_img)
+                
+                # 白文字、不透明度30% (アルファ76) で綺麗にアンチエイリアス描画
+                txt_draw.text((txt_w // 10, txt_h // 4), text, font=font, fill=(255, 255, 255, 76))
+                
+                # 30度回転 (反時計回り)
+                rotated_txt = txt_img.rotate(30, resample=Image.BICUBIC, expand=1)
+                rot_w, rot_h = rotated_txt.size
+                
+                # 左上、中央、右下の3箇所にペースト
+                positions = [
+                    (int(width * 0.2) - rot_w // 2, int(height * 0.2) - rot_h // 2),
+                    (width // 2 - rot_w // 2, height // 2 - rot_h // 2),
+                    (int(width * 0.8) - rot_w // 2, int(height * 0.8) - rot_h // 2)
+                ]
+                
+                for pos in positions:
+                    x = max(0, min(width - rot_w, pos[0]))
+                    y = max(0, min(height - rot_h, pos[1]))
+                    img.alpha_composite(rotated_txt, (x, y))
+                
+                img.save(temp_watermark, "PNG")
+
+                # 3. ffmpegによる合成
                 ffmpeg_exe = os.path.join(BASE_DIR, "tools", "ffmpeg", "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
                 if not os.path.exists(ffmpeg_exe):
                     ffmpeg_exe = "ffmpeg"
                 
-                self.log_queue.put("[XPost] ffmpeg による SAMPLE 保護テキストの合成を描画中...\n")
+                self.log_queue.put("[XPost] ffmpeg による SAMPLE 保護レイヤーの合成を開始...\n")
                 
-                # フォントサイズは高さの8%程度に自動調整
-                font_size = int(height * 0.08)
-                
-                # OSに応じたフォント指定（WindowsはFontconfigバグ回避のためフォントファイルを絶対パスで直接指定）
-                font_param = "fontfile='C\\:/Windows/Fonts/arial.ttf'"
-                if sys.platform != "win32":
-                    font_param = "font='Arial'"
-
-                # フィルタ：透明キャンバス上に「左上・中央・右下」の3箇所に斜めのSAMPLEを配置して重ねる
-                # 不透明度は適度に見えやすくするため20%（@0.2）に設定
-                filter_str = (
-                    f"color=c=black@0:s={width}x{height},"
-                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=w*0.2:y=h*0.2:{font_param},"
-                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=(w-text_w)/2:y=(h-text_h)/2:{font_param},"
-                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=w*0.8-text_w:y=h*0.8-text_h:{font_param},"
-                    f"rotate=-30*PI/180:c=black@0[txt];[0:v][txt]overlay=shortest=1"
-                )
-
                 cmd = [
                     ffmpeg_exe, "-y",
                     "-i", file_path,
-                    "-filter_complex", filter_str,
+                    "-loop", "1",
+                    "-i", temp_watermark,
+                    "-filter_complex", "[0:v][1:v]overlay=shortest=1",
                     "-c:v", "libx264",
                     "-pix_fmt", "yuv420p",
                     "-c:a", "copy",
@@ -520,7 +553,14 @@ class PipelineGUI:
                 
                 proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, startupinfo=startupinfo)
                 if proc.returncode != 0:
-                    raise RuntimeError(f"ffmpeg テキスト合成に失敗しました (code {proc.returncode}):\n{proc.stderr[-500:]}")
+                    raise RuntimeError(f"ffmpeg 合成に失敗しました (code {proc.returncode}):\n{proc.stderr[-500:]}")
+                
+                # 一時PNGファイルの削除
+                try:
+                    if os.path.exists(temp_watermark):
+                        os.remove(temp_watermark)
+                except Exception:
+                    pass
                 
                 self.log_queue.put("[XPost] SAMPLE 保護テキストの合成完了。\n")
 
