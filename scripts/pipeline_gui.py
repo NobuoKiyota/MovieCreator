@@ -651,12 +651,30 @@ class PipelineGUI:
             except Exception as e:
                 messagebox.showerror("エラー", f"動画の再生に失敗しました: {e}")
 
+        btn_container = ttk.Frame(info_frame)
+        btn_container.pack(anchor="w", pady=2)
+
         btn_play = tk.Button(
-            info_frame, text="🎥 合成動画を再生して確認", bg=self.accent_blue, fg="#11111b",
+            btn_container, text="🎥 合成動画を再生して確認", bg=self.accent_blue, fg="#11111b",
             font=("Segoe UI", 9, "bold"), bd=0, padx=10, pady=4, cursor="hand2",
             command=play_protected
         )
-        btn_play.pack(anchor="w", pady=2)
+        btn_play.pack(side="left", padx=(0, 5))
+
+        def open_output_folder():
+            try:
+                import subprocess
+                # エクスプローラーを起動し、該当ファイルを選択した状態で開く
+                subprocess.Popen(f'explorer /select,"{os.path.normpath(protected_path)}"')
+            except Exception as e:
+                messagebox.showerror("エラー", f"フォルダの起動に失敗しました: {e}")
+
+        btn_folder = tk.Button(
+            btn_container, text="📂 保存先フォルダを開く", bg=self.accent_purple, fg="#11111b",
+            font=("Segoe UI", 9, "bold"), bd=0, padx=10, pady=4, cursor="hand2",
+            command=open_output_folder
+        )
+        btn_folder.pack(side="left")
 
         # 投稿履歴のロード
         history_path = os.path.join(BASE_DIR, "data", "x_post_history.json")
