@@ -816,11 +816,8 @@ class PipelineGUI:
                 messagebox.showwarning("警告", "投稿メッセージが空です。")
                 return
 
-            config = load_config(CONFIG_PATH) or {}
-            twitter_cfg = config.get("twitter", {})
-
             # 投稿確認ダイアログ
-            if not messagebox.askyesno("投稿確認", "この内容で保護付き動画をXへ投稿します。よろしいですか？"):
+            if not messagebox.askyesno("投稿確認", "文章をコピーし、ブラウザでX（@itan_ai_begin）を開きます。よろしいですか？"):
                 return
 
             # 投稿テキストを履歴に保存
@@ -841,35 +838,24 @@ class PipelineGUI:
             except Exception as e:
                 print(f"[XPost] 履歴保存失敗: {e}")
 
-            # 投稿処理スレッド
-            self.append_log("\n[XPost] X (Twitter) への自動投稿処理を開始中...\n")
-            
-            # 投稿ボタンを一時無効化
-            btn_submit.config(state="disabled", text="投稿中...")
+            # クリップボードへのテキストコピー
+            try:
+                win.clipboard_clear()
+                win.clipboard_append(text_to_post)
+                win.update()
+                self.append_log("[XPost] ポスト文章をクリップボードにコピーしました。\n")
+            except Exception as e:
+                self.append_log(f"[XPost] クリップボードコピー失敗: {e}\n")
 
-            def post_worker():
-                try:
-                    success, result = post_to_twitter(protected_path, text_to_post, twitter_cfg)
-                    if success:
-                        self.log_queue.put(f"[XPost] 投稿成功！ URL: {result}\n")
-                        self.root.after(0, lambda: [
-                            messagebox.showinfo("成功", f"Xへの投稿が完了しました！\n{result}"),
-                            win.destroy()
-                        ])
-                    else:
-                        self.log_queue.put(f"[XPost] 投稿失敗: {result}\n")
-                        self.root.after(0, lambda: [
-                            messagebox.showerror("エラー", f"Xへの投稿に失敗しました:\n{result}"),
-                            btn_submit.config(state="normal", text="🚀 投稿する")
-                        ])
-                except Exception as ex:
-                    self.log_queue.put(f"[XPost] 投稿中に例外発生: {ex}\n")
-                    self.root.after(0, lambda: [
-                        messagebox.showerror("エラー", f"例外が発生しました:\n{ex}"),
-                        btn_submit.config(state="normal", text="🚀 投稿する")
-                    ])
-
-            threading.Thread(target=post_worker, daemon=True).start()
+            # ブラウザでXのページを開く
+            try:
+                import webbrowser
+                webbrowser.open("https://x.com/itan_ai_begin")
+                self.append_log("[XPost] ブラウザでX（@itan_ai_begin）を開きました。\n")
+                messagebox.showinfo("手動投稿", "文章をクリップボードにコピーしました！\nブラウザでXが開きますので、貼り付け（Ctrl+V）と動画のドラッグ＆ドロップを行ってください。")
+                win.destroy()
+            except Exception as e:
+                messagebox.showerror("エラー", f"ブラウザの起動に失敗しました: {e}")
 
         btn_cancel = tk.Button(
             btn_frame, text="❌ キャンセル", bg=self.accent_red, fg="#11111b",
@@ -879,7 +865,7 @@ class PipelineGUI:
         btn_cancel.pack(side="left")
 
         btn_submit = tk.Button(
-            btn_frame, text="🚀 Xへ投稿する", bg=self.accent_green, fg="#11111b",
+            btn_frame, text="🌐 Xを開いて投稿する", bg=self.accent_green, fg="#11111b",
             font=("Segoe UI", 10, "bold"), bd=0, padx=20, pady=6, cursor="hand2",
             command=on_post
         )
