@@ -2007,6 +2007,41 @@ export class Controls {
         this.mainApp.renderSingleFrame();
       });
 
+      // Double-click resets parameter to its default value (Option 2: Double-click by default).
+      // Can be switched to Option 1 (Alt + Double-click) by toggling the if-condition block below.
+      rangeInput.addEventListener('dblclick', (e) => {
+        // Option 1 (Alt + Double-click):
+        // if (e.altKey) {
+        // Option 2 (Plain Double-click):
+        if (true) {
+          let defaultVal = 0;
+          if (isFx) {
+            const defaultEffects = layer.getDefaultEffects();
+            if (defaultEffects[config.name] !== undefined) {
+              defaultVal = defaultEffects[config.name];
+            }
+          } else {
+            const defaultParams = layer.generator.defaultParams();
+            if (defaultParams[config.name] !== undefined) {
+              defaultVal = defaultParams[config.name];
+            }
+          }
+
+          rangeInput.value = defaultVal;
+          valDisplay.textContent = defaultVal % 1 === 0 ? defaultVal.toString() : defaultVal.toFixed(4);
+          onValUpdate(defaultVal);
+
+          if (mod && !mod.enabled && !mod.keyframeEnabled) {
+            mod.min = defaultVal;
+            mod.max = defaultVal;
+            mod.jitterBase = defaultVal;
+          }
+
+          this.mainApp.renderSingleFrame();
+          this.rebuildInspector();
+        }
+      });
+
       // Click toggles Spawn Jitter on/off; a vertical drag instead scrubs this parameter's own
       // jitter width (DAW-knob style), so there's no separate numeric input to add per parameter.
       let jitterDragStartY = null;

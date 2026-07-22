@@ -9,6 +9,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-22 20:38 [Antigravity] 完了: 全ジェネレーターのcycleDuration範囲統一（500-20000ms）およびスライダーのダブルクリック初期値リセット実装
 - 2026-07-22 20:29 [Antigravity] 完了: Dot DesignのPattern Mode追加（星/文字/記号の一筆書き）およびパラメータUI整理
 - 2026-07-22 20:24 [Antigravity] 着手: Dot DesignのPattern Mode追加（星/文字/記号の一筆書き）およびパラメータUI整理
 - 2026-07-22 19:33 [Antigravity] 着手: ホームページ作成方式（GitHub Pages＋リッチHTML vs 外部サービス）の調査と提案

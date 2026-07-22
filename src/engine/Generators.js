@@ -484,7 +484,7 @@ export class GrowingSketchGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 1000, max: 20000, step: 500 },
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
       { name: 'growSpeed', label: 'Grow Speed', type: 'range', min: 0.5, max: 10, step: 0.5 },
       { name: 'branchCount', label: 'Branches', type: 'range', min: 1, max: 20, step: 1 },
       { name: 'noiseScale', label: 'Wiggle', type: 'range', min: 0.1, max: 3.0, step: 0.1 },
@@ -2189,7 +2189,7 @@ export class ShockwaveBurstGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 5000, step: 100 },
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
       { name: 'shapeStyle', label: 'Shape Style (0=Smooth,1=Jagged,2=Double)', type: 'range', min: 0, max: 2, step: 1 },
       { name: 'ringCount', label: 'Ring Count', type: 'range', min: 1, max: 3, step: 1 },
       { name: 'maxRadius', label: 'Max Radius', type: 'range', min: 200, max: 1500, step: 10 },
@@ -2487,7 +2487,7 @@ export class GlassCrackGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 4000, step: 100 },
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
       { name: 'crackCount', label: 'Crack Count', type: 'range', min: 4, max: 24, step: 1 },
       { name: 'crackLength', label: 'Crack Length', type: 'range', min: 100, max: 1200, step: 10 },
       { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 6, step: 1 },
@@ -2955,7 +2955,7 @@ export class DotDesignGenerator extends BaseGenerator {
     return [
       { name: 'patternMode', label: 'Pattern Mode', type: 'range', min: 0, max: 11, step: 1 },
       { name: 'reverse', label: 'Reverse', type: 'range', min: 0, max: 1, step: 1 },
-      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 1000, max: 15000, step: 500 },
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
       { name: 'sweepAngle', label: 'Sweep/Arrow/Fill Angle', type: 'range', min: 0, max: 360, step: 1 },
       { name: 'gridSize', label: 'Grid Size', type: 'range', min: 8, max: 48, step: 1 },
       { name: 'dotShape', label: 'Dot Shape', type: 'range', min: 0, max: 1, step: 1 },
