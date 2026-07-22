@@ -487,10 +487,18 @@ class PipelineGUI:
                 # フォントサイズは高さの8%程度に自動調整
                 font_size = int(height * 0.08)
                 
-                # フィルタ：透明キャンバス生成 ➔ drawtextでSAMPLE描画 ➔ rotateで30度反時計回り回転 ➔ overlay
+                # OSに応じたフォント指定（WindowsはFontconfigバグ回避のためフォントファイルを絶対パスで直接指定）
+                font_param = "fontfile='C\\:/Windows/Fonts/arial.ttf'"
+                if sys.platform != "win32":
+                    font_param = "font='Arial'"
+
+                # フィルタ：透明キャンバス上に「左上・中央・右下」の3箇所に斜めのSAMPLEを配置して重ねる
+                # 不透明度は適度に見えやすくするため20%（@0.2）に設定
                 filter_str = (
                     f"color=c=black@0:s={width}x{height},"
-                    f"drawtext=text='SAMPLE':fontcolor=white@0.15:fontsize={font_size}:x=(w-text_w)/2:y=(h-text_h)/2:font='Arial',"
+                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=w*0.2:y=h*0.2:{font_param},"
+                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=(w-text_w)/2:y=(h-text_h)/2:{font_param},"
+                    f"drawtext=text='SAMPLE':fontcolor=white@0.2:fontsize={font_size}:x=w*0.8-text_w:y=h*0.8-text_h:{font_param},"
                     f"rotate=-30*PI/180:c=black@0[txt];[0:v][txt]overlay=shortest=1"
                 )
 
