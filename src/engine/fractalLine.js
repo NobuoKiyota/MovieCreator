@@ -1,6 +1,10 @@
 // Shared fractal line generation (recursive midpoint displacement), extracted from
-// LightningGenerator so other generators (e.g. glass cracks) can reuse the same jagged-line
-// algorithm instead of re-implementing it. See CLAUDE.md's generator-addition guide.
+// LightningGenerator so other generators needing a similarly fine, all-scale jagged path can
+// reuse it instead of re-implementing it. Currently used only by LightningGenerator - despite an
+// earlier plan to share this with GlassCrackGenerator too, glass fractures turned out to need a
+// visually different shape (mostly-straight lines with a few sharp kinks, not a fine zigzag), so
+// GlassCrackGenerator has its own buildShardLine() instead (see its comment). See CLAUDE.md's
+// generator-addition guide.
 
 /**
  * Generates a jagged line from (x1,y1) to (x2,y2) via recursive midpoint displacement,

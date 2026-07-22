@@ -13,7 +13,10 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 
 ---
 
-- 2026-07-22 03:19 [Claude Code] 完了: Milky Way生成器を3層構成(星フィールド焼き込み+波打つ帯マスク+雲ノイズ)に全面リライト、Color Wash生成器・Hue Rotate共通FX追加(色をキーフレーム/LFO対象に)、Opinion Sheet自動列登録の仕組み化、レイヤー並び替えドラッグの未配線バグ修正、Reset/Clear Automationボタン追加
+- 2026-07-22 10:40 [Claude Code] 完了: ユーザー依頼によるコードベース全体監査を実施(Controls.jsの肥大化・機能重複・死んでいる機能・古いドキュメントの4観点)。監査結果のうち②③の是正を実施。②**「Motion Mapping」Excelシート連携を完全削除**: 当初Excel手入力でモーション傾向を制御する構想だったが「UIで実際に触りながらでないと分かりづらい」という判断で運用をWebUI(Score/Move編集📝)側に一本化しており、コード上も実際に死んでいた(`this.motionMapping`は常に空オブジェクトのため関連分岐は`Random LFO`実行時に一度も真になっていなかった)ことを確認。`export_motion_mapping.py`/`export_motion_mapping.bat`/`data/motion_mapping.json`/`Controls.js`の`loadMotionMapping()`・`motionMapping`フィールド・2箇所の`allowedTemplates`分岐(生成器パラメータ用・共通FX用)/`motionTemplates.js`の`LEGACY_CATEGORY_KEYS`を削除。ブラウザでRandom LFOを15回連続実行しコンソールエラーなし、`[Motion Presets] Loaded motion mapping matrix`ログが出なくなり`Loaded Move-score matrix`は引き続き成功することを確認。③**古いドキュメント記述の修正**: `fractalLine.js`のヘッダーコメントとCLAUDE.mdが「稲妻とガラスのひび割れが`generateFractalBranch`を共用」としていたが、実際はGlassCrackGeneratorが独自の`buildShardLine`(直線的な角ばった割れ方)へ移行済みで共用していないことを監査中に発見、両ドキュメントを実態に合わせて修正。①(`randomizeLayer`870行・18個の`if (fxName===)`分岐の分割)は規模が大きいためPlan Mode相談待ち、④(Kaleidoscope/Mirror Modeの重複)は共有基盤の上の別プリセットであり問題なしと判断済み。なお同時刻にAntigravityも同様の全体チェックに着手しているが、担当領域(JS側/Python・SNS側)が分かれているため今回は競合なし。
+
+- 2026-07-22 10:20 [Antigravity] 着手: コード全体の不具合、機能の重複、バグ、統合可能性の全体チェックを開始
+- 2026-07-22 03:19 [Claude Code] 完了: Milky Way生成器を3層構成(星フィールド焼き込み+波打つ帯マスク+雲ノイズ)に全面リライト、Color Wash生成器・Hue Rotate共通FX追加(色をキーフレーム/LFO対象に)、Opinion Sheet自動列登録 of 仕組み化、レイヤー並び替えドラッグの未配線バグ修正、Reset/Clear Automationボタン追加
 - 2026-07-21 23:06 [Antigravity] 同期: 会社PCからのコミット分(origin/main)をpullで確認・最新状態を反映完了
 - 2026-07-21 21:05 [Antigravity] 完了: Xアカウントの初期化・プロフィール設定(イタンAI初心者/アバター生成/2言語Bio)およびLINE Messaging API認証設定(scripts/config.json)の更新
 - 2026-07-21 19:35 [Antigravity] 同期: リモートの最新状態(Claude Code側の変更)をpullで確認し、未コミットの追加プリセット群(.mvlayer)およびレイヤー評価スコアデータをコミットしてGitHubへpush完了

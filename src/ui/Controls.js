@@ -5,7 +5,7 @@
  * Right Lower: Inspector Panel (Detailed parameter tuning & LFO settings for the ACTIVE layer only)
  */
 import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
-import { MOTION_TEMPLATES, LEGACY_CATEGORY_KEYS } from '../engine/motionTemplates.js';
+import { MOTION_TEMPLATES } from '../engine/motionTemplates.js';
 import { hexToHsl } from '../engine/Generators.js';
 
 export class Controls {
@@ -134,21 +134,7 @@ export class Controls {
     // Batch generator defaults
     this.batchCount = 10;
     this.batchThreshold = 90;
-    this.motionMapping = {};
     this.moveScores = {};
-  }
-
-  async loadMotionMapping() {
-    try {
-      const res = await fetch('/data/motion_mapping.json');
-      if (res.ok) {
-        this.motionMapping = await res.json();
-        console.log("[Motion Presets] Loaded motion mapping matrix successfully.");
-      }
-    } catch (e) {
-      console.warn("[Motion Presets] Failed to load motion mapping JSON, using defaults:", e.message);
-      this.motionMapping = {};
-    }
   }
 
   // Per (layerType, paramName) "Move" score (0-5) from the opinion sheet's Score/Move/Comment
@@ -263,7 +249,6 @@ export class Controls {
   }
 
   init() {
-    this.loadMotionMapping();
     this.loadMoveScores();
     this.updateTemplateDropdown();
     // 1. Layer add toggling
@@ -2262,17 +2247,7 @@ export class Controls {
    * Applies a normalized motion template (normalized keyframes) to a modulation config
    */
   applyMotionTemplate(candidateMod, templateName, localMin, localMax, durationVal) {
-    let template = MOTION_TEMPLATES[templateName];
-    if (!template) {
-      // Not a direct key - the Excel Motion Mapping tab uses 6 legacy category names that never
-      // matched the real NP_-prefixed keys (see LEGACY_CATEGORY_KEYS). Resolve to a random member
-      // of the matching family instead of silently failing.
-      const family = LEGACY_CATEGORY_KEYS[templateName];
-      if (family && family.length > 0) {
-        const resolvedKey = family[Math.floor(Math.random() * family.length)];
-        template = MOTION_TEMPLATES[resolvedKey];
-      }
-    }
+    const template = MOTION_TEMPLATES[templateName];
     if (!template) return false;
 
     candidateMod.keyframeEnabled = true;
@@ -2499,16 +2474,7 @@ export class Controls {
               candidateMod.max = newVal;
               candidateModulations[config.name] = candidateMod;
             } else {
-              // Check if there is an Excel-mapped motion template for this parameter
-              const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][config.name];
-              let templateApplied = false;
-              if (allowedTemplates && allowedTemplates.length > 0) {
-                const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
-                const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-                const modMin = localMin + (localMax - localMin) * 0.1;
-                const modMax = localMax - (localMax - localMin) * 0.1;
-                templateApplied = this.applyMotionTemplate(candidateMod, templateName, modMin, modMax, durationVal);
-              }
+              const templateApplied = false;
 
               // motion_too_fast constraint: templates pack in several oscillations across the
               // duration with no independent speed knob, so the only lever is to stop reaching
@@ -2645,51 +2611,6 @@ export class Controls {
         let localMin = config.min;
         let localMax = config.max;
         const range = config.max - config.min;
-
-        // Check if there is an Excel-mapped motion template for this FX parameter
-        const allowedTemplates = this.motionMapping && this.motionMapping[layer.type] && this.motionMapping[layer.type][fxName];
-        let templateApplied = false;
-        
-        if (allowedTemplates && allowedTemplates.length > 0) {
-          const templateName = allowedTemplates[Math.floor(Math.random() * allowedTemplates.length)];
-          const durationVal = parseFloat(this.exportDurationEl.value) || 10;
-          
-          let fxMin = localMin;
-          let fxMax = localMax;
-          // Apply safety limits for common FX templates
-          if (fxName === 'scale') {
-            fxMin = Math.max(1.0, localMin);
-            fxMax = Math.min(2.0, localMax);
-          } else if (fxName === 'feedbackDecay') {
-            fxMin = Math.max(0.70, localMin);
-            fxMax = Math.min(0.92, localMax);
-          } else if (fxName === 'glowIntensity') {
-            fxMin = Math.max(40, localMin);
-            fxMax = Math.min(85, localMax);
-          } else if (fxName === 'rotation') {
-            fxMin = -180;
-            fxMax = 180;
-          }
-          
-          const mod = layer.modulations[fxName] || {
-            enabled: false,
-            min: fxMin,
-            max: fxMax,
-            timePct: 50,
-            behavior: 'return',
-            keyframeEnabled: false,
-            keyframes: []
-          };
-          
-          const candidateMod = JSON.parse(JSON.stringify(mod));
-          templateApplied = this.applyMotionTemplate(candidateMod, templateName, fxMin, fxMax, durationVal);
-          
-          if (templateApplied) {
-            candidateEffects[fxName] = fxMin;
-            candidateModulations[fxName] = candidateMod;
-            continue; // Skip standard hardcoded logic for this parameter
-          }
-        }
 
         // Apply User Directive overrides & clamping
         

@@ -54,8 +54,8 @@ function findFfmpegBinary(workspaceRoot) {
 
 /**
  * PresetLayerOpinionSheet.xlsx「Preset Layers Opinion Sheet」タブの行3ヘッダー(表示名)と
- * index.htmlの#layer-type-selectの内部typeコードの対応表。export_move_scores.py/
- * export_motion_mapping.pyのLAYER_NAME_TO_TYPEと同一内容を維持すること(手動同期)。
+ * index.htmlの#layer-type-selectの内部typeコードの対応表。export_move_scores.pyの
+ * LAYER_NAME_TO_TYPEと同一内容を維持すること(手動同期)。
  */
 const OPINION_SHEET_NAME = 'Preset Layers Opinion Sheet';
 const LAYER_NAME_TO_TYPE = {
