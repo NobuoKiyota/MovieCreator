@@ -470,27 +470,37 @@ class PipelineGUI:
             temp_output = os.path.join(output_dir, "temp_protected_post.mp4")
             
             try:
-                # 1. ffmpegによるクロマキー合成
+                # 1. 元動画の解像度を取得して最適なフォントサイズなどを計算
+                import cv2
+                cap = cv2.VideoCapture(file_path)
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 1920
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 1080
+                cap.release()
+
+                # 2. ffmpegによるテキスト直接描画 (斜め＆半透明)
                 ffmpeg_exe = os.path.join(BASE_DIR, "tools", "ffmpeg", "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
                 if not os.path.exists(ffmpeg_exe):
                     ffmpeg_exe = "ffmpeg"
                 
-                sample_video = os.path.join(BASE_DIR, "exports", "SAMPLE_TEXT_10s.mp4")
-                if not os.path.exists(sample_video):
-                    raise FileNotFoundError(f"保護レイヤー動画が見つかりません: {sample_video}")
-
-                self.log_queue.put("[XPost] ffmpeg による保護レイヤーの合成を開始...\n")
+                self.log_queue.put("[XPost] ffmpeg による SAMPLE 保護テキストの合成を描画中...\n")
                 
+                # フォントサイズは高さの8%程度に自動調整
+                font_size = int(height * 0.08)
+                
+                # フィルタ：透明キャンバス生成 ➔ drawtextでSAMPLE描画 ➔ rotateで30度反時計回り回転 ➔ overlay
+                filter_str = (
+                    f"color=c=black@0:s={width}x{height},"
+                    f"drawtext=text='SAMPLE':fontcolor=white@0.15:fontsize={font_size}:x=(w-text_w)/2:y=(h-text_h)/2:font='Arial',"
+                    f"rotate=-30*PI/180:c=black@0[txt];[0:v][txt]overlay=shortest=1"
+                )
+
                 cmd = [
                     ffmpeg_exe, "-y",
                     "-i", file_path,
-                    "-stream_loop", "-1",
-                    "-i", sample_video,
-                    "-filter_complex", "[1:v]colorkey=0x000000:0.1:0.1[watermark];[0:v][watermark]overlay=shortest=1[outv]",
-                    "-map", "[outv]",
-                    "-map", "0:a?",
+                    "-filter_complex", filter_str,
                     "-c:v", "libx264",
                     "-pix_fmt", "yuv420p",
+                    "-c:a", "copy",
                     temp_output
                 ]
 
@@ -502,9 +512,9 @@ class PipelineGUI:
                 
                 proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, startupinfo=startupinfo)
                 if proc.returncode != 0:
-                    raise RuntimeError(f"ffmpeg 合成に失敗しました (code {proc.returncode}):\n{proc.stderr[-500:]}")
+                    raise RuntimeError(f"ffmpeg テキスト合成に失敗しました (code {proc.returncode}):\n{proc.stderr[-500:]}")
                 
-                self.log_queue.put("[XPost] 保護レイヤーの合成完了。\n")
+                self.log_queue.put("[XPost] SAMPLE 保護テキストの合成完了。\n")
 
                 # 2. AI文章生成
                 self.log_queue.put("[XPost] Gemini API によるXポスト解説文の生成を開始...\n")
