@@ -21,3 +21,4 @@ scripts/__pycache__/
 X/
 data/sns_pending_post.json
 output/temp_protected_post.mp4
+data/x_post_history.json

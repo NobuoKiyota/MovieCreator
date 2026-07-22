@@ -658,11 +658,53 @@ class PipelineGUI:
         )
         btn_play.pack(anchor="w", pady=2)
 
+        # 投稿履歴のロード
+        history_path = os.path.join(BASE_DIR, "data", "x_post_history.json")
+        history_list = []
+        if os.path.exists(history_path):
+            try:
+                with open(history_path, "r", encoding="utf-8") as f:
+                    history_list = json.load(f)
+            except Exception:
+                pass
+
+        # 履歴選択用フレーム
+        history_frame = ttk.Frame(win, padding=2)
+        history_frame.pack(fill="x", padx=15, pady=(5, 5))
+
+        lbl_history = ttk.Label(history_frame, text="📜 過去の投稿履歴から復元:", style="Status.TLabel")
+        lbl_history.pack(side="left", padx=(0, 5))
+
+        # コンボボックスに表示するサマリーテキストのリストを作成
+        combo_values = []
+        for text in history_list:
+            summary = text.replace("\n", " ").strip()
+            if len(summary) > 45:
+                summary = summary[:45] + "..."
+            combo_values.append(summary)
+
+        combo_history = ttk.Combobox(history_frame, values=combo_values, state="readonly", font=("Segoe UI", 9))
+        combo_history.pack(side="left", fill="x", expand=True)
+
+        def on_history_selected(event):
+            idx = combo_history.current()
+            if 0 <= idx < len(history_list):
+                selected_text = history_list[idx]
+                editor.delete("1.0", tk.END)
+                editor.insert(tk.END, selected_text)
+                update_char_count()
+
+        combo_history.bind("<<ComboboxSelected>>", on_history_selected)
+        if not combo_values:
+            combo_history.config(state="disabled")
+            combo_history.set("（投稿履歴はありません）")
+
         # テキストエリア
         lbl_text = ttk.Label(win, text="🖊️ ポストする文章 (280文字以内、日本語1文字=2、英数字1文字=1換算):", style="Status.TLabel")
-        lbl_text.pack(anchor="w", padx=15, pady=(10, 2))
+        lbl_text.pack(anchor="w", padx=15, pady=(5, 2))
 
-        editor = scrolledtext.ScrolledText(win, bg="#11111b", fg=self.fg_color, insertbackground="white", font=("Segoe UI", 10), bd=0)
+        # 高さを6行分に縮小
+        editor = scrolledtext.ScrolledText(win, bg="#11111b", fg=self.fg_color, insertbackground="white", font=("Segoe UI", 10), bd=0, height=6)
         editor.pack(fill="both", expand=True, padx=15, pady=(0, 5))
         editor.insert(tk.END, initial_text)
 
@@ -762,6 +804,24 @@ class PipelineGUI:
             # 投稿確認ダイアログ
             if not messagebox.askyesno("投稿確認", "この内容で保護付き動画をXへ投稿します。よろしいですか？"):
                 return
+
+            # 投稿テキストを履歴に保存
+            try:
+                h_dir = os.path.join(BASE_DIR, "data")
+                os.makedirs(h_dir, exist_ok=True)
+                h_path = os.path.join(h_dir, "x_post_history.json")
+                history = []
+                if os.path.exists(h_path):
+                    with open(h_path, "r", encoding="utf-8") as f:
+                        history = json.load(f)
+                if text_to_post in history:
+                    history.remove(text_to_post)
+                history.insert(0, text_to_post)
+                history = history[:20]
+                with open(h_path, "w", encoding="utf-8") as f:
+                    json.dump(history, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"[XPost] 履歴保存失敗: {e}")
 
             # 投稿処理スレッド
             self.append_log("\n[XPost] X (Twitter) への自動投稿処理を開始中...\n")
