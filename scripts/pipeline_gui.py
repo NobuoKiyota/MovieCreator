@@ -486,17 +486,32 @@ class PipelineGUI:
                 
                 # 文字サイズは高さの8%
                 font_size = int(height * 0.08)
-                
-                # OSに応じたフォントの読み込み
-                font_path = "C:\\Windows\\Fonts\\arial.ttf"
-                if sys.platform != "win32" or not os.path.exists(font_path):
-                    font_path = "arial.ttf"
-                
-                try:
-                    font = ImageFont.truetype(font_path, font_size)
-                except IOError:
+
+                # 複数のフォント候補を順にロード試行(単一パス決め打ちだと、そのフォントが
+                # 存在しない環境でImageFont.load_default()に落ち、フォントサイズ指定を
+                # 受け付けない約10px固定の極小フォントになり文字が実質見えなくなるため)
+                font = None
+                font_candidates = [
+                    "C:\\Windows\\Fonts\\arial.ttf",
+                    "C:\\Windows\\Fonts\\meiryo.ttc",
+                    "C:\\Windows\\Fonts\\msgothic.ttc",
+                    "arial.ttf",
+                    "meiryo.ttc"
+                ]
+                for f_path in font_candidates:
+                    try:
+                        font = ImageFont.truetype(f_path, font_size)
+                        self.log_queue.put(f"[XPost] フォントを読み込みました: {f_path} (size={font_size})\n")
+                        print(f"[XPost] Loaded font: {f_path} (size={font_size})")
+                        break
+                    except Exception:
+                        continue
+
+                if font is None:
+                    self.log_queue.put("[XPost] 警告: 候補フォントを1つもロードできませんでした。極小フォールバックフォントを使用します(文字がほぼ見えなくなる可能性があります)。\n")
+                    print("[XPost] Warning: Failed to load custom fonts. Falling back to default (tiny, fixed-size).")
                     font = ImageFont.load_default()
-                
+
                 text = "SAMPLE"
                 
                 # 回転用の一時画像を作成
@@ -508,8 +523,19 @@ class PipelineGUI:
                 # 白文字、不透明度30% (アルファ76) で綺麗にアンチエイリアス描画
                 txt_draw.text((txt_w // 10, txt_h // 4), text, font=font, fill=(255, 255, 255, 76))
                 
+                # Pillowのバージョン互換性を考慮したリサンプル指定(Pillow 10以降はImage.BICUBIC
+                # が廃止されImage.Resampling.BICUBICへ移行しており、旧定数のままだと
+                # AttributeErrorで合成スレッドごとクラッシュし、ウォーターマークが一切
+                # 合成されなくなる)
+                if hasattr(Image, 'Resampling'):
+                    resample_mode = Image.Resampling.BICUBIC
+                elif hasattr(Image, 'BICUBIC'):
+                    resample_mode = Image.BICUBIC
+                else:
+                    resample_mode = 3  # BICUBICの整数定数値(全バージョン共通の最終フォールバック)
+
                 # 30度回転 (反時計回り)
-                rotated_txt = txt_img.rotate(30, resample=Image.BICUBIC, expand=1)
+                rotated_txt = txt_img.rotate(30, resample=resample_mode, expand=1)
                 rot_w, rot_h = rotated_txt.size
                 
                 # 左上、中央、右下の3箇所にペースト
@@ -525,6 +551,13 @@ class PipelineGUI:
                     img.alpha_composite(rotated_txt, (x, y))
                 
                 img.save(temp_watermark, "PNG")
+
+                if os.path.exists(temp_watermark):
+                    self.log_queue.put(f"[XPost] ウォーターマーク画像の書き出し完了: {temp_watermark} ({os.path.getsize(temp_watermark)} bytes)\n")
+                    print(f"[XPost] Watermark image saved: {temp_watermark} ({os.path.getsize(temp_watermark)} bytes)")
+                else:
+                    self.log_queue.put(f"[XPost] 警告: ウォーターマーク画像の書き出しに失敗した可能性があります: {temp_watermark}\n")
+                    print(f"[XPost] Warning: watermark image not found after save: {temp_watermark}")
 
                 # 3. ffmpegによる合成
                 ffmpeg_exe = os.path.join(BASE_DIR, "tools", "ffmpeg", "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
