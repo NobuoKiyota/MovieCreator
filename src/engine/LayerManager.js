@@ -1,4 +1,5 @@
 import { FX_PARAM_RANGES } from './fxParamRanges.js';
+import { getGeneratorParamOverride } from './paramRangeOverrides.js';
 import {
   SineWaveGenerator,
   NoiseWaveGenerator, 
@@ -24,7 +25,9 @@ import {
   DotDesignGenerator,
   NoiseGlitchGenerator,
   MilkyWayGenerator,
-  ColorWashGenerator
+  ColorWashGenerator,
+  CrackedWallGenerator,
+  MagmaWallGenerator
 } from './Generators.js';
 
 import {
@@ -36,7 +39,11 @@ import {
   applyKaleidoscope,
   applyMirrorMode,
   applyChromaticAberration,
-  applyHueRotate
+  applyHueRotate,
+  applyMedianBlur,
+  applyEmboss,
+  applyMotionBlur,
+  applyRadialBlur
 } from './Effects.js';
 
 export class Layer {
@@ -122,7 +129,14 @@ export class Layer {
       rotateX: 0,
       rotateY: 0,
       rotateZ: 0,
-      translateZ: 0
+      translateZ: 0,
+
+      // Stylize/blur FX
+      medianBlurIntensity: 0,
+      embossIntensity: 0,
+      motionBlurIntensity: 0,
+      motionBlurAngle: 0,
+      radialBlurIntensity: 0
     };
   }
 
@@ -153,11 +167,17 @@ export class Layer {
       case 'noise-glitch': return 'Noise Glitch';
       case 'milky-way': return 'Milky Way';
       case 'color-wash': return 'Color Wash';
+      case 'cracked-wall': return 'Cracked Wall';
+      case 'magma-wall': return 'Magma Wall';
       default: return 'Custom Layer';
     }
   }
 
-  createGenerator(type) {
+  // Builds the raw generator instance for a type (the plain switch, unchanged); createGenerator()
+  // below wraps its getParameterConfig() with the Excels/ParameterRanges.xlsx-derived min/max
+  // override (see paramRangeOverrides.js) so every consumer (sliders, LFO init, randomizer,
+  // batch generator, pattern reroll) picks it up automatically without being touched individually.
+  instantiateGenerator(type) {
     switch (type) {
       case 'sine-wave': return new SineWaveGenerator();
       case 'noise-wave': return new NoiseWaveGenerator();
@@ -184,8 +204,21 @@ export class Layer {
       case 'noise-glitch': return new NoiseGlitchGenerator();
       case 'milky-way': return new MilkyWayGenerator();
       case 'color-wash': return new ColorWashGenerator();
+      case 'cracked-wall': return new CrackedWallGenerator();
+      case 'magma-wall': return new MagmaWallGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
+  }
+
+  createGenerator(type) {
+    const generator = this.instantiateGenerator(type);
+    const originalGetParameterConfig = generator.getParameterConfig.bind(generator);
+    generator.getParameterConfig = () => originalGetParameterConfig().map(config => {
+      if (config.type !== 'range') return config;
+      const override = getGeneratorParamOverride(type, config.name);
+      return override ? { ...config, min: override.min, max: override.max } : config;
+    });
+    return generator;
   }
 
   initModulations() {
@@ -321,6 +354,9 @@ export class Layer {
         return 'hyper-strobe';
       case 'noise-glitch':
         return 'glitch-chaos';
+      case 'cracked-wall':
+      case 'magma-wall':
+        return 'static-none';
       default:
         return 'static-none';
     }
@@ -635,6 +671,16 @@ export class Layer {
       });
     }
 
+    // Apply Median Blur (stylize - runs early so later FX operate on the flattened result)
+    if (this.effects.medianBlurIntensity > 0) {
+      applyMedianBlur(this.ctx, this.canvas, this.effects.medianBlurIntensity);
+    }
+
+    // Apply Emboss (stylize)
+    if (this.effects.embossIntensity > 0) {
+      applyEmboss(this.ctx, this.canvas, this.effects.embossIntensity);
+    }
+
     // Apply Hue Rotate
     if (this.effects.hueRotate !== 0) {
       applyHueRotate(this.ctx, this.canvas, this.effects.hueRotate);
@@ -658,6 +704,16 @@ export class Layer {
     // Apply Chromatic Aberration
     if (this.effects.chromaticOffset > 0) {
       applyChromaticAberration(this.ctx, this.canvas, this.effects.chromaticOffset);
+    }
+
+    // Apply Motion Blur (directional) - runs last, blurring the fully-composited frame like a camera
+    if (this.effects.motionBlurIntensity > 0) {
+      applyMotionBlur(this.ctx, this.canvas, this.effects.motionBlurIntensity, this.effects.motionBlurAngle);
+    }
+
+    // Apply Radial Blur (zoom blur)
+    if (this.effects.radialBlurIntensity > 0) {
+      applyRadialBlur(this.ctx, this.canvas, this.effects.radialBlurIntensity);
     }
 
     // 4. Calculate strobe opacity

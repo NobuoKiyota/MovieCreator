@@ -1,5 +1,6 @@
 import { drawParticleShape, PARTICLE_SHAPE_COUNT } from './particleShapes.js';
 import { generateFractalBranch } from './fractalLine.js';
+import { buildShardLine, scatterFieldPoint, assignWriggleSignature, generateShardNetwork, getWriggledPoints, computeCameraPose, fillTaperedGlowLine } from './crackedWallShared.js';
 
 // Simple Noise Generator helper (Value Noise)
 class SimpleNoise {
@@ -2490,8 +2491,8 @@ export class GlassCrackGenerator extends BaseGenerator {
       { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
       { name: 'crackCount', label: 'Crack Count', type: 'range', min: 4, max: 24, step: 1 },
       { name: 'crackLength', label: 'Crack Length', type: 'range', min: 100, max: 1200, step: 10 },
-      { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 6, step: 1 },
-      { name: 'displace', label: 'Jaggedness', type: 'range', min: 5, max: 80, step: 1 },
+      { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 10, step: 1 },
+      { name: 'displace', label: 'Jaggedness', type: 'range', min: 5, max: 120, step: 1 },
       { name: 'branchChance', label: 'Branching Chance', type: 'range', min: 0, max: 0.6, step: 0.05 },
       { name: 'ringCount', label: 'Web Ring Count', type: 'range', min: 0, max: 5, step: 1 },
       { name: 'holeRadius', label: 'Hole Radius (Bullet Hole)', type: 'range', min: 0, max: 150, step: 1 },
@@ -3700,6 +3701,261 @@ export class ColorWashGenerator extends BaseGenerator {
     ctx.globalAlpha = this.params.intensity / 100;
     ctx.fillStyle = `hsl(${this.params.hue}, ${this.params.saturation}%, ${this.params.lightness}%)`;
     ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
+}
+
+
+// 26. Cracked Wall Generator - angular, glowing crack network (straight-kinked shard lines, same
+// grammar as GlassCrackGenerator.buildShardLine, scattered across a virtual field far larger than
+// the viewport rather than radiating from one impact point) sampled through a self-contained
+// "intrinsic camera" (pan/zoom/rotate through the infinite field) that loops seamlessly over
+// cycleDuration. Unlike GlassCrack's gradual growFrac reveal, the wall's cracks appear instantly
+// (no growth animation) each time the network regenerates, and then continuously wriggle for the
+// rest of the cycle (see crackedWallShared.getWriggledPoints) - a "the wall just cracked, and the
+// fissures are still faintly moving" feel rather than glass's "watch it shatter" feel.
+//
+// The network regenerates whenever the cycle boundary is crossed (cycleIndex change, same trigger
+// as GlassCrack/ShockwaveBurst) OR the seed/shape params change (geomKey includes them) - so each
+// new cycle snaps to a fresh layout instantly, and the inspector's Pattern-reroll button (which
+// bumps `seed`) also forces an immediate fresh layout without waiting for the next cycle.
+//
+// Shares its shard-network/camera/wriggle math with MagmaWallGenerator via crackedWallShared.js -
+// the two classes stay separate (rather than one shared base class) so their randomizer/Move-score
+// similarity spaces (scoped per layer.type) never mix this generator's fast/instant tuning with
+// Magma's slow/undulating tuning into an incoherent randomized result.
+export class CrackedWallGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.lastGeomKey = null;
+    this.network = { veins: [] };
+  }
+
+  defaultParams() {
+    return {
+      seed: 0,
+      cycleDuration: 4000,       // ms; short - the wall re-cracks into a fresh layout often
+      cameraCycleDuration: 14000, // ms; independent of cycleDuration - camera glides slowly across many crack layouts instead of racing the regen clock
+      veinDensity: 34,           // primary trunk (seed point) count
+      complexity: 4,             // kink count per trunk
+      displace: 30,              // jaggedness (kink angle jitter)
+      branchChance: 0.4,         // per-kink probability of spawning a straight fork
+      branchLength: 260,         // px; trunk length
+      hairlineCount: 160,        // standalone fine cracks filling in the surface
+      primaryWidth: 6,
+      hairlineWidthRatio: 0.3,
+      wriggleAmount: 4,          // px; continuous post-appearance squirm amplitude
+      cameraPathMode: 1,         // 0=Orbit, 1=Sweep & Return, 2=Slow Spiral Zoom
+      cameraPanAmplitude: 0.6,
+      cameraZoomBase: 1.7,
+      cameraZoomAmplitude: 0.4,
+      cameraRotationAmplitude: 8,
+      glowBoost: 12,             // per-stroke shadowBlur, primary trunks only
+      color: '#ff1a1a',
+      colorLightness: 55
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
+      { name: 'cameraCycleDuration', label: 'Camera Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
+      { name: 'seed', label: 'Pattern Seed', type: 'range', min: 0, max: 9999, step: 1 },
+      { name: 'veinDensity', label: 'Vein Density (Trunk Count)', type: 'range', min: 8, max: 160, step: 1 },
+      { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 10, step: 1 },
+      { name: 'displace', label: 'Jaggedness', type: 'range', min: 5, max: 120, step: 1 },
+      { name: 'branchChance', label: 'Branching Chance', type: 'range', min: 0, max: 1, step: 0.05 },
+      { name: 'branchLength', label: 'Vein Length', type: 'range', min: 60, max: 900, step: 10 },
+      { name: 'hairlineCount', label: 'Hairline Crack Count', type: 'range', min: 0, max: 600, step: 5 },
+      { name: 'primaryWidth', label: 'Primary Vein Width', type: 'range', min: 1, max: 24, step: 0.5 },
+      { name: 'hairlineWidthRatio', label: 'Hairline Width Ratio', type: 'range', min: 0.05, max: 0.6, step: 0.01 },
+      { name: 'wriggleAmount', label: 'Wriggle Amount', type: 'range', min: 0, max: 50, step: 0.5 },
+      { name: 'cameraPathMode', label: 'Camera Path Mode', type: 'range', min: 0, max: 2, step: 1 },
+      { name: 'cameraPanAmplitude', label: 'Camera Pan Amplitude', type: 'range', min: 0, max: 1, step: 0.01 },
+      { name: 'cameraZoomBase', label: 'Camera Zoom Base', type: 'range', min: 0.5, max: 3, step: 0.05 },
+      { name: 'cameraZoomAmplitude', label: 'Camera Zoom Amplitude', type: 'range', min: 0, max: 2, step: 0.05 },
+      { name: 'cameraRotationAmplitude', label: 'Camera Rotation Amplitude', type: 'range', min: 0, max: 90, step: 1 },
+      { name: 'glowBoost', label: 'Core Glow (Primary Only)', type: 'range', min: 0, max: 40, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  getPatternParamNames() {
+    return ['seed', 'veinDensity', 'complexity', 'displace', 'branchChance', 'branchLength', 'hairlineCount', 'cameraPathMode'];
+  }
+
+  draw(ctx, width, height, time) {
+    const cycleDuration = Math.max(1, this.params.cycleDuration);
+    const cycleIndex = Math.floor(time / cycleDuration);
+    const geomKey = `${cycleIndex}|${Math.round(this.params.seed)}|${width}x${height}|${Math.round(this.params.veinDensity)}|${Math.round(this.params.complexity)}|${Math.round(this.params.displace)}|${this.params.branchChance.toFixed(2)}|${Math.round(this.params.branchLength)}|${Math.round(this.params.hairlineCount)}`;
+    if (geomKey !== this.lastGeomKey) {
+      this.lastGeomKey = geomKey;
+      this.network = generateShardNetwork(width, height, this.params);
+    }
+
+    const progress = (time % cycleDuration) / cycleDuration;
+    const cameraCycleDuration = Math.max(1, this.params.cameraCycleDuration);
+    const camProgress = (time % cameraCycleDuration) / cameraCycleDuration;
+    const cam = computeCameraPose(camProgress, this.params, Math.max(width, height));
+    const rgb = colorLightnessToRgb(this.params.color, this.params.colorLightness);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.translate(width / 2, height / 2);
+    ctx.rotate(cam.rot);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cam.x, -cam.y);
+
+    for (const v of this.network.veins) {
+      const pts = getWriggledPoints(v, progress, this.params.wriggleAmount);
+      if (v.isPrimary) {
+        fillTaperedGlowLine(ctx, pts, v.width, v.width * 0.15, rgb, 0.92);
+      } else {
+        fillTaperedGlowLine(ctx, pts, v.width, v.width * 0.3, rgb, 0.4);
+      }
+    }
+
+    // Sparing shadowBlur core-glow pass, primary trunks only (perf-bounded by veinDensity, max 80).
+    if (this.params.glowBoost > 0) {
+      ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`;
+      ctx.shadowBlur = this.params.glowBoost;
+      ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const v of this.network.veins) {
+        if (!v.isPrimary) continue;
+        const pts = getWriggledPoints(v, progress, this.params.wriggleAmount);
+        ctx.lineWidth = v.width * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  }
+}
+
+// 27. Magma Wall Generator - same shard-network/camera/wriggle tech as CrackedWallGenerator (see
+// crackedWallShared.js), tuned for the opposite feel: long cycleDuration, thick slow-orbiting
+// camera, strong glow, warm color, and a bigger wriggleAmount - the "ゆっくり変動している" (slowly
+// shifting) look comes from the wriggle motion itself rather than any external LFO. Kept as a
+// separate class/type (not shared params with CrackedWallGenerator) specifically because mixing
+// "fast/instant" and "slow/undulating" tuning in one randomizable parameter space produced
+// incoherent results when randomized (per user feedback on the original combined design).
+export class MagmaWallGenerator extends BaseGenerator {
+  constructor(params) {
+    super(params);
+    this.lastGeomKey = null;
+    this.network = { veins: [] };
+  }
+
+  defaultParams() {
+    return {
+      seed: 0,
+      cycleDuration: 18000,      // ms; long - the wall re-cracks rarely, wriggle carries the motion
+      cameraCycleDuration: 20000, // ms; slowest allowed - a deliberately majestic, unhurried glide
+      veinDensity: 26,
+      complexity: 5,
+      displace: 22,
+      branchChance: 0.3,
+      branchLength: 340,
+      hairlineCount: 110,
+      primaryWidth: 10,
+      hairlineWidthRatio: 0.35,
+      wriggleAmount: 10,         // stronger than Cracked Wall - this IS the "slowly shifting" motion
+      cameraPathMode: 2,         // Slow Spiral Zoom by default
+      cameraPanAmplitude: 0.3,
+      cameraZoomBase: 1.9,
+      cameraZoomAmplitude: 0.2,
+      cameraRotationAmplitude: 5,
+      glowBoost: 20,
+      color: '#ff5a1f',
+      colorLightness: 50
+    };
+  }
+
+  getParameterConfig() {
+    return [
+      { name: 'cycleDuration', label: 'Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
+      { name: 'cameraCycleDuration', label: 'Camera Cycle Duration (ms)', type: 'range', min: 500, max: 20000, step: 100 },
+      { name: 'seed', label: 'Pattern Seed', type: 'range', min: 0, max: 9999, step: 1 },
+      { name: 'veinDensity', label: 'Vein Density (Trunk Count)', type: 'range', min: 8, max: 160, step: 1 },
+      { name: 'complexity', label: 'Detail (Complexity)', type: 'range', min: 2, max: 10, step: 1 },
+      { name: 'displace', label: 'Jaggedness', type: 'range', min: 5, max: 120, step: 1 },
+      { name: 'branchChance', label: 'Branching Chance', type: 'range', min: 0, max: 1, step: 0.05 },
+      { name: 'branchLength', label: 'Vein Length', type: 'range', min: 60, max: 900, step: 10 },
+      { name: 'hairlineCount', label: 'Hairline Crack Count', type: 'range', min: 0, max: 600, step: 5 },
+      { name: 'primaryWidth', label: 'Primary Vein Width', type: 'range', min: 1, max: 28, step: 0.5 },
+      { name: 'hairlineWidthRatio', label: 'Hairline Width Ratio', type: 'range', min: 0.05, max: 0.6, step: 0.01 },
+      { name: 'wriggleAmount', label: 'Wriggle Amount', type: 'range', min: 0, max: 60, step: 0.5 },
+      { name: 'cameraPathMode', label: 'Camera Path Mode', type: 'range', min: 0, max: 2, step: 1 },
+      { name: 'cameraPanAmplitude', label: 'Camera Pan Amplitude', type: 'range', min: 0, max: 1, step: 0.01 },
+      { name: 'cameraZoomBase', label: 'Camera Zoom Base', type: 'range', min: 0.5, max: 3, step: 0.05 },
+      { name: 'cameraZoomAmplitude', label: 'Camera Zoom Amplitude', type: 'range', min: 0, max: 2, step: 0.05 },
+      { name: 'cameraRotationAmplitude', label: 'Camera Rotation Amplitude', type: 'range', min: 0, max: 90, step: 1 },
+      { name: 'glowBoost', label: 'Core Glow (Primary Only)', type: 'range', min: 0, max: 40, step: 1 },
+      { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
+      { name: 'color', label: 'Color', type: 'color' }
+    ];
+  }
+
+  getPatternParamNames() {
+    return ['seed', 'veinDensity', 'complexity', 'displace', 'branchChance', 'branchLength', 'hairlineCount', 'cameraPathMode'];
+  }
+
+  draw(ctx, width, height, time) {
+    const cycleDuration = Math.max(1, this.params.cycleDuration);
+    const cycleIndex = Math.floor(time / cycleDuration);
+    const geomKey = `${cycleIndex}|${Math.round(this.params.seed)}|${width}x${height}|${Math.round(this.params.veinDensity)}|${Math.round(this.params.complexity)}|${Math.round(this.params.displace)}|${this.params.branchChance.toFixed(2)}|${Math.round(this.params.branchLength)}|${Math.round(this.params.hairlineCount)}`;
+    if (geomKey !== this.lastGeomKey) {
+      this.lastGeomKey = geomKey;
+      this.network = generateShardNetwork(width, height, this.params);
+    }
+
+    const progress = (time % cycleDuration) / cycleDuration;
+    const cameraCycleDuration = Math.max(1, this.params.cameraCycleDuration);
+    const camProgress = (time % cameraCycleDuration) / cameraCycleDuration;
+    const cam = computeCameraPose(camProgress, this.params, Math.max(width, height));
+    const rgb = colorLightnessToRgb(this.params.color, this.params.colorLightness);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.translate(width / 2, height / 2);
+    ctx.rotate(cam.rot);
+    ctx.scale(cam.zoom, cam.zoom);
+    ctx.translate(-cam.x, -cam.y);
+
+    for (const v of this.network.veins) {
+      const pts = getWriggledPoints(v, progress, this.params.wriggleAmount);
+      if (v.isPrimary) {
+        fillTaperedGlowLine(ctx, pts, v.width, v.width * 0.15, rgb, 0.92);
+      } else {
+        fillTaperedGlowLine(ctx, pts, v.width, v.width * 0.3, rgb, 0.4);
+      }
+    }
+
+    if (this.params.glowBoost > 0) {
+      ctx.shadowColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`;
+      ctx.shadowBlur = this.params.glowBoost;
+      ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.9)`;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const v of this.network.veins) {
+        if (!v.isPrimary) continue;
+        const pts = getWriggledPoints(v, progress, this.params.wriggleAmount);
+        ctx.lineWidth = v.width * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
     ctx.restore();
   }
 }

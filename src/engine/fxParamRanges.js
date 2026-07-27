@@ -18,5 +18,10 @@ export const FX_PARAM_RANGES = {
   rotateX:             { min: -180,  max: 180 },
   rotateY:             { min: -180,  max: 180 },
   rotateZ:             { min: -180,  max: 180 },
-  translateZ:          { min: -600,  max: 600 }
+  translateZ:          { min: -600,  max: 600 },
+  medianBlurIntensity: { min: 0,     max: 100 },
+  embossIntensity:     { min: 0,     max: 100 },
+  motionBlurIntensity: { min: 0,     max: 60  },
+  motionBlurAngle:     { min: 0,     max: 360 },
+  radialBlurIntensity: { min: 0,     max: 1   }
 };

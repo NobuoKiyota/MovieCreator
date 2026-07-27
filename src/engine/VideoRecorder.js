@@ -74,6 +74,7 @@ export class VideoRecorder {
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
     const fadeStartFrame = totalFrames - (fadeOutDuration * fps);
+    const duration = totalFrames / fps; // seconds - applyModulations() needs this for its own timePct-based cycle math
 
     // Reset layer generator states before offline render
     for (let layer of this.layerManager.layers) {
@@ -168,6 +169,11 @@ export class VideoRecorder {
         const time = (frame / fps) * 1000;
         const frameTimeUs = Math.round((frame / fps) * 1_000_000);
 
+        // LFO/keyframe modulations must be re-evaluated every export frame too, exactly like
+        // the live preview's tick() does (applyModulations -> update -> draw) - without this call
+        // any LFO/keyframe-animated parameter (including the FX sliders) stays frozen at whatever
+        // static value it had when export started, since update()/draw() alone never touch modulations.
+        this.layerManager.applyModulations(time, duration);
         this.layerManager.update(time, frame);
 
         let fadeFactor = 1.0;
@@ -242,6 +248,7 @@ export class VideoRecorder {
 
     const ctx = this.canvas.getContext('2d');
     const fadeStartFrame = totalFrames - (fadeOutDuration * fps);
+    const duration = totalFrames / fps; // seconds - applyModulations() needs this for its own timePct-based cycle math
     const frameInterval = 1000 / fps;
 
     for (let layer of this.layerManager.layers) {
@@ -252,6 +259,11 @@ export class VideoRecorder {
     try {
       for (let frame = 0; frame < totalFrames; frame++) {
         const time = (frame / fps) * 1000;
+        // LFO/keyframe modulations must be re-evaluated every export frame too, exactly like
+        // the live preview's tick() does (applyModulations -> update -> draw) - without this call
+        // any LFO/keyframe-animated parameter (including the FX sliders) stays frozen at whatever
+        // static value it had when export started, since update()/draw() alone never touch modulations.
+        this.layerManager.applyModulations(time, duration);
         this.layerManager.update(time, frame);
 
         let fadeFactor = 1.0;
@@ -281,6 +293,7 @@ export class VideoRecorder {
     const height = this.canvas.height;
     const ctx = this.canvas.getContext('2d');
     const fadeStartFrame = totalFrames - (fadeOutDuration * fps);
+    const duration = totalFrames / fps; // seconds - applyModulations() needs this for its own timePct-based cycle math
 
     // Reset sketches/particles
     for (let layer of this.layerManager.layers) {
@@ -344,6 +357,11 @@ export class VideoRecorder {
         const time = (frame / fps) * 1000;
         const frameTimeUs = Math.round((frame / fps) * 1_000_000);
 
+        // LFO/keyframe modulations must be re-evaluated every export frame too, exactly like
+        // the live preview's tick() does (applyModulations -> update -> draw) - without this call
+        // any LFO/keyframe-animated parameter (including the FX sliders) stays frozen at whatever
+        // static value it had when export started, since update()/draw() alone never touch modulations.
+        this.layerManager.applyModulations(time, duration);
         this.layerManager.update(time, frame);
 
         let fadeFactor = 1.0;

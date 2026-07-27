@@ -245,6 +245,73 @@ function regenerateMoveScores(workbook, dataDir, nameToType) {
   return mapping;
 }
 
+// Reads both sheets of Excels/ParameterRanges.xlsx into the same {generatorParams, fxParams}
+// shape export_param_ranges.py writes to data/param_ranges.json - mirrors that script's logic in
+// JS (same relationship as regenerateMoveScores above mirrors export_move_scores.py) so
+// GET /api/param-ranges can regenerate on-demand on every page load instead of requiring the user
+// to remember to re-run the Python script after every Excel edit. Only Min/Max (Actual) columns
+// are read; Min/Max (Reference) is documentation-only and never flows into the app.
+function readParamRangesFromWorkbook(workbook) {
+  const generatorParams = {};
+  const genWs = workbook.Sheets['Generator Params'];
+  if (genWs) {
+    const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const [type, paramName, , , minActual, maxActual] = row;
+      if (!type || !paramName) continue;
+      if (typeof minActual !== 'number' || typeof maxActual !== 'number') continue;
+      const t = String(type).trim();
+      if (!generatorParams[t]) generatorParams[t] = {};
+      generatorParams[t][String(paramName).trim()] = { min: minActual, max: maxActual };
+    }
+  }
+
+  const fxParams = {};
+  const fxWs = workbook.Sheets['Common FX Params'];
+  if (fxWs) {
+    const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const [paramName, , , minActual, maxActual] = row;
+      if (!paramName) continue;
+      if (typeof minActual !== 'number' || typeof maxActual !== 'number') continue;
+      fxParams[String(paramName).trim()] = { min: minActual, max: maxActual };
+    }
+  }
+
+  return { generatorParams, fxParams };
+}
+
+// Full row detail (label/step included, one entry per sheet row) for the in-app Parameter Ranges
+// editor - readParamRangesFromWorkbook above only keeps min/max, which is all the app needs at
+// runtime but not enough to render an editable table.
+function readParamRangesDetailFromWorkbook(workbook) {
+  const generatorRows = [];
+  const genWs = workbook.Sheets['Generator Params'];
+  if (genWs) {
+    const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
+    for (let r = 1; r < rows.length; r++) {
+      const [type, paramName, label, step, minActual, maxActual, minRef, maxRef] = rows[r] || [];
+      if (!type || !paramName) continue;
+      generatorRows.push({ type, paramName, label, step, min: minActual, max: maxActual, minRef, maxRef });
+    }
+  }
+
+  const fxRows = [];
+  const fxWs = workbook.Sheets['Common FX Params'];
+  if (fxWs) {
+    const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
+    for (let r = 1; r < rows.length; r++) {
+      const [paramName, label, step, minActual, maxActual, minRef, maxRef] = rows[r] || [];
+      if (!paramName) continue;
+      fxRows.push({ paramName, label, step, min: minActual, max: maxActual, minRef, maxRef });
+    }
+  }
+
+  return { generatorRows, fxRows };
+}
+
 /**
  * Appends a brand-new Score/Move/Comment column block to the opinion sheet for a layer type it
  * has never seen before, so newly added generators (Milky Way, and anything added after it) stop
@@ -660,6 +727,104 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
         res.end(JSON.stringify({ success: true }));
       } catch (err) {
         console.error('[API Server] /api/opinion-sheet POST execution error:', err);
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 8. GET /api/param-ranges - Excels/ParameterRanges.xlsxを都度読み直し、data/param_ranges.jsonを
+  // 再生成してから返す。ページリロードのたびにこのエンドポイントが叩かれる
+  // (src/engine/paramRangeOverrides.js)ため、Excelを編集して保存するだけで次回リロード時に
+  // 自動反映され、export_param_ranges.pyの手動実行が不要になる(手動実行しても問題なく併用可能)。
+  // 本番ビルドにはこのAPIミドルウェアが無いため、その場合はgitコミット済みのdata/param_ranges.json
+  // が最後の実行結果のまま使われる(ProRes変換等と同じ制約)。
+  if (req.method === 'GET' && pathname === '/api/param-ranges') {
+    try {
+      const excelPath = path.resolve(workspaceRoot, 'Excels', 'ParameterRanges.xlsx');
+      const outPath = path.join(dataDir, 'param_ranges.json');
+
+      // ?detail=1 returns the full editable row list (label/step included, one entry per sheet
+      // row, in sheet order) for the in-app Parameter Ranges editor. Without it, returns the
+      // compact {generatorParams, fxParams} shape the app reads at runtime (paramRangeOverrides.js).
+      if (searchParams.get('detail') === '1') {
+        if (!fs.existsSync(excelPath)) throw new Error(`Parameter ranges workbook not found: ${excelPath}`);
+        const workbook = XLSX.readFile(excelPath);
+        const detail = readParamRangesDetailFromWorkbook(workbook);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(detail));
+        return;
+      }
+
+      let mapping;
+      if (fs.existsSync(excelPath)) {
+        const workbook = XLSX.readFile(excelPath);
+        mapping = readParamRangesFromWorkbook(workbook);
+        fs.writeFileSync(outPath, JSON.stringify(mapping, null, 2), 'utf-8');
+      } else if (fs.existsSync(outPath)) {
+        mapping = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
+      } else {
+        mapping = { generatorParams: {}, fxParams: {} };
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(mapping));
+    } catch (err) {
+      console.error('[API Server] /api/param-ranges GET execution error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // 8b. POST /api/param-ranges - Min/Max(Actual)の編集内容をExcelへ書き戻し、
+  // data/param_ranges.jsonも再生成する(Excel直接編集の代替となるアプリ内エディタ用)
+  if (req.method === 'POST' && pathname === '/api/param-ranges') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        if (!body) throw new Error('Request body is empty');
+        const parsed = JSON.parse(body);
+        const { generatorUpdates, fxUpdates } = parsed;
+        if (!Array.isArray(generatorUpdates) || !Array.isArray(fxUpdates)) {
+          throw new Error('generatorUpdates and fxUpdates (arrays) are required');
+        }
+
+        const excelPath = path.resolve(workspaceRoot, 'Excels', 'ParameterRanges.xlsx');
+        if (!fs.existsSync(excelPath)) throw new Error(`Parameter ranges workbook not found: ${excelPath}`);
+        const workbook = XLSX.readFile(excelPath);
+
+        const genWs = workbook.Sheets['Generator Params'];
+        if (genWs) {
+          const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
+          for (const u of generatorUpdates) {
+            const idx = rows.findIndex((r, i) => i > 0 && r[0] === u.type && r[1] === u.paramName);
+            if (idx >= 0) { rows[idx][4] = u.min; rows[idx][5] = u.max; }
+          }
+          workbook.Sheets['Generator Params'] = XLSX.utils.aoa_to_sheet(rows);
+        }
+
+        const fxWs = workbook.Sheets['Common FX Params'];
+        if (fxWs) {
+          const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
+          for (const u of fxUpdates) {
+            const idx = rows.findIndex((r, i) => i > 0 && r[0] === u.paramName);
+            if (idx >= 0) { rows[idx][3] = u.min; rows[idx][4] = u.max; }
+          }
+          workbook.Sheets['Common FX Params'] = XLSX.utils.aoa_to_sheet(rows);
+        }
+
+        XLSX.writeFile(workbook, excelPath, { compression: true });
+
+        const mapping = readParamRangesFromWorkbook(workbook);
+        const outPath = path.join(dataDir, 'param_ranges.json');
+        fs.writeFileSync(outPath, JSON.stringify(mapping, null, 2), 'utf-8');
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true }));
+      } catch (err) {
+        console.error('[API Server] /api/param-ranges POST execution error:', err);
         res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify({ error: err.message }));
       }

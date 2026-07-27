@@ -1,6 +1,7 @@
 import { LayerManager } from './engine/LayerManager.js';
 import { VideoRecorder } from './engine/VideoRecorder.js';
 import { Controls } from './ui/Controls.js';
+import { loadParamRangeOverrides } from './engine/paramRangeOverrides.js';
 
 class MovieCreatorApp {
   constructor() {
@@ -266,8 +267,13 @@ class MovieCreatorApp {
   }
 }
 
-// Instantiate and start app on load
-window.addEventListener('DOMContentLoaded', () => {
+// Instantiate and start app on load. Awaits the Excels/ParameterRanges.xlsx-derived min/max
+// overrides (see paramRangeOverrides.js) before constructing anything - LayerManager bakes a
+// param's min/max into its modulation state once at Layer construction time, and init() below
+// immediately adds the hardcoded startup demo layers, so this can't be a fire-and-forget fetch
+// like data/move_scores.json is (that one is only consulted later, on explicit user action).
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadParamRangeOverrides();
   const app = new MovieCreatorApp();
   app.init();
 });

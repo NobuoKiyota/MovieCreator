@@ -125,7 +125,12 @@ export class Controls {
       rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             step: 1,     type: 'range' },
       rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             step: 1,     type: 'range' },
       rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',       ...R.rotateZ,             step: 1,     type: 'range' },
-      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',      ...R.translateZ,          step: 5,     type: 'range' }
+      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',      ...R.translateZ,          step: 5,     type: 'range' },
+      medianBlurIntensity: { name: 'medianBlurIntensity', label: 'Median Blur',    ...R.medianBlurIntensity, step: 1,     type: 'range' },
+      embossIntensity:     { name: 'embossIntensity',     label: 'Emboss',         ...R.embossIntensity,     step: 1,     type: 'range' },
+      motionBlurIntensity: { name: 'motionBlurIntensity', label: 'Motion Blur',    ...R.motionBlurIntensity, step: 1,     type: 'range' },
+      motionBlurAngle:     { name: 'motionBlurAngle',     label: 'Motion Blur Angle', ...R.motionBlurAngle,  step: 1,     type: 'range' },
+      radialBlurIntensity: { name: 'radialBlurIntensity', label: 'Radial Blur',    ...R.radialBlurIntensity, step: 0.01,  type: 'range' }
     };
     this.activeDocument = document;
 
@@ -375,6 +380,13 @@ export class Controls {
       });
       this.inputLocalImportProjectEl.addEventListener('change', (e) => {
         this.localImportProject(e);
+      });
+    }
+
+    const btnParamRangesEditor = document.getElementById('btn-param-ranges-editor');
+    if (btnParamRangesEditor) {
+      btnParamRangesEditor.addEventListener('click', () => {
+        this.showParamRangesEditor();
       });
     }
 
@@ -2678,6 +2690,11 @@ export class Controls {
           case 'rotateY':
           case 'rotateZ':
           case 'translateZ':
+          case 'medianBlurIntensity':
+          case 'embossIntensity':
+          case 'motionBlurIntensity':
+          case 'motionBlurAngle':
+          case 'radialBlurIntensity':
             r = forceFxOff(0);
             break;
           case 'rotation':
@@ -4412,6 +4429,140 @@ export class Controls {
 
           await this.loadMoveScores(); // refresh in-memory Move scores immediately
           this.showToast('✅ Opinion sheet saved', 'success');
+        } catch (err) {
+          this.showToast('❌ Save failed: ' + err.message, 'error');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '💾 Save';
+        }
+      });
+    };
+
+    render();
+  }
+
+  // In-app editor for every generator/FX parameter's Min/Max (Actual) range, backed by
+  // Excels/ParameterRanges.xlsx (see paramRangeOverrides.js / apiHandler.js's /api/param-ranges).
+  // Built to replace directly opening the xlsx in Excel: SheetJS-written files occasionally fail
+  // Excel's own "needs repair" check on save, and having Excel hold the file open while this app's
+  // dev server also reads/writes it is a recipe for exactly that conflict - editing here instead
+  // means only this app ever touches the file, matching the existing 📝 Opinion Sheet editor's
+  // "browser popup, save writes back to xlsx + regenerates JSON" pattern.
+  async showParamRangesEditor() {
+    const popup = window.open('', 'MovieCreatorParamRanges', 'width=760,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+    if (!popup) {
+      this.showToast('⚠️ Popup blocker prevented opening the editor window. Please allow popups for this site.', 'error');
+      return;
+    }
+    const pDoc = popup.document;
+    pDoc.title = 'MovieCreator - Parameter Ranges Editor';
+    document.querySelectorAll('link[rel="stylesheet"], style').forEach(el => {
+      pDoc.head.appendChild(el.cloneNode(true));
+    });
+    pDoc.body.style.cssText = `
+      background: #090714; margin: 0; padding: 1rem; color: #e2e8f0;
+      font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    `;
+
+    const card = pDoc.createElement('div');
+    card.style.cssText = `display: flex; flex-direction: column; gap: 0.6rem; height: calc(100vh - 2rem);`;
+    pDoc.body.appendChild(card);
+
+    let closed = false;
+    const closeEditor = () => {
+      if (closed) return;
+      closed = true;
+      if (!popup.closed) popup.close();
+    };
+    popup.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeEditor(); });
+    popup.addEventListener('beforeunload', () => { closed = true; });
+
+    card.innerHTML = `<p style="color: #9ca3af; font-size: 0.85rem;">Loading parameter ranges...</p>`;
+
+    let generatorRows = [];
+    let fxRows = [];
+    try {
+      const res = await fetch('/api/param-ranges?detail=1');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      generatorRows = data.generatorRows;
+      fxRows = data.fxRows;
+    } catch (err) {
+      card.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem;">読み込み失敗: ${err.message}</p>`;
+      return;
+    }
+
+    // One combined list for rendering/filtering; `group` distinguishes the two sheets so the
+    // save step can route each row's edits back to the correct one.
+    const allRows = [
+      ...generatorRows.map(r => ({ group: r.type, sheet: 'generator', ...r })),
+      ...fxRows.map(r => ({ group: 'Common FX', sheet: 'fx', ...r }))
+    ];
+
+    const render = () => {
+      card.innerHTML = `
+        <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">📐 Parameter Ranges (${allRows.length})</h3>
+        <p style="margin: 0; font-size: 0.75rem; color: #9ca3af;">全ジェネレーター・共通FXパラメータのスライダー可動範囲(Min/Max)を編集します。Reference列は現在のコードのデフォルト値(参考表示、編集不可)。保存するとExcels/ParameterRanges.xlsxへ書き戻され、data/param_ranges.jsonも自動再生成されます。</p>
+        <input type="text" class="pr-search" placeholder="ジェネレーター名・パラメータ名で絞り込み..." style="padding: 0.4rem 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 6px; font-size: 0.8rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1.4fr 70px 70px 90px; gap: 0.4rem; font-size: 0.7rem; color: #6b7280; padding: 0 0.2rem;">
+          <span>Group</span><span>Param</span><span>Min</span><span>Max</span><span>Reference</span>
+        </div>
+        <div class="pr-rows" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; border-top: 1px solid var(--border-color); padding-top: 0.4rem;">
+          ${allRows.map((r, i) => `
+            <div class="pr-row" data-idx="${i}" data-search="${(r.group + ' ' + r.paramName + ' ' + (r.label || '')).toLowerCase()}" style="display: grid; grid-template-columns: 1fr 1.4fr 70px 70px 90px; gap: 0.4rem; align-items: center;">
+              <span style="font-size: 0.72rem; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.group}">${r.group}</span>
+              <span style="font-size: 0.76rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.paramName}">${r.label || r.paramName}</span>
+              <input type="number" class="pr-min" value="${r.min}" step="any" style="width: 64px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
+              <input type="number" class="pr-max" value="${r.max}" step="any" style="width: 64px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
+              <span style="font-size: 0.68rem; color: #6b7280; white-space: nowrap;">${r.minRef} ~ ${r.maxRef}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 0.6rem;">
+          <button class="pr-close" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Close</button>
+          <button class="pr-save" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #22d3ee; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">💾 Save</button>
+        </div>
+      `;
+
+      const searchInput = card.querySelector('.pr-search');
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.toLowerCase().trim();
+        card.querySelectorAll('.pr-row').forEach(rowEl => {
+          rowEl.style.display = !q || rowEl.dataset.search.includes(q) ? '' : 'none';
+        });
+      });
+
+      card.querySelector('.pr-close').addEventListener('click', closeEditor);
+      card.querySelector('.pr-save').addEventListener('click', async () => {
+        const saveBtn = card.querySelector('.pr-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+
+        const generatorUpdates = [];
+        const fxUpdates = [];
+        card.querySelectorAll('.pr-row').forEach(rowEl => {
+          const idx = parseInt(rowEl.dataset.idx, 10);
+          const r = allRows[idx];
+          const min = parseFloat(rowEl.querySelector('.pr-min').value);
+          const max = parseFloat(rowEl.querySelector('.pr-max').value);
+          if (Number.isNaN(min) || Number.isNaN(max)) return;
+          if (r.sheet === 'generator') {
+            generatorUpdates.push({ type: r.type, paramName: r.paramName, min, max });
+          } else {
+            fxUpdates.push({ paramName: r.paramName, min, max });
+          }
+        });
+
+        try {
+          const res = await fetch('/api/param-ranges', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ generatorUpdates, fxUpdates })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+
+          this.showToast('✅ Parameter ranges saved (reload the app to apply)', 'success');
         } catch (err) {
           this.showToast('❌ Save failed: ' + err.message, 'error');
         } finally {
