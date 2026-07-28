@@ -155,7 +155,11 @@ export class Controls {
       edgeDetectIntensity: { name: 'edgeDetectIntensity', label: 'Edge Detect',   ...R.edgeDetectIntensity, type: 'range' },
       pixelateBlockSize:   { name: 'pixelateBlockSize',   label: 'Pixelate',      ...R.pixelateBlockSize,   type: 'range' },
       posterizeLevels:     { name: 'posterizeLevels',     label: 'Posterize',     ...R.posterizeLevels,     type: 'range' },
-      solarizeThreshold:   { name: 'solarizeThreshold',   label: 'Solarize',      ...R.solarizeThreshold,   type: 'range' }
+      solarizeThreshold:   { name: 'solarizeThreshold',   label: 'Solarize',      ...R.solarizeThreshold,   type: 'range' },
+      spherizeIntensity:      { name: 'spherizeIntensity',      label: 'Spherize',       ...R.spherizeIntensity,      type: 'range' },
+      littlePlanetIntensity:  { name: 'littlePlanetIntensity',  label: 'Little Planet',  ...R.littlePlanetIntensity,  type: 'range' },
+      canvasTextureIntensity: { name: 'canvasTextureIntensity', label: 'Canvas Texture', ...R.canvasTextureIntensity, type: 'range' },
+      paperTileIntensity:     { name: 'paperTileIntensity',     label: 'Paper Tile',     ...R.paperTileIntensity,     type: 'range' }
     };
     this.activeDocument = document;
 
@@ -2751,6 +2755,10 @@ export class Controls {
           case 'pixelateBlockSize':
           case 'posterizeLevels':
           case 'solarizeThreshold':
+          case 'spherizeIntensity':
+          case 'littlePlanetIntensity':
+          case 'canvasTextureIntensity':
+          case 'paperTileIntensity':
             r = forceFxOff(0);
             break;
           case 'rotation':

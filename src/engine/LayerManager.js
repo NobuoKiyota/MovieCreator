@@ -47,7 +47,11 @@ import {
   applyEdgeDetect,
   applyPixelate,
   applyPosterize,
-  applySolarize
+  applySolarize,
+  applySpherize,
+  applyLittlePlanet,
+  applyCanvasTexture,
+  applyPaperTile
 } from './Effects.js';
 
 export class Layer {
@@ -144,7 +148,11 @@ export class Layer {
       edgeDetectIntensity: 0,
       pixelateBlockSize: 0,
       posterizeLevels: 0,
-      solarizeThreshold: 0
+      solarizeThreshold: 0,
+      spherizeIntensity: 0,
+      littlePlanetIntensity: 0,
+      canvasTextureIntensity: 0,
+      paperTileIntensity: 0
     };
   }
 
@@ -682,6 +690,17 @@ export class Layer {
       });
     }
 
+    // Apply Spherize (geometric remap - grouped with Distortion above, both reshape pixel
+    // positions before the stylize/color FX group runs on the result)
+    if (this.effects.spherizeIntensity > 0) {
+      applySpherize(this.ctx, this.canvas, this.effects.spherizeIntensity);
+    }
+
+    // Apply Little Planet (geometric remap)
+    if (this.effects.littlePlanetIntensity > 0) {
+      applyLittlePlanet(this.ctx, this.canvas, this.effects.littlePlanetIntensity);
+    }
+
     // Apply Median Blur (stylize - runs early so later FX operate on the flattened result)
     if (this.effects.medianBlurIntensity > 0) {
       applyMedianBlur(this.ctx, this.canvas, this.effects.medianBlurIntensity);
@@ -720,6 +739,17 @@ export class Layer {
     // Apply Glow
     if (this.effects.glowIntensity > 0) {
       applyGlow(this.ctx, this.canvas, this.effects.glowIntensity, this.effects.glowMix);
+    }
+
+    // Apply Canvas Texture (physical-surface overlay - runs after Glow so the fine weave stays
+    // crisp on top instead of being softened by the glow blur)
+    if (this.effects.canvasTextureIntensity > 0) {
+      applyCanvasTexture(this.ctx, this.canvas, this.effects.canvasTextureIntensity);
+    }
+
+    // Apply Paper Tile (physical-surface overlay)
+    if (this.effects.paperTileIntensity > 0) {
+      applyPaperTile(this.ctx, this.canvas, this.effects.paperTileIntensity);
     }
 
     // Apply Kaleidoscope (2026-07-20: 3 -> 2, see applyKaleidoscope's own comment)

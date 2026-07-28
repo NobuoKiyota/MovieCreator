@@ -323,5 +323,13 @@ export const FX_PARAM_DESCRIPTIONS = {
   embossIntensity: '輪郭を浮き彫り(エンボス)風に立体的に見せる強さ',
   motionBlurIntensity: '指定角度方向へ画像を少しずつずらして重ねる、残像的なモーションブラーの強さ',
   motionBlurAngle: 'モーションブラーが伸びる方向の角度(度)',
-  radialBlurIntensity: '画面中心から放射状にズームするような、ラジアルブラー(ズームブラー)の強さ'
+  radialBlurIntensity: '画面中心から放射状にズームするような、ラジアルブラー(ズームブラー)の強さ',
+  edgeDetectIntensity: '輪郭線だけを検出して光るアウトライン(ネオンワイヤーフレーム)風に見せる強さ',
+  pixelateBlockSize: '画像を大きなブロック単位に粗くする、モザイク(ドット絵)化のブロックサイズ',
+  posterizeLevels: '色の階調(グラデーションの段数)を減らして、色面を平坦にする強さ。小さいほど色数が減る',
+  solarizeThreshold: '指定の明るさを超えた部分の色を反転させる(ソラリゼーション)しきい値',
+  spherizeIntensity: '画面中心をレンズのように膨らませる魚眼(球面化)の強さ',
+  littlePlanetIntensity: '画面を中心点の周りに巻き込んで、惑星のような球状パノラマ風に歪める強さ',
+  canvasTextureIntensity: '画布(キャンバス地)の織り目のような凹凸テクスチャを重ねる強さ',
+  paperTileIntensity: '紙の繊維のようなざらついた凹凸テクスチャを重ねる強さ'
 };

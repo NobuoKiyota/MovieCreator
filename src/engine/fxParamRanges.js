@@ -30,5 +30,9 @@ export const FX_PARAM_RANGES = {
   edgeDetectIntensity: { min: 0,     max: 100,  step: 1     },
   pixelateBlockSize:   { min: 0,     max: 64,   step: 1     },
   posterizeLevels:     { min: 0,     max: 32,   step: 1     },
-  solarizeThreshold:   { min: 0,     max: 255,  step: 1     }
+  solarizeThreshold:   { min: 0,     max: 255,  step: 1     },
+  spherizeIntensity:      { min: 0, max: 100, step: 1 },
+  littlePlanetIntensity:  { min: 0, max: 100, step: 1 },
+  canvasTextureIntensity: { min: 0, max: 100, step: 1 },
+  paperTileIntensity:     { min: 0, max: 100, step: 1 }
 };

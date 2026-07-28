@@ -668,3 +668,158 @@ export function applySolarize(ctx, canvas, threshold = 0) {
     }
   });
 }
+
+// 16. Spherize (fisheye bulge) - remaps each output pixel to sample from a source position closer
+// to the center, magnifying the middle of the frame like a glass sphere/fisheye lens. Unlike
+// applyDistortion (which shifts horizontal slices) or Little Planet below (which needs the polar
+// angle for its horizontal wrap), a radial-only bulge can skip atan2/sin/cos entirely: scaling the
+// (dx,dy) offset vector by a single radius-dependent factor reproduces the same "sample from
+// smaller radius near the edges" effect as the angle-based polar formula, at a fraction of the cost.
+export function applySpherize(ctx, canvas, intensity = 0) {
+  if (intensity <= 0) return;
+  const k = Math.min(1, intensity / 100) * 1.5; // bulge exponent - higher = more magnified center
+  processAtLowRes(ctx, canvas, 0.35, (data, w, h) => {
+    const src = Uint8ClampedArray.from(data);
+    const cx = w / 2, cy = h / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy);
+    for (let y = 0; y < h; y++) {
+      const dy = y - cy;
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx;
+        const r = Math.sqrt(dx * dx + dy * dy) / maxR;
+        const factor = r > 0.0001 ? Math.pow(r, k) : 1;
+        let sx = Math.round(cx + dx * factor);
+        let sy = Math.round(cy + dy * factor);
+        if (sx < 0) sx = 0; else if (sx >= w) sx = w - 1;
+        if (sy < 0) sy = 0; else if (sy >= h) sy = h - 1;
+        const outIdx = (y * w + x) * 4;
+        const srcIdx = (sy * w + sx) * 4;
+        data[outIdx] = src[srcIdx];
+        data[outIdx + 1] = src[srcIdx + 1];
+        data[outIdx + 2] = src[srcIdx + 2];
+        data[outIdx + 3] = src[srcIdx + 3];
+      }
+    }
+  });
+}
+
+// 17. Little Planet - wraps the whole frame into a polar "tiny planet" swirl: output angle (from
+// center) becomes source X (so a full turn around the center reads the full frame width, wrapping
+// like a cylinder), output radius becomes source Y. `intensity` blends between the untouched
+// identity mapping and the full polar remap, so the dial reads as "how much swirl" rather than a
+// binary on/off - consistent with every other FX slider in this app. Needs atan2 per pixel (unlike
+// Spherize, the angle itself is the whole point here), so this runs at a lower downsample ratio.
+export function applyLittlePlanet(ctx, canvas, intensity = 0) {
+  if (intensity <= 0) return;
+  const t = Math.min(1, intensity / 100);
+  processAtLowRes(ctx, canvas, 0.3, (data, w, h) => {
+    const src = Uint8ClampedArray.from(data);
+    const cx = w / 2, cy = h / 2;
+    const maxR = Math.sqrt(cx * cx + cy * cy);
+    for (let y = 0; y < h; y++) {
+      const dy = y - cy;
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx;
+        const r = Math.sqrt(dx * dx + dy * dy);
+        const theta = Math.atan2(dy, dx);
+        const lpX = ((theta + Math.PI) / (Math.PI * 2)) * w;
+        const lpY = (r / maxR) * h;
+        let sx = Math.round(x + (lpX - x) * t);
+        let sy = Math.round(y + (lpY - y) * t);
+        if (sx < 0) sx = 0; else if (sx >= w) sx = w - 1;
+        if (sy < 0) sy = 0; else if (sy >= h) sy = h - 1;
+        const outIdx = (y * w + x) * 4;
+        const srcIdx = (sy * w + sx) * 4;
+        data[outIdx] = src[srcIdx];
+        data[outIdx + 1] = src[srcIdx + 1];
+        data[outIdx + 2] = src[srcIdx + 2];
+        data[outIdx + 3] = src[srcIdx + 3];
+      }
+    }
+  });
+}
+
+// 18/19. Canvas Texture / Paper Tile - subtle "printed on a physical surface" relief textures.
+// Both draw a small tile ONCE onto a 50%-gray base and cache it as a CanvasPattern keyed by name
+// (module-scope, shared across every layer/context - a CanvasPattern isn't bound to the context
+// that created it) - a static bitmap, not per-frame noise, so the grain doesn't flicker between
+// frames the way applyFilmGrain's fresh-random-dots-every-call approach does. Painting that
+// 50%-gray-based tile with globalCompositeOperation='overlay' is the classic bump-map trick:
+// overlay(base, 0.5 gray) is a no-op, so only the tile's lighter/darker deviations from gray end up
+// lightening/darkening the frame underneath - reads as a raised/indented physical texture rather
+// than a flat color wash.
+const _texturePatternCache = {};
+function getOrCreateTexturePattern(ctx, key, tileSize, drawTileFn) {
+  let pattern = _texturePatternCache[key];
+  if (pattern) return pattern;
+  const tile = document.createElement('canvas');
+  tile.width = tileSize;
+  tile.height = tileSize;
+  const tctx = tile.getContext('2d');
+  drawTileFn(tctx, tileSize);
+  pattern = ctx.createPattern(tile, 'repeat');
+  _texturePatternCache[key] = pattern;
+  return pattern;
+}
+
+function drawCanvasWeaveTile(tctx, size) {
+  tctx.fillStyle = '#808080';
+  tctx.fillRect(0, 0, size, size);
+  tctx.lineWidth = 1;
+  tctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  for (let i = -size; i <= size * 2; i += 4) {
+    tctx.beginPath(); tctx.moveTo(i, 0); tctx.lineTo(i + size, size); tctx.stroke();
+  }
+  tctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  for (let i = -size; i <= size * 2; i += 4) {
+    tctx.beginPath(); tctx.moveTo(i + size, 0); tctx.lineTo(i, size); tctx.stroke();
+  }
+}
+
+export function applyCanvasTexture(ctx, canvas, intensity = 0) {
+  if (intensity <= 0) return;
+  const pattern = getOrCreateTexturePattern(ctx, 'canvas-weave', 64, drawCanvasWeaveTile);
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = Math.min(1, intensity / 100) * 0.5;
+  ctx.fillStyle = pattern;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+function drawPaperFiberTile(tctx, size) {
+  tctx.fillStyle = '#808080';
+  tctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 140; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const r = 0.5 + Math.random() * 1.6;
+    const shade = Math.random() > 0.5 ? 255 : 0;
+    tctx.fillStyle = `rgba(${shade},${shade},${shade},${0.12 + Math.random() * 0.18})`;
+    tctx.beginPath();
+    tctx.arc(x, y, r, 0, Math.PI * 2);
+    tctx.fill();
+  }
+  tctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  tctx.lineWidth = 0.6;
+  for (let i = 0; i < 20; i++) {
+    const x = Math.random() * size, y = Math.random() * size;
+    const len = 4 + Math.random() * 10;
+    const ang = Math.random() * Math.PI * 2;
+    tctx.beginPath();
+    tctx.moveTo(x, y);
+    tctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len);
+    tctx.stroke();
+  }
+}
+
+export function applyPaperTile(ctx, canvas, intensity = 0) {
+  if (intensity <= 0) return;
+  const pattern = getOrCreateTexturePattern(ctx, 'paper-fiber', 96, drawPaperFiberTile);
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = Math.min(1, intensity / 100) * 0.45;
+  ctx.fillStyle = pattern;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}

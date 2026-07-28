@@ -9,7 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
-- 2026-07-28 [Claude Code] 完了: 共通FX4種追加(Posterize/Solarize/Pixelate/Edge Detect)、Parameter RangesエディタにStep編集・リアルタイム反映・検索バグ修正、Magic Sparksの収束バグ修正、LFO Automationの0入力無視バグ修正、Layersプリセットドロップダウンのoptgroup階層化。全て未コミット
+- 2026-07-28 [Claude Code] 完了: 共通FX4種追加(Spherize/Little Planet/Canvas Texture/Paper Tile)、Layersプリセットドロップダウンをoptgroupからアコーディオン(details/summary)方式に作り直し
+- 2026-07-28 [Claude Code] 完了: 共通FX4種追加(Posterize/Solarize/Pixelate/Edge Detect)、Parameter RangesエディタにStep編集・リアルタイム反映・検索バグ修正、Magic Sparksの収束バグ修正、LFO Automationの0入力無視バグ修正、Layersプリセットドロップダウンのoptgroup階層化 (c457332)
 - 2026-07-27 20:44 [Claude Code] 完了: Cracked Wall/Magma Wallジェネレーター追加、共通FX4種(Median Blur/Emboss/Motion Blur/Radial Blur)追加、全パラメータmin/maxのxlsx管理システム構築、VideoRecorderのLFO書き出し漏れバグ修正
 - 2026-07-22 20:38 [Antigravity] 完了: 全ジェネレーターのcycleDuration範囲統一（500-20000ms）およびスライダーのダブルクリック初期値リセット実装
 - 2026-07-22 20:29 [Antigravity] 完了: Dot DesignのPattern Mode追加（星/文字/記号の一筆書き）およびパラメータUI整理
