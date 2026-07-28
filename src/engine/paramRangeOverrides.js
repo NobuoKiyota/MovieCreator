@@ -41,6 +41,7 @@ export async function loadParamRangeOverrides() {
       if (FX_PARAM_RANGES[name] && typeof fxOverrides[name].min === 'number' && typeof fxOverrides[name].max === 'number') {
         FX_PARAM_RANGES[name].min = fxOverrides[name].min;
         FX_PARAM_RANGES[name].max = fxOverrides[name].max;
+        if (typeof fxOverrides[name].step === 'number') FX_PARAM_RANGES[name].step = fxOverrides[name].step;
       }
     }
   }

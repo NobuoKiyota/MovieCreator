@@ -24,32 +24,35 @@ for required in (GEN_SHEET_NAME, FX_SHEET_NAME):
         print(f"Error: '{required}' sheet not found in the workbook!")
         exit(1)
 
-# Only Min/Max (Actual) - columns E/F on the Generator Params sheet, D/E on Common FX Params - are
-# read here. Min/Max (Reference) columns are documentation only (refreshed by
-# scripts/seed_param_ranges.mjs from the current code, never read back into the app).
+# Only the (Actual) columns are read here - Step (Actual)/Min (Actual)/Max (Actual). The
+# (Reference) columns are documentation only (refreshed by scripts/seed_param_ranges.mjs from the
+# current code, never read back into the app).
 
 generator_params = {}
 ws = wb[GEN_SHEET_NAME]
 for row in ws.iter_rows(min_row=2, values_only=True):
-    layer_type, param_name, label, step, min_actual, max_actual, min_ref, max_ref = row[:8]
+    layer_type, param_name, label, step_actual, min_actual, max_actual, step_ref, min_ref, max_ref = row[:9]
     if not layer_type or not param_name:
         continue
     if min_actual is None or max_actual is None:
         continue
-    generator_params.setdefault(str(layer_type).strip(), {})[str(param_name).strip()] = {
-        "min": min_actual,
-        "max": max_actual
-    }
+    entry = {"min": min_actual, "max": max_actual}
+    if step_actual is not None:
+        entry["step"] = step_actual
+    generator_params.setdefault(str(layer_type).strip(), {})[str(param_name).strip()] = entry
 
 fx_params = {}
 ws = wb[FX_SHEET_NAME]
 for row in ws.iter_rows(min_row=2, values_only=True):
-    param_name, label, step, min_actual, max_actual, min_ref, max_ref = row[:7]
+    param_name, label, step_actual, min_actual, max_actual, step_ref, min_ref, max_ref = row[:8]
     if not param_name:
         continue
     if min_actual is None or max_actual is None:
         continue
-    fx_params[str(param_name).strip()] = {"min": min_actual, "max": max_actual}
+    entry = {"min": min_actual, "max": max_actual}
+    if step_actual is not None:
+        entry["step"] = step_actual
+    fx_params[str(param_name).strip()] = entry
 
 mapping = {"generatorParams": generator_params, "fxParams": fx_params}
 

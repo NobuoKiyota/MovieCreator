@@ -1,0 +1,327 @@
+// Short Japanese one-line explanations for the Parameter Ranges editor's Description column.
+// Keyed by generator type -> param name for generator-specific params, and by param name alone
+// for shared common FX params (see fxParamRanges.js). Missing entries are fine (editor shows a
+// blank Description cell) - accuracy matters more than 100% coverage.
+export const GENERATOR_PARAM_DESCRIPTIONS = {
+  'sine-wave': {
+    amplitude: '波の振れ幅(px)。値が大きいほど上下の揺れが大きくなる',
+    frequency: '波の細かさ。値が大きいほど波の数が増え間隔が詰まる',
+    speed: '波が横に流れていく速さ',
+    strokeWidth: '線の太さ(px)',
+    yOffset: '波の中心の縦位置(0=画面上端、1=画面下端)',
+    colorLightness: '色の明るさ(0=暗い、100=白に近い)'
+  },
+  'noise-wave': {
+    amplitude: '波の振れ幅(px)。値が大きいほど上下の揺れが大きくなる',
+    frequency: '波のうねりの細かさ。大きいほど揺れの間隔が詰まる',
+    speed: '波が横に流れていく速さ',
+    strokeWidth: '線の太さ(px)',
+    yOffset: '波の中心の縦位置(0=画面上端、1=画面下端)',
+    roughness: 'ノイズの荒さ。大きいほど波形がギザギザで複雑になる',
+    colorLightness: '色の明るさ'
+  },
+  particles: {
+    count: '光の粒(パーティクル)の数',
+    minSize: '粒子の最小サイズ',
+    maxSize: '粒子の最大サイズ',
+    speed: '粒子が漂う最大速度',
+    glow: '粒子ににじむ発光(グロー)ぼかしの強さ',
+    colorLightness: '色の明るさ'
+  },
+  geometry: {
+    freqA: '横方向の振動数。曲線のループの数が変わる',
+    freqB: '縦方向の振動数。曲線のループの数が変わる',
+    speed: '曲線が変形していくアニメーション速度',
+    strokeWidth: '線の太さ(px)',
+    radius: '曲線全体の大きさ(半径)',
+    scaleX: '横方向の拡大率。1より大きいと図形が横長になる',
+    phaseOffset: '縦横の波のずれ(位相差)。図形の形が変わる',
+    colorLightness: '色の明るさ'
+  },
+  'growing-sketch': {
+    cycleDuration: '1周期の長さ(ミリ秒)。書き出しDurationと一致/整数倍にするとループが継ぎ目なく繋がる',
+    growSpeed: '線が伸びていく速さ',
+    branchCount: '中心から伸びる枝(線)の本数',
+    noiseScale: '線の曲がりくねり(ウィグル)の強さ',
+    strokeWidth: '線の太さ(px)',
+    density: '1本の枝が伸びる最大の長さ(点の数)',
+    colorLightness: '色の明るさ'
+  },
+  rain: {
+    count: '雨粒の数',
+    speed: '雨が降る速さ',
+    length: '雨粒(線)の長さ',
+    thickness: '雨粒の線の太さ',
+    angle: '雨が降る傾き角度(マイナスで左、プラスで右に傾く)',
+    colorLightness: '色の明るさ'
+  },
+  meteor: {
+    spawnRate: '流星が発生する頻度',
+    speed: '流星が飛ぶ速さ',
+    tailLength: '流星の尾の長さ',
+    thickness: '流星の線の太さ',
+    colorLightness: '色の明るさ'
+  },
+  ripple: {
+    spawnRate: '波紋が発生する頻度',
+    expansionSpeed: '波紋が広がる速さ',
+    thickness: '波紋の線の太さ',
+    maxRadius: '波紋が消える前に広がる最大半径',
+    colorLightness: '色の明るさ'
+  },
+  spectrum: {
+    bandCount: 'バー(帯域)の本数',
+    sensitivity: 'バーの高さの感度(反応の強さ)',
+    speed: 'バーが上下に揺れ動く速さ',
+    maxHeight: 'バーが伸びる最大の高さ',
+    barWidth: 'バー1本の幅',
+    gap: 'バー同士の間隔',
+    colorLightness: '色の明るさ'
+  },
+  'cube-3d': {
+    size: 'キューブの大きさ',
+    speedX: 'X軸まわりの回転速度',
+    speedY: 'Y軸まわりの回転速度',
+    speedZ: 'Z軸まわりの回転速度',
+    thickness: '辺(ワイヤーフレーム)の線の太さ',
+    fillOpacity: '面の塗りつぶし不透明度(0=線のみ、1で面もはっきり見える)',
+    colorLightness: '色の明るさ',
+    glow: '発光のにじみ(グロー)の強さ'
+  },
+  lightning: {
+    thickness: '稲妻の線の太さ',
+    complexity: '稲妻の枝分かれの細かさ(分割の深さ)。大きいほど細部が複雑になる',
+    displace: '稲妻のジグザグの振れ幅。大きいほどギザギザが激しくなる',
+    branchChance: '稲妻がサブブランチに枝分かれする確率',
+    frequency: '稲妻が発生する間隔(秒)。値が大きいほど間隔が空く',
+    colorLightness: '色の明るさ',
+    glow: '発光のにじみ(グロー)の強さ'
+  },
+  fog: {
+    density: '同時に表示される霧の塊(パフ)の最大数',
+    size: '霧の塊1つの基本サイズ',
+    speed: '霧が漂う最大速度',
+    fadeSpeed: '霧のフェードイン/アウトの速さ(小さいほどゆっくり)',
+    maxOpacity: '霧の最大の濃さ(不透明度)',
+    colorLightness: '色の明るさ'
+  },
+  flame: {
+    density: '炎の粒子の数',
+    speed: '炎が立ち上る速さ',
+    wiggle: '炎の左右の揺らめきの強さ',
+    height: '炎が燃え上がる高さ(粒子が消えるまでの目安)',
+    strokeWidth: '粒子1つの基本サイズ',
+    shapeType: '粒子の形状の種類(0〜11、particleShapes.jsの形状一覧から選択)',
+    colorVariance: '粒子ごとの色相のばらつき(0=全て同じ色)',
+    colorLightness: '色の明るさの基準値(炎の根元は明るく、先端は暗く変化する)'
+  },
+  snowflake: {
+    count: '雪の結晶の数',
+    symmetry: '結晶の対称の枝数(実際の雪は6)',
+    radius: '結晶1つの大きさ',
+    speed: '結晶が落ちる速さ',
+    thickness: '結晶の線の太さ',
+    colorLightness: '色の明るさ'
+  },
+  spirograph: {
+    R: '外側の円(固定円)の半径',
+    r: '内側の円(回転円)の半径。R・r・dの組み合わせで花模様が変わる',
+    d: 'ペン先(描画点)の内側円中心からの距離。模様の尖り具合が変わる',
+    revolutions: '描画する周回数。多いほど模様が密になる',
+    speed: '描画パターンが回転していくアニメーション速度',
+    strokeWidth: '線の太さ',
+    colorLightness: '色の明るさ'
+  },
+  aurora: {
+    bands: 'オーロラの帯(カーテン)の本数',
+    height: 'カーテンが垂れ下がる高さ',
+    waveFreq: '波打ちの細かさ(横方向のうねりの間隔)',
+    speed: '波が揺れ動く速さ',
+    colorLightness: '色の明るさ'
+  },
+  'dry-ice': {
+    density: '煙の粒子の数',
+    fallSpeed: '煙が下に流れ落ちる速さ',
+    diffusion: '煙が横に拡散する風の強さ',
+    maxSize: '粒子の最大サイズ',
+    shapeType: '粒子の形状の種類(0〜11、particleShapes.jsの形状一覧から選択)',
+    colorVariance: '粒子ごとの色相のばらつき(0=全て同じ色)',
+    colorLightness: '色の明るさ'
+  },
+  'shape-3d-particles': {
+    count: '粒子の数',
+    shapeType: '粒子の形状の種類(0〜11、particleShapes.jsの形状一覧から選択)',
+    speed: '粒子が漂う最大速度',
+    rotSpeedX: '各粒子の疑似3D X軸回転速度',
+    rotSpeedY: '各粒子の疑似3D Y軸回転速度',
+    rotSpeedZ: '各粒子の疑似3D Z軸回転速度',
+    minSize: '粒子の最小サイズ',
+    maxSize: '粒子の最大サイズ',
+    colorVariance: '粒子ごとの色相のばらつき(0=全て同じ色)',
+    colorLightness: '色の明るさ'
+  },
+  lighthouse: {
+    beamCount: '光の帯(ビーム)の本数',
+    rotationSpeed: 'ビームが回転する速さ',
+    beamWidth: 'ビームの開き角度(度)',
+    beamLength: 'ビームが届く長さ',
+    hueCycleSpeed: '色相が時間とともに変化していく速さ(0=固定色のまま)',
+    fogIntensity: 'ビームのムラ・かすみ・わずかな歪みの強さ(0=完全にクリアなビーム)',
+    occluderCount: 'ビームが回転中に暗くなる固定の遮蔽帯の数',
+    occluderWidth: '遮蔽帯1つの幅(度)',
+    occluderStrength: '遮蔽帯がビームを暗くする強さ',
+    colorLightness: '色の明るさ'
+  },
+  'shockwave-burst': {
+    cycleDuration: '1回の爆発演出の長さ(ミリ秒)。書き出しDurationと合わせると1回だけの展開になる',
+    shapeStyle: 'リングの形状(0=滑らかな円、1=ギザギザした星形、2=二重リング)',
+    ringCount: '同時に広がるリングの数',
+    maxRadius: 'リングが最大まで広がる半径',
+    ringThickness: 'リングの帯の太さ',
+    jaggedness: 'ギザギザの尖り具合(0=正円に近い、大きいほど鋭いトゲ状)',
+    rotationSpeed: '広がりながら回転する速さ(0=回転せずそのまま拡大)',
+    deformAmount: '輪郭が有機的に歪む強さ(0=完全な円運動のまま)',
+    debrisCount: 'リングとは別に飛び散る破片(火花)の数(0=なし)',
+    windupFrac: '爆発前に内側へ収縮する「溜め」動作にかける時間の比率',
+    holdFrac: '収縮しきった後、放出直前で静止する「溜め」の時間比率',
+    fadeInFrac: 'サイクル開始時のフェードインにかける時間比率',
+    fadeOutFrac: 'サイクル終了時のフェードアウトにかける時間比率',
+    colorLightness: '色の明るさ'
+  },
+  'glass-crack': {
+    cycleDuration: '1回のひび割れ演出の長さ(ミリ秒)',
+    crackCount: '中心から放射状に伸びるひびの本数',
+    crackLength: 'ひび1本の長さ',
+    complexity: 'ひびの折れ曲がり(キンク)の数。多いほど複雑な形になる',
+    displace: 'ひびの折れ曲がりの角度の振れ幅(ジャギー具合)',
+    branchChance: 'ひびが枝分かれする確率',
+    ringCount: 'ひび同士をつなぐ同心円状のウェブ(蜘蛛の巣状の輪)の本数',
+    holeRadius: '中心の穴の半径(0=単純なひび割れ、値を上げると銃痕のような貫通穴になる)',
+    growFrac: 'ひびが伸びきるまでにかける時間比率(サイクルの何%で成長完了するか)',
+    fadeOutFrac: 'サイクル終了時のフェードアウトにかける時間比率',
+    colorLightness: '色の明るさ'
+  },
+  'dot-design': {
+    patternMode: '表示パターン(0=放射円,1=直線スイープ,2=星形バースト,3=矢印,4=ノイズ万華鏡,5=順次塗りつぶし,6=波紋,7=ランダム点滅,8=星,9=アルファベット,10=ローマ数字,11=ヒエログリフ)の一筆書き',
+    reverse: '動きの向き(0=拡大/順方向、1=収束/逆方向。パターン8-11には影響しない)',
+    cycleDuration: '1周期の長さ(ミリ秒)。書き出しDurationと一致させるとループが継ぎ目なく繋がる',
+    sweepAngle: '模様が進む方向の角度(度)。Sweep/Arrow/Sequential Fillモードで使用',
+    gridSize: 'ドットの格子の細かさ(画面の短辺方向のマス数)。大きいほどドットが小さく密になる',
+    dotShape: 'ドットの形(0=四角、1=丸)',
+    symmetry: 'Star Burstのトゲの数、またはNoise Kaleidoscopeの鏡映分割数',
+    noiseScale: 'ノイズ模様の空間的な細かさ。Noise Kaleidoscopeの模様や輪郭のゆらぎに影響',
+    edgeJitter: '波面の輪郭がノイズで荒れる度合い(0=輪郭が完全に滑らか)',
+    patternSeedX: '模様のサンプリング元をずらすシード値(横方向)。同じ設定でも違う模様になる',
+    patternSeedY: '模様のサンプリング元をずらすシード値(縦方向)。同じ設定でも違う模様になる',
+    threshold: 'Noise Kaleidoscope専用の明るさしきい値(高いほど点灯するドットが減る)',
+    fillAmount: '1マスに対するドットの大きさの割合(%)',
+    colorMode: '色の付け方(0=単色、1=Colorから派生したレトロ調の多色パレットをセルごとに固定で使用)',
+    colorLightness: '色の明るさ'
+  },
+  'noise-glitch': {
+    sliceHeight: '走査線バンド1本の高さ(px)',
+    bandCount: 'バースト時に表示されるズレたバンドの本数',
+    displaceAmount: 'バースト時にバンドが横にズレる最大量(px)',
+    burstChance: '1フレームごとにバースト(激しい乱れ)が発生する確率',
+    burstDuration: 'バーストが続くフレーム数',
+    colorSplit: 'バースト時のRGBチャンネルのズレ幅(色収差的な縁取り)',
+    scanlineOpacity: '常時表示される背景の走査線の強さ',
+    blockDensity: 'バースト時に表示される矩形ブロックノイズの数',
+    colorLightness: '色の明るさ'
+  },
+  'milky-way': {
+    starDensity: '星の総数(背景の星空と天の川の帯、両方の元になる)',
+    starSizeMax: '最も明るい(手前の)星の最大サイズ',
+    bgBrightness: '帯の外側、背景全体に薄く見える星空の明るさ(%)',
+    bandBrightness: '天の川の帯部分の明るさ(%)。帯は同じ星をより濃く見せているだけ',
+    bandWidth: '天の川の帯の太さ',
+    taper: '帯の左右端がフェードアウトする範囲の割合(%)',
+    perspective: '帯の片端が太く明るく、もう片端が細く暗くなる遠近感の強さ',
+    perspectiveFlip: '遠近感の向き(0=右端が手前、1=左端が手前)',
+    waveAmplitude: '帯が上下にうねる振れ幅',
+    waveFreq: '帯のうねりの細かさ',
+    waveSpeed: '帯のうねりが動く速さ',
+    cloudDensity: '帯にかかる塵・雲のもやの濃さ',
+    cloudScale: '塵・雲のもやの塊の大きさ(小さい値ほど大きくゆったりした塊になる)',
+    scatterRate: '帯からこぼれる火花(飛散パーティクル)が発生する頻度',
+    scatterSpeed: '火花が帯から離れて落ちていく速さ',
+    scatterLifetime: '火花が消えるまでの寿命(フレーム数)',
+    scatterSize: '火花のサイズ',
+    scatterShapeType: '火花の形状の種類(0〜11、particleShapes.jsの形状一覧から選択)',
+    glow: '帯と火花にかかる発光のにじみの強さ',
+    colorLightness: '色の明るさ'
+  },
+  'color-wash': {
+    hue: '画面全体を覆う色の色相(色相環の角度)',
+    saturation: '画面全体を覆う色の彩度',
+    lightness: '画面全体を覆う色の明度',
+    intensity: 'この単色フィルタの強さ(0=完全に透明で下のレイヤーに影響なし、100=全面を塗りつぶす)。ブレンドモードと組み合わせて下のレイヤー全体の色味を変える用途'
+  },
+  'cracked-wall': {
+    cycleDuration: 'ひび割れ網が新しいパターンに切り替わる周期(ミリ秒)。短いほど頻繁に模様が変わる',
+    cameraCycleDuration: 'カメラが1周して元に戻るまでの時間(ミリ秒)。ひび割れの再生成周期とは独立',
+    seed: 'ひび割れパターンの乱数シード。変えると同じ設定のまま別の模様になる',
+    veinDensity: 'ひびの幹(トランク)の本数',
+    complexity: '各ひびの折れ曲がりの数',
+    displace: 'ひびの折れ曲がりの角度の振れ幅(ジャギー具合)',
+    branchChance: '折れ曲がりごとに枝分かれ(フォーク)する確率',
+    branchLength: 'ひびの幹1本の長さ',
+    hairlineCount: '幹とは無関係に画面を埋める細いひびの本数',
+    primaryWidth: '幹(太いひび)の線幅',
+    hairlineWidthRatio: '細いひびの線幅の、幹の線幅に対する比率',
+    wriggleAmount: 'ひびが出現後も続けるかすかな揺れ・うごめきの振れ幅(px)',
+    cameraPathMode: 'カメラの動き方(0=Orbit:楕円軌道で周回、1=Sweep & Return:一方向へ往復移動、2=Slow Spiral Zoom:回転しながらゆっくりズーム)',
+    cameraPanAmplitude: 'カメラが横に移動する範囲の大きさ',
+    cameraZoomBase: 'カメラの基本ズーム倍率',
+    cameraZoomAmplitude: 'ズームが周期的に変化する振れ幅',
+    cameraRotationAmplitude: 'カメラが周期的に回転する角度の振れ幅',
+    glowBoost: '幹(太いひび)にのみかかる発光のにじみの強さ',
+    colorLightness: '色の明るさ'
+  },
+  'magma-wall': {
+    cycleDuration: '亀裂網が新しいパターンに切り替わる周期(ミリ秒)。長めにしてゆったり変化させるのが基本',
+    cameraCycleDuration: 'カメラが1周して元に戻るまでの時間(ミリ秒)',
+    seed: '亀裂パターンの乱数シード。変えると同じ設定のまま別の模様になる',
+    veinDensity: '亀裂の幹(トランク)の本数',
+    complexity: '各亀裂の折れ曲がりの数',
+    displace: '亀裂の折れ曲がりの角度の振れ幅(ジャギー具合)',
+    branchChance: '折れ曲がりごとに枝分かれ(フォーク)する確率',
+    branchLength: '亀裂の幹1本の長さ',
+    hairlineCount: '幹とは無関係に画面を埋める細い亀裂の本数',
+    primaryWidth: '幹(太い亀裂)の線幅',
+    hairlineWidthRatio: '細い亀裂の線幅の、幹の線幅に対する比率',
+    wriggleAmount: '亀裂が続けるゆっくりとしたうごめきの振れ幅(px)。この生成器の「ゆっくり変動する」動きの主因',
+    cameraPathMode: 'カメラの動き方(0=Orbit:楕円軌道で周回、1=Sweep & Return:一方向へ往復移動、2=Slow Spiral Zoom:回転しながらゆっくりズーム)',
+    cameraPanAmplitude: 'カメラが横に移動する範囲の大きさ',
+    cameraZoomBase: 'カメラの基本ズーム倍率',
+    cameraZoomAmplitude: 'ズームが周期的に変化する振れ幅',
+    cameraRotationAmplitude: 'カメラが周期的に回転する角度の振れ幅',
+    glowBoost: '幹(太い亀裂)にのみかかる発光のにじみの強さ',
+    colorLightness: '色の明るさ'
+  }
+};
+
+export const FX_PARAM_DESCRIPTIONS = {
+  positionX: 'レイヤー全体の横位置のずれ(画面幅に対する割合、0=中央)',
+  positionY: 'レイヤー全体の縦位置のずれ(画面高さに対する割合、0=中央)',
+  rotation: 'レイヤー全体の回転角度(度)',
+  scale: 'レイヤー全体の拡大縮小率(1=等倍)',
+  strobe: 'レイヤーの明滅(点滅)速度。0でストロボなし、値が大きいほど速く点滅',
+  glowIntensity: 'レイヤー全体にかかる発光(ネオングロー)のぼかしの強さ',
+  feedbackDecay: 'モーショントレイル(残像)の残り具合。0で残像なし、1に近いほど長く尾を引く',
+  feedbackRotate: '残像が毎フレーム少しずつ回転していく角度。トレイルが渦を巻くように広がる',
+  distortionIntensity: '画面を横スライスして波打たせるノイズ歪み(スリット状の揺れ)の強さ',
+  kaleidoscopeSegment: '万華鏡効果の分割数。2未満でオフ、増やすほど画面が細かく鏡映複製される',
+  mirrorMode: '画面のミラー分割方法(0=オフ,1=左右2分割,2=上下2分割,3=上下左右4分割,4以降は6/8/12/16/20分割の放射ミラー、奇数値はさらに交互反転させたバリエーション)',
+  chromaticOffset: 'RGB各色チャンネルをずらして表示する色収差の強さ',
+  hueRotate: '完成した映像の色相を丸ごと回転させる角度(度)。各generatorのColorパラメータを変えずに色味を変えられる',
+  rotateX: '疑似3DのX軸(縦軸)まわりの回転角度',
+  rotateY: '疑似3DのY軸(横軸)まわりの回転角度',
+  rotateZ: '疑似3DのZ軸(奥行き軸)まわりの回転角度。見た目は画面上の通常の回転と同じ',
+  translateZ: '疑似3Dの奥行き方向への移動量。手前/奥に動かして大きさ・遠近感を変える',
+  medianBlurIntensity: '画像を色の塊にまとめてポスタライズする(油絵・イラスト風にする)強さ',
+  embossIntensity: '輪郭を浮き彫り(エンボス)風に立体的に見せる強さ',
+  motionBlurIntensity: '指定角度方向へ画像を少しずつずらして重ねる、残像的なモーションブラーの強さ',
+  motionBlurAngle: 'モーションブラーが伸びる方向の角度(度)',
+  radialBlurIntensity: '画面中心から放射状にズームするような、ラジアルブラー(ズームブラー)の強さ'
+};

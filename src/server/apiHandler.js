@@ -249,8 +249,10 @@ function regenerateMoveScores(workbook, dataDir, nameToType) {
 // shape export_param_ranges.py writes to data/param_ranges.json - mirrors that script's logic in
 // JS (same relationship as regenerateMoveScores above mirrors export_move_scores.py) so
 // GET /api/param-ranges can regenerate on-demand on every page load instead of requiring the user
-// to remember to re-run the Python script after every Excel edit. Only Min/Max (Actual) columns
-// are read; Min/Max (Reference) is documentation-only and never flows into the app.
+// to remember to re-run the Python script after every Excel edit. Only the (Actual) columns are
+// read; the (Reference) columns are documentation-only and never flow into the app.
+// Row shape: Generator Params = [type, paramName, label, stepActual, minActual, maxActual, ...ref];
+// Common FX Params = [paramName, label, stepActual, minActual, maxActual, ...ref].
 function readParamRangesFromWorkbook(workbook) {
   const generatorParams = {};
   const genWs = workbook.Sheets['Generator Params'];
@@ -258,12 +260,14 @@ function readParamRangesFromWorkbook(workbook) {
     const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r] || [];
-      const [type, paramName, , , minActual, maxActual] = row;
+      const [type, paramName, , stepActual, minActual, maxActual] = row;
       if (!type || !paramName) continue;
       if (typeof minActual !== 'number' || typeof maxActual !== 'number') continue;
       const t = String(type).trim();
       if (!generatorParams[t]) generatorParams[t] = {};
-      generatorParams[t][String(paramName).trim()] = { min: minActual, max: maxActual };
+      const entry = { min: minActual, max: maxActual };
+      if (typeof stepActual === 'number') entry.step = stepActual;
+      generatorParams[t][String(paramName).trim()] = entry;
     }
   }
 
@@ -273,10 +277,12 @@ function readParamRangesFromWorkbook(workbook) {
     const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
     for (let r = 1; r < rows.length; r++) {
       const row = rows[r] || [];
-      const [paramName, , , minActual, maxActual] = row;
+      const [paramName, , stepActual, minActual, maxActual] = row;
       if (!paramName) continue;
       if (typeof minActual !== 'number' || typeof maxActual !== 'number') continue;
-      fxParams[String(paramName).trim()] = { min: minActual, max: maxActual };
+      const entry = { min: minActual, max: maxActual };
+      if (typeof stepActual === 'number') entry.step = stepActual;
+      fxParams[String(paramName).trim()] = entry;
     }
   }
 
@@ -292,9 +298,9 @@ function readParamRangesDetailFromWorkbook(workbook) {
   if (genWs) {
     const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
     for (let r = 1; r < rows.length; r++) {
-      const [type, paramName, label, step, minActual, maxActual, minRef, maxRef] = rows[r] || [];
+      const [type, paramName, label, stepActual, minActual, maxActual, stepRef, minRef, maxRef] = rows[r] || [];
       if (!type || !paramName) continue;
-      generatorRows.push({ type, paramName, label, step, min: minActual, max: maxActual, minRef, maxRef });
+      generatorRows.push({ type, paramName, label, step: stepActual, min: minActual, max: maxActual, stepRef, minRef, maxRef });
     }
   }
 
@@ -303,9 +309,9 @@ function readParamRangesDetailFromWorkbook(workbook) {
   if (fxWs) {
     const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
     for (let r = 1; r < rows.length; r++) {
-      const [paramName, label, step, minActual, maxActual, minRef, maxRef] = rows[r] || [];
+      const [paramName, label, stepActual, minActual, maxActual, stepRef, minRef, maxRef] = rows[r] || [];
       if (!paramName) continue;
-      fxRows.push({ paramName, label, step, min: minActual, max: maxActual, minRef, maxRef });
+      fxRows.push({ paramName, label, step: stepActual, min: minActual, max: maxActual, stepRef, minRef, maxRef });
     }
   }
 
@@ -743,14 +749,32 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
   if (req.method === 'GET' && pathname === '/api/param-ranges') {
     try {
       const excelPath = path.resolve(workspaceRoot, 'Excels', 'ParameterRanges.xlsx');
+      const backupPath = `${excelPath}.bak`;
       const outPath = path.join(dataDir, 'param_ranges.json');
+
+      // Corruption safety net: XLSX.readFile can throw on a malformed workbook (the exact failure
+      // mode that prompted this whole safety pass - repeated programmatic read/write cycles left
+      // an earlier version of this file needing Excel's "repair" dialog). Falls back to the most
+      // recent pre-save backup (see the POST handler below, which writes one before every
+      // overwrite) instead of hard-failing the whole editor/app boot.
+      const readWorkbookSafely = () => {
+        try {
+          return XLSX.readFile(excelPath);
+        } catch (err) {
+          if (fs.existsSync(backupPath)) {
+            console.warn(`[API Server] ParameterRanges.xlsx failed to read (${err.message}) - falling back to ${backupPath}`);
+            return XLSX.readFile(backupPath);
+          }
+          throw err;
+        }
+      };
 
       // ?detail=1 returns the full editable row list (label/step included, one entry per sheet
       // row, in sheet order) for the in-app Parameter Ranges editor. Without it, returns the
       // compact {generatorParams, fxParams} shape the app reads at runtime (paramRangeOverrides.js).
       if (searchParams.get('detail') === '1') {
         if (!fs.existsSync(excelPath)) throw new Error(`Parameter ranges workbook not found: ${excelPath}`);
-        const workbook = XLSX.readFile(excelPath);
+        const workbook = readWorkbookSafely();
         const detail = readParamRangesDetailFromWorkbook(workbook);
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
         res.end(JSON.stringify(detail));
@@ -759,7 +783,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
 
       let mapping;
       if (fs.existsSync(excelPath)) {
-        const workbook = XLSX.readFile(excelPath);
+        const workbook = readWorkbookSafely();
         mapping = readParamRangesFromWorkbook(workbook);
         fs.writeFileSync(outPath, JSON.stringify(mapping, null, 2), 'utf-8');
       } else if (fs.existsSync(outPath)) {
@@ -772,7 +796,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     } catch (err) {
       console.error('[API Server] /api/param-ranges GET execution error:', err);
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ error: err.message }));
+      res.end(JSON.stringify({ error: `${err.message} (Excelファイルが破損している可能性があります。node scripts/seed_param_ranges.mjs を実行して再生成してください)` }));
     }
     return;
   }
@@ -791,16 +815,46 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           throw new Error('generatorUpdates and fxUpdates (arrays) are required');
         }
 
+        // Server-side defense in depth: the in-app editor already blocks this client-side, but
+        // this endpoint could also be hit directly (curl, another future client) - an inverted
+        // min>=max range would produce a broken <input type=range min max> in the real app, and a
+        // zero/negative step would produce a useless or broken <input type=range step> too.
+        const allUpdates = [...generatorUpdates, ...fxUpdates];
+        const badUpdate = allUpdates.find(u => typeof u.min !== 'number' || typeof u.max !== 'number' || Number.isNaN(u.min) || Number.isNaN(u.max) || u.min >= u.max);
+        if (badUpdate) {
+          throw new Error(`Invalid range for "${badUpdate.paramName}": min (${badUpdate.min}) must be less than max (${badUpdate.max})`);
+        }
+        const badStep = allUpdates.find(u => u.step !== undefined && (typeof u.step !== 'number' || Number.isNaN(u.step) || u.step <= 0));
+        if (badStep) {
+          throw new Error(`Invalid step for "${badStep.paramName}": step (${badStep.step}) must be a positive number`);
+        }
+
         const excelPath = path.resolve(workspaceRoot, 'Excels', 'ParameterRanges.xlsx');
         if (!fs.existsSync(excelPath)) throw new Error(`Parameter ranges workbook not found: ${excelPath}`);
+
+        // Backup-before-overwrite: this exact file previously hit an Excel "needs repair" error
+        // after repeated programmatic read/write cycles (see CLAUDE.md's Parameter Ranges notes).
+        // A single rolling backup of the last-known-good state means a bad save (or a future
+        // SheetJS write quirk) is always recoverable by copying .bak back over the main file.
+        const backupPath = `${excelPath}.bak`;
+        fs.copyFileSync(excelPath, backupPath);
+
         const workbook = XLSX.readFile(excelPath);
 
+        // Column layout: Generator Params = [type, paramName, label, stepActual, minActual,
+        // maxActual, ...ref]; Common FX Params = [paramName, label, stepActual, minActual,
+        // maxActual, ...ref]. step is optional in the update payload (older clients / partial
+        // updates) - only touch that column when the caller actually sent one.
         const genWs = workbook.Sheets['Generator Params'];
         if (genWs) {
           const rows = XLSX.utils.sheet_to_json(genWs, { header: 1, raw: true, defval: null });
           for (const u of generatorUpdates) {
             const idx = rows.findIndex((r, i) => i > 0 && r[0] === u.type && r[1] === u.paramName);
-            if (idx >= 0) { rows[idx][4] = u.min; rows[idx][5] = u.max; }
+            if (idx >= 0) {
+              if (typeof u.step === 'number') rows[idx][3] = u.step;
+              rows[idx][4] = u.min;
+              rows[idx][5] = u.max;
+            }
           }
           workbook.Sheets['Generator Params'] = XLSX.utils.aoa_to_sheet(rows);
         }
@@ -810,7 +864,11 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
           const rows = XLSX.utils.sheet_to_json(fxWs, { header: 1, raw: true, defval: null });
           for (const u of fxUpdates) {
             const idx = rows.findIndex((r, i) => i > 0 && r[0] === u.paramName);
-            if (idx >= 0) { rows[idx][3] = u.min; rows[idx][4] = u.max; }
+            if (idx >= 0) {
+              if (typeof u.step === 'number') rows[idx][2] = u.step;
+              rows[idx][3] = u.min;
+              rows[idx][4] = u.max;
+            }
           }
           workbook.Sheets['Common FX Params'] = XLSX.utils.aoa_to_sheet(rows);
         }

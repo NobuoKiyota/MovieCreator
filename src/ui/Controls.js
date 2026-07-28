@@ -5,6 +5,7 @@
  * Right Lower: Inspector Panel (Detailed parameter tuning & LFO settings for the ACTIVE layer only)
  */
 import { FX_PARAM_RANGES } from '../engine/fxParamRanges.js';
+import { loadParamRangeOverrides } from '../engine/paramRangeOverrides.js';
 import { MOTION_TEMPLATES } from '../engine/motionTemplates.js';
 import { hexToHsl } from '../engine/Generators.js';
 import {
@@ -88,9 +89,26 @@ export class Controls {
     this.inputLocalImportProjectEl = document.getElementById('input-local-import-project');
 
     // Layer Export/Import elements (API based)
-    this.presetSelectEl = document.getElementById('preset-select');
+    this.presetSelectEl = document.getElementById('preset-select'); // hidden <select>, kept as the
+    // single source of truth for "which preset file is selected" (apiImportLayer() reads .value) -
+    // the visible picker below only ever writes to it, never reads its own separate state.
+    this.presetPickerBtnEl = document.getElementById('preset-picker-btn');
+    this.presetPickerPanelEl = document.getElementById('preset-picker-panel');
     this.btnApiImportLayerEl = document.getElementById('btn-api-import-layer');
     this.btnApiExportLayerEl = document.getElementById('btn-api-export-layer-inspector');
+
+    // Mirrors LayerManager.js's getDefaultName(type) return values 1:1 - presets are always saved
+    // as "<default name><NN><optional suffix>.mvlayer", so this list is what refreshFileList()
+    // groups the Import Preset dropdown by (see PRESET_GROUP_PREFIXES usage there). Sorted
+    // longest-first so no name can accidentally shadow a longer one sharing the same start.
+    this.PRESET_GROUP_PREFIXES = [
+      'Sine Wave Layer', 'Neon Horizon (Noise)', 'Magic Sparks (Fireflies)', 'Lissajous Orbit',
+      'Sketch Growth', 'Neon Rain', 'Meteor Shower', 'Pulse Ripples', 'Audio Spectrum',
+      'Rotating Glowing Cube', 'Neon Lightning', 'Neon Fog', 'Cyber Flame', 'Neon Snowflake',
+      'Neon Spirograph', 'Aurora Curtain', 'Dry Ice Smoke', '3D Shape Particles', 'Lighthouse Beacon',
+      'Shockwave Burst', 'Glass Crack', 'Dot Design', 'Noise Glitch', 'Milky Way', 'Color Wash',
+      'Cracked Wall', 'Magma Wall'
+    ].sort((a, b) => b.length - a.length);
 
     // Floating Inspector elements
     this.btnDetachInspectorEl = document.getElementById('btn-detach-inspector');
@@ -108,29 +126,36 @@ export class Controls {
     // for the modulation-bounds counterpart) so the two never drift apart; label/step/type stay
     // here since they're UI-only concerns.
     const R = FX_PARAM_RANGES;
+    // `step` now comes entirely from FX_PARAM_RANGES (see fxParamRanges.js) via the `...R.xxx`
+    // spread below - it used to also be hardcoded per-line here (duplicated, and unreachable by
+    // the Parameter Ranges editor); removed so Parameter Ranges can override it like min/max.
     this.fxConfigs = {
-      positionX:           { name: 'positionX',           label: 'Position X',     ...R.positionX,           step: 0.01,  type: 'range' },
-      positionY:           { name: 'positionY',           label: 'Position Y',     ...R.positionY,           step: 0.01,  type: 'range' },
-      rotation:            { name: 'rotation',            label: 'Rotation',       ...R.rotation,            step: 1,     type: 'range' },
-      scale:               { name: 'scale',               label: 'Scale',          ...R.scale,               step: 0.05,  type: 'range' },
-      strobe:              { name: 'strobe',              label: 'Strobe Speed',   ...R.strobe,              step: 0.5,   type: 'range' },
-      glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',      ...R.glowIntensity,       step: 1,     type: 'range' },
-      feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails',  ...R.feedbackDecay,       step: 0.01,  type: 'range' },
-      feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',     ...R.feedbackRotate,      step: 0.001, type: 'range' },
-      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',     ...R.distortionIntensity, step: 1,     type: 'range' },
-      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, step: 1,     type: 'range' },
-      mirrorMode:          { name: 'mirrorMode',          label: 'Mirror Mode',    ...R.mirrorMode,          step: 1,     type: 'range' },
-      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     step: 0.5,   type: 'range' },
-      hueRotate:           { name: 'hueRotate',           label: 'Hue Rotate',     ...R.hueRotate,           step: 1,     type: 'range' },
-      rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             step: 1,     type: 'range' },
-      rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             step: 1,     type: 'range' },
-      rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',       ...R.rotateZ,             step: 1,     type: 'range' },
-      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',      ...R.translateZ,          step: 5,     type: 'range' },
-      medianBlurIntensity: { name: 'medianBlurIntensity', label: 'Median Blur',    ...R.medianBlurIntensity, step: 1,     type: 'range' },
-      embossIntensity:     { name: 'embossIntensity',     label: 'Emboss',         ...R.embossIntensity,     step: 1,     type: 'range' },
-      motionBlurIntensity: { name: 'motionBlurIntensity', label: 'Motion Blur',    ...R.motionBlurIntensity, step: 1,     type: 'range' },
-      motionBlurAngle:     { name: 'motionBlurAngle',     label: 'Motion Blur Angle', ...R.motionBlurAngle,  step: 1,     type: 'range' },
-      radialBlurIntensity: { name: 'radialBlurIntensity', label: 'Radial Blur',    ...R.radialBlurIntensity, step: 0.01,  type: 'range' }
+      positionX:           { name: 'positionX',           label: 'Position X',     ...R.positionX,           type: 'range' },
+      positionY:           { name: 'positionY',           label: 'Position Y',     ...R.positionY,           type: 'range' },
+      rotation:            { name: 'rotation',            label: 'Rotation',       ...R.rotation,            type: 'range' },
+      scale:               { name: 'scale',               label: 'Scale',          ...R.scale,               type: 'range' },
+      strobe:              { name: 'strobe',              label: 'Strobe Speed',   ...R.strobe,              type: 'range' },
+      glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',      ...R.glowIntensity,       type: 'range' },
+      feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails',  ...R.feedbackDecay,       type: 'range' },
+      feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',     ...R.feedbackRotate,      type: 'range' },
+      distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',     ...R.distortionIntensity, type: 'range' },
+      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, type: 'range' },
+      mirrorMode:          { name: 'mirrorMode',          label: 'Mirror Mode',    ...R.mirrorMode,          type: 'range' },
+      chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     type: 'range' },
+      hueRotate:           { name: 'hueRotate',           label: 'Hue Rotate',     ...R.hueRotate,           type: 'range' },
+      rotateX:             { name: 'rotateX',             label: 'Rotate X',       ...R.rotateX,             type: 'range' },
+      rotateY:             { name: 'rotateY',             label: 'Rotate Y',       ...R.rotateY,             type: 'range' },
+      rotateZ:             { name: 'rotateZ',             label: 'Rotate Z',       ...R.rotateZ,             type: 'range' },
+      translateZ:          { name: 'translateZ',          label: 'Depth (Z)',      ...R.translateZ,          type: 'range' },
+      medianBlurIntensity: { name: 'medianBlurIntensity', label: 'Median Blur',    ...R.medianBlurIntensity, type: 'range' },
+      embossIntensity:     { name: 'embossIntensity',     label: 'Emboss',         ...R.embossIntensity,     type: 'range' },
+      motionBlurIntensity: { name: 'motionBlurIntensity', label: 'Motion Blur',    ...R.motionBlurIntensity, type: 'range' },
+      motionBlurAngle:     { name: 'motionBlurAngle',     label: 'Motion Blur Angle', ...R.motionBlurAngle,  type: 'range' },
+      radialBlurIntensity: { name: 'radialBlurIntensity', label: 'Radial Blur',    ...R.radialBlurIntensity, type: 'range' },
+      edgeDetectIntensity: { name: 'edgeDetectIntensity', label: 'Edge Detect',   ...R.edgeDetectIntensity, type: 'range' },
+      pixelateBlockSize:   { name: 'pixelateBlockSize',   label: 'Pixelate',      ...R.pixelateBlockSize,   type: 'range' },
+      posterizeLevels:     { name: 'posterizeLevels',     label: 'Posterize',     ...R.posterizeLevels,     type: 'range' },
+      solarizeThreshold:   { name: 'solarizeThreshold',   label: 'Solarize',      ...R.solarizeThreshold,   type: 'range' }
     };
     this.activeDocument = document;
 
@@ -400,6 +425,23 @@ export class Controls {
     if (this.btnApiImportLayerEl) {
       this.btnApiImportLayerEl.addEventListener('click', () => {
         this.apiImportLayer();
+      });
+    }
+
+    // Preset picker: accordion popup (open on button click, close on outside click or Escape).
+    // The panel's contents are (re)built by refreshFileList() since they depend on the file list.
+    if (this.presetPickerBtnEl && this.presetPickerPanelEl) {
+      this.presetPickerBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.presetPickerPanelEl.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (e) => {
+        if (this.presetPickerPanelEl.classList.contains('hidden')) return;
+        if (e.target === this.presetPickerBtnEl || this.presetPickerPanelEl.contains(e.target)) return;
+        this.presetPickerPanelEl.classList.add('hidden');
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') this.presetPickerPanelEl.classList.add('hidden');
       });
     }
 
@@ -2235,16 +2277,26 @@ export class Controls {
         const inputTime = modPanel.querySelector('.mod-time');
         const selectBehavior = modPanel.querySelector('.mod-behavior');
 
+        // `parseFloat(...) || fallback` looks like a reasonable "use fallback when invalid" guard,
+        // but `0` is falsy in JS - typing a genuine 0 into Min/Max/Time silently got replaced by
+        // the fallback instead of actually being applied. Number.isNaN() only rejects truly
+        // unparseable input (empty string, garbage text), so a real 0 now sticks.
         inputMin.addEventListener('change', (e) => {
-          mod.min = Math.max(config.min, Math.min(config.max, parseFloat(e.target.value) || config.min));
+          const parsed = parseFloat(e.target.value);
+          const val = Number.isNaN(parsed) ? config.min : parsed;
+          mod.min = Math.max(config.min, Math.min(config.max, val));
           this.mainApp.renderSingleFrame();
         });
         inputMax.addEventListener('change', (e) => {
-          mod.max = Math.max(config.min, Math.min(config.max, parseFloat(e.target.value) || config.max));
+          const parsed = parseFloat(e.target.value);
+          const val = Number.isNaN(parsed) ? config.max : parsed;
+          mod.max = Math.max(config.min, Math.min(config.max, val));
           this.mainApp.renderSingleFrame();
         });
         inputTime.addEventListener('change', (e) => {
-          mod.timePct = Math.max(1, Math.min(100, parseInt(e.target.value) || 50));
+          const parsed = parseInt(e.target.value, 10);
+          const val = Number.isNaN(parsed) ? 50 : parsed;
+          mod.timePct = Math.max(1, Math.min(100, val));
           this.mainApp.renderSingleFrame();
         });
         selectBehavior.addEventListener('change', (e) => {
@@ -2695,6 +2747,10 @@ export class Controls {
           case 'motionBlurIntensity':
           case 'motionBlurAngle':
           case 'radialBlurIntensity':
+          case 'edgeDetectIntensity':
+          case 'pixelateBlockSize':
+          case 'posterizeLevels':
+          case 'solarizeThreshold':
             r = forceFxOff(0);
             break;
           case 'rotation':
@@ -3716,13 +3772,63 @@ export class Controls {
           this.projectSelectEl.appendChild(opt);
         });
 
-        // 2. Presets Dropdown
+        // 2. Presets Picker - grouped by originating generator type into a collapsible accordion
+        // (<details>/<summary> per group, native expand/collapse, no toggle JS needed) instead of a
+        // long flat list. Presets are always saved as "<layer's default name><NN><optional
+        // suffix>.mvlayer" (see LayerManager.js's getDefaultName()), so matching a filename's prefix
+        // against that same list of names groups reliably without needing any per-preset metadata.
+        // Anything that doesn't match a known prefix (test/one-off files like "glass_bullet_hole",
+        // "Milky Way_Test") falls into an "Other" group at the end instead of being silently dropped.
+        // this.presetSelectEl itself stays a plain hidden <select> - it's only ever written to by
+        // clicking a .preset-item below, and read by apiImportLayer()/etc as before.
         this.presetSelectEl.innerHTML = '<option value="">-- Import Preset --</option>';
+        const grouped = new Map();
         data.presets.forEach(file => {
-          const opt = document.createElement('option');
-          opt.value = file;
-          opt.textContent = file.replace(/\.mvlayer$/, '');
-          this.presetSelectEl.appendChild(opt);
+          const nameNoExt = file.replace(/\.mvlayer$/, '');
+          const groupName = this.PRESET_GROUP_PREFIXES.find(prefix => nameNoExt.startsWith(prefix)) || 'Other';
+          if (!grouped.has(groupName)) grouped.set(groupName, []);
+          grouped.get(groupName).push({ file, nameNoExt });
+        });
+        const groupNames = Array.from(grouped.keys()).sort((a, b) => {
+          if (a === 'Other') return 1;
+          if (b === 'Other') return -1;
+          return a.localeCompare(b);
+        });
+        this.presetPickerPanelEl.innerHTML = '';
+        groupNames.forEach(groupName => {
+          const items = grouped.get(groupName);
+          items.forEach(({ file }) => {
+            const opt = document.createElement('option');
+            opt.value = file;
+            this.presetSelectEl.appendChild(opt);
+          });
+
+          const details = document.createElement('details');
+          details.className = 'preset-group';
+          const summary = document.createElement('summary');
+          summary.textContent = groupName;
+          const countEl = document.createElement('span');
+          countEl.className = 'preset-group-count';
+          countEl.textContent = items.length;
+          summary.appendChild(countEl);
+          details.appendChild(summary);
+
+          items.forEach(({ file, nameNoExt }) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'preset-item';
+            itemEl.textContent = nameNoExt;
+            itemEl.title = nameNoExt;
+            itemEl.addEventListener('click', () => {
+              this.presetSelectEl.value = file;
+              this.presetPickerBtnEl.textContent = nameNoExt;
+              this.presetPickerPanelEl.querySelectorAll('.preset-item.active').forEach(el => el.classList.remove('active'));
+              itemEl.classList.add('active');
+              this.presetPickerPanelEl.classList.add('hidden');
+            });
+            details.appendChild(itemEl);
+          });
+
+          this.presetPickerPanelEl.appendChild(details);
         });
       }
     } catch (err) {
@@ -4387,7 +4493,7 @@ export class Controls {
               <span style="font-size: 0.78rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.param}">${r.label}</span>
               <input type="number" class="os-score" min="0" max="5" step="1" value="${r.score !== null ? r.score : ''}" style="width: 48px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.78rem;">
               <input type="number" class="os-move" min="0" max="5" step="1" value="${r.move !== null ? r.move : ''}" style="width: 48px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.78rem;">
-              <input type="text" class="os-comment" value="${(r.comment || '').replace(/"/g, '&quot;')}" style="padding: 0.2rem 0.4rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
+              <input type="text" class="os-comment" value="${(r.comment || '').replace(/"/g, '&quot;')}" style="padding: 0.2rem 0.4rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.86rem;">
             </div>
           `).join('')}
         </div>
@@ -4441,6 +4547,71 @@ export class Controls {
     render();
   }
 
+  // Re-applies freshly saved Parameter Ranges to the already-running app, no reload needed -
+  // called right after a successful Parameter Ranges save so the effect is visible immediately
+  // while still previewing (that immediacy was the whole point of asking for this over a reload).
+  //
+  // Two places bake min/max in and need to be explicitly refreshed:
+  // 1. FX_PARAM_RANGES (mutated in place) and the generator-param override lookup, both populated
+  //    once at boot by loadParamRangeOverrides() (see paramRangeOverrides.js) - calling it again
+  //    re-reads /api/param-ranges and updates both.
+  // 2. Every existing layer's `modulations[name].min/max` (the LFO panel's own draggable bounds),
+  //    copied in from #1 once at Layer construction time (LayerManager.initModulations) and never
+  //    read live again. Deliberately overwritten here even if the user had since hand-tuned an
+  //    LFO's min/max away from the param's default range - enforcing the newly saved range
+  //    everywhere is the actual point of this whole editor, not just for brand-new layers.
+  //
+  // Also clamps each param/FX's current static value into the new bounds, so a value that was
+  // previously outside a freshly-lowered max doesn't sit invisibly out of range until next touched.
+  //
+  // A third spot also needed fixing here (found while adding Step support): this.fxConfigs is
+  // built ONCE in the constructor via `...R.xxx`, a plain object-spread VALUE COPY of
+  // FX_PARAM_RANGES at that moment - not a live reference. Mutating FX_PARAM_RANGES via
+  // loadParamRangeOverrides() alone would leave this.fxConfigs (what createModulatableField
+  // actually reads to stamp a slider's min/max/step attributes) silently stale, unlike generator
+  // params where getParameterConfig() is always re-read fresh. Explicitly re-synced below.
+  async refreshParamRangesLive() {
+    await loadParamRangeOverrides();
+
+    for (const name in this.fxConfigs) {
+      const range = FX_PARAM_RANGES[this.fxConfigs[name].name];
+      if (!range) continue;
+      this.fxConfigs[name].min = range.min;
+      this.fxConfigs[name].max = range.max;
+      if (typeof range.step === 'number') this.fxConfigs[name].step = range.step;
+    }
+
+    for (const layer of this.layerManager.layers) {
+      const configs = layer.generator.getParameterConfig(); // already reflects the fresh override (LayerManager.createGenerator wraps this)
+      for (const config of configs) {
+        if (config.type !== 'range') continue;
+        const mod = layer.modulations[config.name];
+        if (mod) {
+          mod.min = config.min;
+          mod.max = config.max;
+        }
+        if (layer.generator.params[config.name] !== undefined) {
+          layer.generator.params[config.name] = Math.min(config.max, Math.max(config.min, layer.generator.params[config.name]));
+        }
+      }
+
+      for (const name in FX_PARAM_RANGES) {
+        const range = FX_PARAM_RANGES[name];
+        const mod = layer.modulations[name];
+        if (mod) {
+          mod.min = range.min;
+          mod.max = range.max;
+        }
+        if (layer.effects[name] !== undefined) {
+          layer.effects[name] = Math.min(range.max, Math.max(range.min, layer.effects[name]));
+        }
+      }
+    }
+
+    this.rebuildInspector();
+    this.mainApp.renderSingleFrame();
+  }
+
   // In-app editor for every generator/FX parameter's Min/Max (Actual) range, backed by
   // Excels/ParameterRanges.xlsx (see paramRangeOverrides.js / apiHandler.js's /api/param-ranges).
   // Built to replace directly opening the xlsx in Excel: SheetJS-written files occasionally fail
@@ -4449,7 +4620,7 @@ export class Controls {
   // means only this app ever touches the file, matching the existing 📝 Opinion Sheet editor's
   // "browser popup, save writes back to xlsx + regenerates JSON" pattern.
   async showParamRangesEditor() {
-    const popup = window.open('', 'MovieCreatorParamRanges', 'width=760,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+    const popup = window.open('', 'MovieCreatorParamRanges', 'width=900,height=820,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
     if (!popup) {
       this.showToast('⚠️ Popup blocker prevented opening the editor window. Please allow popups for this site.', 'error');
       return;
@@ -4481,6 +4652,7 @@ export class Controls {
 
     let generatorRows = [];
     let fxRows = [];
+    let descriptions = { generator: {}, fx: {} };
     try {
       const res = await fetch('/api/param-ranges?detail=1');
       const data = await res.json();
@@ -4491,36 +4663,96 @@ export class Controls {
       card.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem;">読み込み失敗: ${err.message}</p>`;
       return;
     }
+    // Description text is optional, code-authored reference content (not xlsx-managed) - missing
+    // the module or a specific entry just means blank Description cells, never a hard failure.
+    try {
+      const descMod = await import('./paramDescriptions.js');
+      descriptions.generator = descMod.GENERATOR_PARAM_DESCRIPTIONS || {};
+      descriptions.fx = descMod.FX_PARAM_DESCRIPTIONS || {};
+    } catch (e) {
+      // paramDescriptions.js not present yet - fine, Description column just renders blank.
+    }
 
     // One combined list for rendering/filtering; `group` distinguishes the two sheets so the
-    // save step can route each row's edits back to the correct one.
+    // save step can route each row's edits back to the correct one. Rows arrive already grouped
+    // by generator type / FX (the API preserves sheet row order), so a simple "did the group
+    // change since the last row" scan is enough to assign alternating colors per group below.
     const allRows = [
-      ...generatorRows.map(r => ({ group: r.type, sheet: 'generator', ...r })),
-      ...fxRows.map(r => ({ group: 'Common FX', sheet: 'fx', ...r }))
+      ...generatorRows.map(r => ({ group: r.type, sheet: 'generator', ...r, desc: (descriptions.generator[r.type] || {})[r.paramName] || '' })),
+      ...fxRows.map(r => ({ group: 'Common FX', sheet: 'fx', ...r, desc: descriptions.fx[r.paramName] || '' }))
     ];
 
+    // Alternating 2-color scheme per generator group (odd/even, changes at each group boundary
+    // so consecutive generators are visually distinguishable), plus one fixed distinct color for
+    // the Common FX block since those params apply uniformly to every layer type, not just one.
+    const GROUP_COLOR_A = '#67e8f9';
+    const GROUP_COLOR_B = '#a5b4fc';
+    const FX_COLOR = '#fbbf24';
+    let prevGroup = null;
+    let groupToggle = false;
+    allRows.forEach(r => {
+      if (r.group === 'Common FX') {
+        r.color = FX_COLOR;
+        return;
+      }
+      if (r.group !== prevGroup) {
+        groupToggle = !groupToggle;
+        prevGroup = r.group;
+      }
+      r.color = groupToggle ? GROUP_COLOR_A : GROUP_COLOR_B;
+    });
+
+    // Column widths (px): Group, Param, Min, Max, Step, Reference, Description - persisted across
+    // editor sessions so a user's preferred layout (e.g. narrower Group/Param, wider Description)
+    // sticks around instead of resetting every time this popup is reopened.
+    const COL_STORAGE_KEY = 'mc-param-ranges-col-widths';
+    const DEFAULT_COL_WIDTHS = [100, 190, 62, 62, 62, 110, 300];
+    let colWidths = DEFAULT_COL_WIDTHS.slice();
+    try {
+      const saved = JSON.parse(localStorage.getItem(COL_STORAGE_KEY));
+      if (Array.isArray(saved) && saved.length === DEFAULT_COL_WIDTHS.length) colWidths = saved;
+    } catch (e) {
+      // malformed/missing localStorage entry - fall back to defaults
+    }
+    const applyColWidths = () => {
+      pDoc.documentElement.style.setProperty('--pr-cols', colWidths.map(w => `${w}px`).join(' '));
+    };
+
+    const COL_LABELS = ['Group', 'Param', 'Min', 'Max', 'Step', 'Reference', 'Description'];
+
     const render = () => {
+      applyColWidths();
       card.innerHTML = `
         <h3 style="margin: 0; font-size: 1.05rem; color: #e2e8f0; font-weight: 700;">📐 Parameter Ranges (${allRows.length})</h3>
-        <p style="margin: 0; font-size: 0.75rem; color: #9ca3af;">全ジェネレーター・共通FXパラメータのスライダー可動範囲(Min/Max)を編集します。Reference列は現在のコードのデフォルト値(参考表示、編集不可)。保存するとExcels/ParameterRanges.xlsxへ書き戻され、data/param_ranges.jsonも自動再生成されます。</p>
+        <p style="margin: 0; font-size: 0.75rem; color: #9ca3af;">全ジェネレーター・共通FXパラメータのスライダー可動範囲(Min/Max)とスライダーの変化幅(Step)を編集します。Step未入力の場合はコードのデフォルト値のまま。Reference列は現在のコードのデフォルト値(参考表示、編集不可)。列の境界をドラッグすると幅を調整できます(次回開いた時も記憶されます)。保存するとExcels/ParameterRanges.xlsxへ書き戻され、既存レイヤーも含めてメインアプリへ即座に反映されます(リロード不要、プレビューで確認しながら調整できます)。</p>
         <input type="text" class="pr-search" placeholder="ジェネレーター名・パラメータ名で絞り込み..." style="padding: 0.4rem 0.6rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 6px; font-size: 0.8rem;">
-        <div style="display: grid; grid-template-columns: 1fr 1.4fr 70px 70px 90px; gap: 0.4rem; font-size: 0.7rem; color: #6b7280; padding: 0 0.2rem;">
-          <span>Group</span><span>Param</span><span>Min</span><span>Max</span><span>Reference</span>
-        </div>
-        <div class="pr-rows" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; border-top: 1px solid var(--border-color); padding-top: 0.4rem;">
-          ${allRows.map((r, i) => `
-            <div class="pr-row" data-idx="${i}" data-search="${(r.group + ' ' + r.paramName + ' ' + (r.label || '')).toLowerCase()}" style="display: grid; grid-template-columns: 1fr 1.4fr 70px 70px 90px; gap: 0.4rem; align-items: center;">
-              <span style="font-size: 0.72rem; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.group}">${r.group}</span>
-              <span style="font-size: 0.76rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.paramName}">${r.label || r.paramName}</span>
-              <input type="number" class="pr-min" value="${r.min}" step="any" style="width: 64px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
-              <input type="number" class="pr-max" value="${r.max}" step="any" style="width: 64px; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.72rem;">
-              <span style="font-size: 0.68rem; color: #6b7280; white-space: nowrap;">${r.minRef} ~ ${r.maxRef}</span>
-            </div>
-          `).join('')}
+        <div class="pr-scroll" style="flex: 1; overflow: auto; border-top: 1px solid var(--border-color);">
+          <div class="pr-header-row" style="display: grid; grid-template-columns: var(--pr-cols); gap: 0.4rem; font-size: 0.82rem; color: #6b7280; padding: 0.4rem 0.2rem; position: sticky; top: 0; background: #090714; z-index: 1;">
+            ${COL_LABELS.map((label, ci) => `
+              <div class="pr-col-header" style="position: relative; padding-right: 8px;">
+                ${label}
+                ${ci < COL_LABELS.length - 1 ? `<span class="pr-resize-handle" data-col="${ci}" style="position: absolute; right: -6px; top: -4px; bottom: -4px; width: 10px; cursor: col-resize; z-index: 2;"></span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <div class="pr-rows" style="display: flex; flex-direction: column; gap: 0.3rem; padding-top: 0.3rem;">
+            ${allRows.map((r, i) => `
+              <div class="pr-row" data-idx="${i}" data-search="${(r.group + ' ' + r.paramName + ' ' + (r.label || '')).toLowerCase()}" style="display: grid; grid-template-columns: var(--pr-cols); gap: 0.4rem; align-items: center;">
+                <span style="font-size: 0.84rem; color: ${r.color}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.group}">${r.group}</span>
+                <span style="font-size: 0.86rem; color: ${r.color}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${r.paramName}">${r.label || r.paramName}</span>
+                <input type="number" class="pr-min" value="${r.min}" step="any" style="width: 100%; box-sizing: border-box; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.86rem;">
+                <input type="number" class="pr-max" value="${r.max}" step="any" style="width: 100%; box-sizing: border-box; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.86rem;">
+                <input type="number" class="pr-step" value="${r.step != null ? r.step : ''}" step="any" min="0" style="width: 100%; box-sizing: border-box; padding: 0.2rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: #e2e8f0; border-radius: 4px; font-size: 0.86rem;">
+                <span style="font-size: 0.82rem; color: #6b7280; white-space: nowrap;" title="Step (Reference): ${r.stepRef != null ? r.stepRef : '-'}">${r.minRef} ~ ${r.maxRef}</span>
+                <span style="font-size: 0.82rem; color: #8b95a8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${(r.desc || '').replace(/"/g, '&quot;')}">${r.desc || ''}</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
         <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 0.6rem;">
           <button class="pr-close" style="padding: 0.4rem 1rem; border-radius: 6px; border: 1px solid #4b5563; background: transparent; color: #9ca3af; cursor: pointer; font-size: 0.85rem;">Close</button>
           <button class="pr-save" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: none; background: #22d3ee; color: #0a0a0f; cursor: pointer; font-size: 0.85rem; font-weight: 600;">💾 Save</button>
+          <button class="pr-reload" title="Save already applies changes immediately - this is only a fallback full refresh, e.g. if something looks out of sync" style="padding: 0.4rem 1.2rem; border-radius: 6px; border: 1px solid #22d3ee; background: transparent; color: #22d3ee; cursor: pointer; font-size: 0.85rem; font-weight: 600;">🔄 Reload App (fallback)</button>
         </div>
       `;
 
@@ -4528,13 +4760,76 @@ export class Controls {
       searchInput.addEventListener('input', () => {
         const q = searchInput.value.toLowerCase().trim();
         card.querySelectorAll('.pr-row').forEach(rowEl => {
-          rowEl.style.display = !q || rowEl.dataset.search.includes(q) ? '' : 'none';
+          // Explicitly 'grid' (not '') when visible - `.style.display = ''` clears the display
+          // property from the element's shared inline style attribute entirely, which also wipes
+          // out the `display: grid` that was baked into that same attribute in the row's markup
+          // (there's no separate "revert to template" state to fall back to). That silently
+          // dropped every row back to normal block flow the first time this ran, permanently -
+          // typing then clearing the search box never restored the grid layout, matching the bug.
+          rowEl.style.display = (!q || rowEl.dataset.search.includes(q)) ? 'grid' : 'none';
+        });
+      });
+
+      // Column resize: drag the handle at the right edge of a header cell to adjust that
+      // column's width; the shared --pr-cols CSS variable updates every row (and the header) at
+      // once, so only one property needs touching per drag frame instead of 264+ row elements.
+      card.querySelectorAll('.pr-resize-handle').forEach(handle => {
+        handle.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const col = parseInt(handle.dataset.col, 10);
+          const startX = e.clientX;
+          const startWidth = colWidths[col];
+          const onMove = (moveEvt) => {
+            const delta = moveEvt.clientX - startX;
+            colWidths[col] = Math.max(30, startWidth + delta);
+            applyColWidths();
+          };
+          const onUp = () => {
+            pDoc.removeEventListener('mousemove', onMove);
+            pDoc.removeEventListener('mouseup', onUp);
+            try { localStorage.setItem(COL_STORAGE_KEY, JSON.stringify(colWidths)); } catch (e) { /* storage unavailable - width just won't persist */ }
+          };
+          pDoc.addEventListener('mousemove', onMove);
+          pDoc.addEventListener('mouseup', onUp);
         });
       });
 
       card.querySelector('.pr-close').addEventListener('click', closeEditor);
+
+      card.querySelector('.pr-reload').addEventListener('click', () => {
+        const target = (window.opener && !window.opener.closed) ? window.opener : window;
+        if (!confirm('メインアプリを再読み込みします。保存していない作業中のレイヤー構成は失われます。続行しますか?')) return;
+        target.location.reload();
+      });
+
       card.querySelector('.pr-save').addEventListener('click', async () => {
         const saveBtn = card.querySelector('.pr-save');
+
+        // Validate min < max and step > 0 BEFORE building the payload - an inverted range or a
+        // zero/negative step would produce a broken/useless <input type=range> in the real app
+        // (native range inputs don't clamp sanely when min > max, and step<=0 is meaningless).
+        // Invalid rows get a red outline instead of silently saving.
+        let invalidCount = 0;
+        card.querySelectorAll('.pr-row').forEach(rowEl => {
+          const minEl = rowEl.querySelector('.pr-min');
+          const maxEl = rowEl.querySelector('.pr-max');
+          const stepEl = rowEl.querySelector('.pr-step');
+          const min = parseFloat(minEl.value);
+          const max = parseFloat(maxEl.value);
+          const stepRaw = stepEl.value.trim();
+          const step = stepRaw === '' ? null : parseFloat(stepRaw);
+          const rangeInvalid = Number.isNaN(min) || Number.isNaN(max) || min >= max;
+          const stepInvalid = step !== null && (Number.isNaN(step) || step <= 0);
+          minEl.style.borderColor = rangeInvalid ? '#ef4444' : 'var(--border-color)';
+          maxEl.style.borderColor = rangeInvalid ? '#ef4444' : 'var(--border-color)';
+          stepEl.style.borderColor = stepInvalid ? '#ef4444' : 'var(--border-color)';
+          if (rangeInvalid || stepInvalid) invalidCount++;
+        });
+        if (invalidCount > 0) {
+          this.showToast(`⚠️ ${invalidCount}件のMin/Max/Stepが不正です(Min≧Max、またはStep≦0)。赤枠の行を確認してください`, 'error');
+          return;
+        }
+
         saveBtn.disabled = true;
         saveBtn.textContent = 'Saving...';
 
@@ -4545,11 +4840,12 @@ export class Controls {
           const r = allRows[idx];
           const min = parseFloat(rowEl.querySelector('.pr-min').value);
           const max = parseFloat(rowEl.querySelector('.pr-max').value);
-          if (Number.isNaN(min) || Number.isNaN(max)) return;
+          const stepRaw = rowEl.querySelector('.pr-step').value.trim();
+          const step = stepRaw === '' ? undefined : parseFloat(stepRaw);
           if (r.sheet === 'generator') {
-            generatorUpdates.push({ type: r.type, paramName: r.paramName, min, max });
+            generatorUpdates.push({ type: r.type, paramName: r.paramName, min, max, step });
           } else {
-            fxUpdates.push({ paramName: r.paramName, min, max });
+            fxUpdates.push({ paramName: r.paramName, min, max, step });
           }
         });
 
@@ -4562,7 +4858,8 @@ export class Controls {
           const data = await res.json();
           if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
 
-          this.showToast('✅ Parameter ranges saved (reload the app to apply)', 'success');
+          await this.refreshParamRangesLive();
+          this.showToast('✅ Parameter ranges saved and applied - check the preview now', 'success');
         } catch (err) {
           this.showToast('❌ Save failed: ' + err.message, 'error');
         } finally {

@@ -565,3 +565,106 @@ export function applyRadialBlur(ctx, canvas, intensity = 0) {
   }
   ctx.restore();
 }
+
+
+// 12. Edge Detect (Sobel) - classic Gx/Gy Sobel gradient magnitude, reusing the same
+// processAtLowRes downsample+kernel scaffolding as applyEmboss. Unlike Emboss (which blends a
+// gray relief with the original color), this REPLACES the frame with edges-only: alpha is set to
+// the normalized gradient magnitude and RGB keeps the source pixel's own color, so the result
+// reads as a glowing colored outline on transparent - a "neon wireframe" look that fits this
+// app's transparent-overlay convention better than GIMP's own opaque-black-background Sobel.
+export function applyEdgeDetect(ctx, canvas, intensity = 0) {
+  if (intensity <= 0) return;
+  const strength = Math.min(1, intensity / 100);
+  const gxKernel = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+  const gyKernel = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+  processAtLowRes(ctx, canvas, 0.35, (data, w, h) => {
+    const src = Uint8ClampedArray.from(data);
+    for (let y = 0; y < h; y++) {
+      const yMin = Math.max(0, y - 1), yMax = Math.min(h - 1, y + 1);
+      for (let x = 0; x < w; x++) {
+        const xMin = Math.max(0, x - 1), xMax = Math.min(w - 1, x + 1);
+        let gx = 0, gy = 0;
+        for (let ny = yMin; ny <= yMax; ny++) {
+          const kRow = (ny - y + 1) * 3;
+          const rowBase = ny * w;
+          for (let nx = xMin; nx <= xMax; nx++) {
+            const idx = (rowBase + nx) * 4;
+            const gray = (src[idx] + src[idx + 1] + src[idx + 2]) * 0.3333333;
+            const k = kRow + (nx - x + 1);
+            gx += gray * gxKernel[k];
+            gy += gray * gyKernel[k];
+          }
+        }
+        const mag = Math.min(255, Math.sqrt(gx * gx + gy * gy));
+        const outIdx = (y * w + x) * 4;
+        data[outIdx] = src[outIdx];
+        data[outIdx + 1] = src[outIdx + 1];
+        data[outIdx + 2] = src[outIdx + 2];
+        data[outIdx + 3] = Math.min(255, mag * strength);
+      }
+    }
+  });
+}
+
+// 13. Pixelate / Mosaic - no per-pixel math at all: downsample to a small buffer sized so each
+// small-buffer pixel becomes one `blockSize`-px block on upscale, then blow it back up with
+// imageSmoothingEnabled=false (nearest-neighbor) instead of the smooth interpolation
+// processAtLowRes's shared upscale step uses - the cheapest possible new FX (two drawImage calls).
+export function applyPixelate(ctx, canvas, blockSize = 0) {
+  if (blockSize <= 0) return;
+  const w = canvas.width, h = canvas.height;
+  const smallW = Math.max(1, Math.round(w / blockSize));
+  const smallH = Math.max(1, Math.round(h / blockSize));
+  const small = document.createElement('canvas');
+  small.width = smallW;
+  small.height = smallH;
+  small.getContext('2d').drawImage(canvas, 0, 0, smallW, smallH);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(small, 0, 0, w, h);
+  ctx.restore();
+}
+
+// 14. Posterize - reduces each color channel to `levels` discrete steps, the flat-color-banding
+// look GIMP's Posterize is known for. Despite being pure per-pixel math (no neighborhood access),
+// measured getImageData+putImageData ALONE cost ~14ms at 1080p regardless of any processing - a
+// fixed floor that eats most of a 60fps frame budget before any math even runs - so this still
+// goes through processAtLowRes's downsample (mild ratio: unlike Median Blur/Emboss this isn't
+// meant to soften detail, just shrink the buffer size) plus a 256-entry lookup table so the
+// per-pixel work is a single array index instead of two Math.round() calls per channel.
+export function applyPosterize(ctx, canvas, levels = 0) {
+  if (levels <= 0) return;
+  const steps = Math.max(2, Math.round(levels));
+  const factor = 255 / (steps - 1);
+  const lut = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) lut[v] = Math.round(Math.round(v / factor) * factor);
+  processAtLowRes(ctx, canvas, 0.5, (data) => {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = lut[data[i]];
+      data[i + 1] = lut[data[i + 1]];
+      data[i + 2] = lut[data[i + 2]];
+    }
+  });
+}
+
+// 15. Solarize - inverts any channel value above `threshold`, the classic darkroom-accident look.
+// Same lookup-table + mild-downsample treatment as applyPosterize, for the same
+// getImageData/putImageData fixed-cost reason. threshold=0 is treated as "off" (consistent with
+// every other FX slider in this app) rather than GIMP's literal "invert everything above pure
+// black" - a negligible practical loss for a big consistency win.
+export function applySolarize(ctx, canvas, threshold = 0) {
+  if (threshold <= 0) return;
+  const t = Math.min(255, threshold);
+  const lut = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) lut[v] = v > t ? 255 - v : v;
+  processAtLowRes(ctx, canvas, 0.5, (data) => {
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = lut[data[i]];
+      data[i + 1] = lut[data[i + 1]];
+      data[i + 2] = lut[data[i + 2]];
+    }
+  });
+}

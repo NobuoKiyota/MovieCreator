@@ -43,7 +43,11 @@ import {
   applyMedianBlur,
   applyEmboss,
   applyMotionBlur,
-  applyRadialBlur
+  applyRadialBlur,
+  applyEdgeDetect,
+  applyPixelate,
+  applyPosterize,
+  applySolarize
 } from './Effects.js';
 
 export class Layer {
@@ -136,7 +140,11 @@ export class Layer {
       embossIntensity: 0,
       motionBlurIntensity: 0,
       motionBlurAngle: 0,
-      radialBlurIntensity: 0
+      radialBlurIntensity: 0,
+      edgeDetectIntensity: 0,
+      pixelateBlockSize: 0,
+      posterizeLevels: 0,
+      solarizeThreshold: 0
     };
   }
 
@@ -216,7 +224,10 @@ export class Layer {
     generator.getParameterConfig = () => originalGetParameterConfig().map(config => {
       if (config.type !== 'range') return config;
       const override = getGeneratorParamOverride(type, config.name);
-      return override ? { ...config, min: override.min, max: override.max } : config;
+      if (!override) return config;
+      const merged = { ...config, min: override.min, max: override.max };
+      if (typeof override.step === 'number') merged.step = override.step;
+      return merged;
     });
     return generator;
   }
@@ -679,6 +690,26 @@ export class Layer {
     // Apply Emboss (stylize)
     if (this.effects.embossIntensity > 0) {
       applyEmboss(this.ctx, this.canvas, this.effects.embossIntensity);
+    }
+
+    // Apply Edge Detect (stylize)
+    if (this.effects.edgeDetectIntensity > 0) {
+      applyEdgeDetect(this.ctx, this.canvas, this.effects.edgeDetectIntensity);
+    }
+
+    // Apply Pixelate (stylize)
+    if (this.effects.pixelateBlockSize > 0) {
+      applyPixelate(this.ctx, this.canvas, this.effects.pixelateBlockSize);
+    }
+
+    // Apply Posterize (stylize)
+    if (this.effects.posterizeLevels > 0) {
+      applyPosterize(this.ctx, this.canvas, this.effects.posterizeLevels);
+    }
+
+    // Apply Solarize (stylize)
+    if (this.effects.solarizeThreshold > 0) {
+      applySolarize(this.ctx, this.canvas, this.effects.solarizeThreshold);
     }
 
     // Apply Hue Rotate

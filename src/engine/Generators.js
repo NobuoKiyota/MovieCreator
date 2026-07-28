@@ -327,7 +327,14 @@ export class ParticlesGenerator extends BaseGenerator {
       size: Math.random() * (this.params.maxSize - this.params.minSize) + this.params.minSize,
       alpha: Math.random() * 0.5 + 0.5,
       pulseSpeed: Math.random() * 0.05 + 0.01,
-      angle: Math.random() * Math.PI * 2
+      angle: Math.random() * Math.PI * 2,
+      // Unique per-particle offset into the shared noise field (see update()) - without this,
+      // every particle samples the exact same static field by (x,y) alone, so any two particles
+      // that pass through the same spot get steered the same direction. Over time that channels
+      // the whole swarm onto a handful of shared "streamlines" (killing the independent firefly
+      // look) instead of each particle wandering its own path.
+      noiseOffsetX: Math.random() * 1000,
+      noiseOffsetY: Math.random() * 1000
     };
   }
 
@@ -343,8 +350,14 @@ export class ParticlesGenerator extends BaseGenerator {
       }
     }
 
+    // Slow shared drift of the sampling coordinates, like a wind pattern gradually shifting -
+    // without this, even a single particle's own (offset) slice of the field is still static and
+    // can settle into a permanent fixed loop for the rest of the clip. Each particle's own
+    // noiseOffsetX/Y still keeps it sampling a different region than every other particle, so
+    // this shared drift doesn't reintroduce the "everyone converges together" problem.
+    const timeOffset = time * 0.0002;
     for (let p of this.particles) {
-      const noiseAngle = noiseInst.noise2D(p.x * 0.005, p.y * 0.005) * Math.PI * 2;
+      const noiseAngle = noiseInst.noise2D(p.x * 0.005 + p.noiseOffsetX + timeOffset, p.y * 0.005 + p.noiseOffsetY) * Math.PI * 2;
       p.vx += Math.cos(noiseAngle) * 0.1;
       p.vy += Math.sin(noiseAngle) * 0.1;
 

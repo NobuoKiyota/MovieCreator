@@ -202,10 +202,10 @@
             <h2>Layers</h2>
             <div class="layer-actions" style="display: flex; gap: 0.4rem; align-items: center;">
               <button id="btn-add-layer" class="btn btn-secondary" style="padding: 0.3rem 0.5rem; font-size: 0.75rem;">+ Add</button>
-              <div class="select-wrapper">
-                <select id="preset-select" style="min-width: 100px; font-size: 0.75rem; height: 26px; padding: 0.15rem 1.25rem 0.15rem 0.4rem;">
-                  <option value="">-- Import Preset --</option>
-                </select>
+              <div class="preset-picker">
+                <button type="button" id="preset-picker-btn" class="btn btn-secondary" style="min-width: 120px; max-width: 180px; font-size: 0.75rem; height: 26px; padding: 0.15rem 0.5rem; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-- Import Preset --</button>
+                <select id="preset-select" class="hidden"><option value="">-- Import Preset --</option></select>
+                <div id="preset-picker-panel" class="preset-picker-panel hidden"></div>
               </div>
               <button id="btn-api-import-layer" class="btn btn-secondary btn-small" title="Import selected layer preset from presets/ directory" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; height: 26px;">Import</button>
 

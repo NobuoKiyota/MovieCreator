@@ -2,1115 +2,1399 @@
   "generatorParams": {
     "sine-wave": {
       "amplitude": {
-        "min": 10,
-        "max": 300
+        "min": 5,
+        "max": 300,
+        "step": 1
       },
       "frequency": {
         "min": 0.001,
-        "max": 0.03
+        "max": 0.7,
+        "step": 0.001
       },
       "speed": {
         "min": 0.1,
-        "max": 10
+        "max": 10,
+        "step": 0.1
       },
       "strokeWidth": {
-        "min": 1,
-        "max": 20
+        "min": 0.5,
+        "max": 15,
+        "step": 0.1
       },
       "yOffset": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "noise-wave": {
       "amplitude": {
-        "min": 10,
-        "max": 700
+        "min": 5,
+        "max": 250,
+        "step": 1
       },
       "frequency": {
         "min": 0.001,
-        "max": 0.02
+        "max": 0.2,
+        "step": 0.001
       },
       "speed": {
-        "min": 0.1,
-        "max": 8
+        "min": 0.05,
+        "max": 0.5,
+        "step": 0.001
       },
       "strokeWidth": {
-        "min": 1,
-        "max": 20
+        "min": 0.5,
+        "max": 15,
+        "step": 0.1
       },
       "yOffset": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "roughness": {
         "min": 0.1,
-        "max": 2
+        "max": 2,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "particles": {
       "count": {
-        "min": 10,
-        "max": 300
+        "min": 0,
+        "max": 500,
+        "step": 5
       },
       "minSize": {
-        "min": 1,
-        "max": 10
+        "min": 0.05,
+        "max": 10,
+        "step": 0.01
       },
       "maxSize": {
         "min": 2,
-        "max": 30
+        "max": 500,
+        "step": 0.5
       },
       "speed": {
         "min": 0.1,
-        "max": 10
+        "max": 10,
+        "step": 0.1
       },
       "glow": {
         "min": 0,
-        "max": 50
+        "max": 50,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "geometry": {
       "freqA": {
         "min": 1,
-        "max": 20
+        "max": 50,
+        "step": 1
       },
       "freqB": {
         "min": 1,
-        "max": 20
+        "max": 50,
+        "step": 1
       },
       "speed": {
         "min": 0.1,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "strokeWidth": {
         "min": 0.5,
-        "max": 15
+        "max": 15,
+        "step": 0.1
       },
       "radius": {
         "min": 50,
-        "max": 400
+        "max": 400,
+        "step": 5
       },
       "scaleX": {
         "min": 0.5,
-        "max": 3
+        "max": 3,
+        "step": 0.1
       },
       "phaseOffset": {
         "min": 0,
-        "max": 6.283185307179586
+        "max": 6.283185307179586,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "growing-sketch": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "growSpeed": {
         "min": 0.5,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "branchCount": {
         "min": 1,
-        "max": 20
+        "max": 20,
+        "step": 1
       },
       "noiseScale": {
         "min": 0.1,
-        "max": 3
+        "max": 3,
+        "step": 0.1
       },
       "strokeWidth": {
         "min": 0.5,
-        "max": 10
+        "max": 15,
+        "step": 0.1
       },
       "density": {
         "min": 50,
-        "max": 500
+        "max": 500,
+        "step": 10
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "rain": {
       "count": {
         "min": 10,
-        "max": 300
+        "max": 300,
+        "step": 5
       },
       "speed": {
         "min": 2,
-        "max": 40
+        "max": 40,
+        "step": 1
       },
       "length": {
         "min": 5,
-        "max": 80
+        "max": 80,
+        "step": 1
       },
       "thickness": {
         "min": 0.5,
-        "max": 8
+        "max": 15,
+        "step": 0.1
       },
       "angle": {
         "min": -45,
-        "max": 45
+        "max": 45,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "meteor": {
       "spawnRate": {
         "min": 1,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "speed": {
         "min": 5,
-        "max": 35
+        "max": 35,
+        "step": 1
       },
       "tailLength": {
         "min": 10,
-        "max": 150
+        "max": 150,
+        "step": 5
       },
       "thickness": {
         "min": 0.5,
-        "max": 10
+        "max": 15,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "ripple": {
       "spawnRate": {
         "min": 0.5,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "expansionSpeed": {
         "min": 0.5,
-        "max": 8
+        "max": 8,
+        "step": 0.1
       },
       "thickness": {
         "min": 0.5,
-        "max": 10
+        "max": 15,
+        "step": 0.1
       },
       "maxRadius": {
         "min": 30,
-        "max": 400
+        "max": 400,
+        "step": 5
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "spectrum": {
       "bandCount": {
         "min": 8,
-        "max": 64
+        "max": 64,
+        "step": 2
       },
       "sensitivity": {
         "min": 0.1,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "speed": {
         "min": 0.5,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "maxHeight": {
         "min": 50,
-        "max": 500
+        "max": 500,
+        "step": 10
       },
       "barWidth": {
         "min": 2,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "gap": {
         "min": 0,
-        "max": 20
+        "max": 20,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "cube-3d": {
       "size": {
         "min": 20,
-        "max": 400
+        "max": 400,
+        "step": 5
       },
       "speedX": {
         "min": 0,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "speedY": {
         "min": 0,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "speedZ": {
         "min": 0,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "thickness": {
-        "min": 1,
-        "max": 15
+        "min": 0.5,
+        "max": 15,
+        "step": 0.1
       },
       "fillOpacity": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "glow": {
         "min": 0,
-        "max": 80
+        "max": 80,
+        "step": 1
       }
     },
     "lightning": {
       "thickness": {
-        "min": 1,
-        "max": 10
+        "min": 0.5,
+        "max": 15,
+        "step": 0.1
       },
       "complexity": {
         "min": 3,
-        "max": 8
+        "max": 8,
+        "step": 1
       },
       "displace": {
         "min": 10,
-        "max": 200
+        "max": 200,
+        "step": 5
       },
       "branchChance": {
         "min": 0,
-        "max": 0.9
+        "max": 0.9,
+        "step": 0.05
       },
       "frequency": {
         "min": 0.5,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "glow": {
         "min": 0,
-        "max": 50
+        "max": 50,
+        "step": 1
       }
     },
     "fog": {
       "density": {
         "min": 8,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "size": {
         "min": 100,
-        "max": 600
+        "max": 600,
+        "step": 10
       },
       "speed": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 0.05
       },
       "fadeSpeed": {
         "min": 0.001,
-        "max": 0.015
+        "max": 0.015,
+        "step": 0.0005
       },
       "maxOpacity": {
-        "min": 0.05,
-        "max": 0.5
+        "min": 0.5,
+        "max": 15,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "flame": {
       "density": {
         "min": 10,
-        "max": 200
+        "max": 200,
+        "step": 5
       },
       "speed": {
         "min": 1,
-        "max": 15
+        "max": 15,
+        "step": 0.5
       },
       "wiggle": {
         "min": 0.1,
-        "max": 5
+        "max": 5,
+        "step": 0.1
       },
       "height": {
         "min": 50,
-        "max": 500
+        "max": 500,
+        "step": 10
       },
       "strokeWidth": {
         "min": 1,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "shapeType": {
         "min": 0,
-        "max": 11
+        "max": 11,
+        "step": 1
       },
       "colorVariance": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "snowflake": {
       "count": {
         "min": 10,
-        "max": 150
+        "max": 150,
+        "step": 5
       },
       "symmetry": {
         "min": 3,
-        "max": 12
+        "max": 12,
+        "step": 1
       },
       "radius": {
         "min": 10,
-        "max": 150
+        "max": 150,
+        "step": 1
       },
       "speed": {
         "min": 0.5,
-        "max": 8
+        "max": 8,
+        "step": 0.1
       },
       "thickness": {
         "min": 0.5,
-        "max": 5
+        "max": 15,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "spirograph": {
       "R": {
         "min": 50,
-        "max": 300
+        "max": 300,
+        "step": 2
       },
       "r": {
         "min": 10,
-        "max": 200
+        "max": 200,
+        "step": 2
       },
       "d": {
         "min": 10,
-        "max": 300
+        "max": 300,
+        "step": 2
       },
       "revolutions": {
         "min": 1,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "speed": {
         "min": 0.1,
-        "max": 4
+        "max": 4,
+        "step": 0.1
       },
       "strokeWidth": {
         "min": 0.5,
-        "max": 10
+        "max": 15,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "aurora": {
       "bands": {
         "min": 1,
-        "max": 5
+        "max": 5,
+        "step": 1
       },
       "height": {
         "min": 100,
-        "max": 600
+        "max": 600,
+        "step": 10
       },
       "waveFreq": {
         "min": 0.001,
-        "max": 0.01
+        "max": 0.01,
+        "step": 0.0005
       },
       "speed": {
         "min": 0.1,
-        "max": 3
+        "max": 3,
+        "step": 0.1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "dry-ice": {
       "density": {
         "min": 10,
-        "max": 250
+        "max": 250,
+        "step": 5
       },
       "fallSpeed": {
         "min": 0.5,
-        "max": 8
+        "max": 8,
+        "step": 0.1
       },
       "diffusion": {
         "min": 0.1,
-        "max": 4
+        "max": 4,
+        "step": 0.1
       },
       "maxSize": {
         "min": 5,
-        "max": 80
+        "max": 80,
+        "step": 1
       },
       "shapeType": {
         "min": 0,
-        "max": 11
+        "max": 11,
+        "step": 1
       },
       "colorVariance": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "shape-3d-particles": {
       "count": {
         "min": 10,
-        "max": 250
+        "max": 250,
+        "step": 5
       },
       "shapeType": {
         "min": 0,
-        "max": 11
+        "max": 11,
+        "step": 1
       },
       "speed": {
         "min": 0.5,
-        "max": 10
+        "max": 10,
+        "step": 0.1
       },
       "rotSpeedX": {
         "min": 0,
-        "max": 0.1
+        "max": 0.1,
+        "step": 0.005
       },
       "rotSpeedY": {
         "min": 0,
-        "max": 0.1
+        "max": 0.1,
+        "step": 0.005
       },
       "rotSpeedZ": {
         "min": 0,
-        "max": 0.2
+        "max": 0.2,
+        "step": 0.005
       },
       "minSize": {
         "min": 2,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "maxSize": {
         "min": 5,
-        "max": 40
+        "max": 40,
+        "step": 0.5
       },
       "colorVariance": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "lighthouse": {
       "beamCount": {
         "min": 1,
-        "max": 4
+        "max": 4,
+        "step": 1
       },
       "rotationSpeed": {
         "min": 0.2,
-        "max": 4
+        "max": 4,
+        "step": 0.1
       },
       "beamWidth": {
         "min": 2,
-        "max": 60
+        "max": 60,
+        "step": 1
       },
       "beamLength": {
         "min": 100,
-        "max": 1500
+        "max": 1500,
+        "step": 10
       },
       "hueCycleSpeed": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "fogIntensity": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "occluderCount": {
         "min": 0,
-        "max": 3
+        "max": 3,
+        "step": 1
       },
       "occluderWidth": {
         "min": 5,
-        "max": 60
+        "max": 60,
+        "step": 1
       },
       "occluderStrength": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "shockwave-burst": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "shapeStyle": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 1
       },
       "ringCount": {
         "min": 1,
-        "max": 3
+        "max": 3,
+        "step": 1
       },
       "maxRadius": {
         "min": 200,
-        "max": 1500
+        "max": 1500,
+        "step": 10
       },
       "ringThickness": {
-        "min": 5,
-        "max": 100
+        "min": 0.5,
+        "max": 100,
+        "step": 1
       },
       "jaggedness": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "rotationSpeed": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 0.05
       },
       "deformAmount": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "debrisCount": {
         "min": 0,
-        "max": 20
+        "max": 20,
+        "step": 1
       },
       "windupFrac": {
         "min": 0,
-        "max": 0.3
+        "max": 0.3,
+        "step": 0.01
       },
       "holdFrac": {
         "min": 0,
-        "max": 0.2
+        "max": 0.2,
+        "step": 0.01
       },
       "fadeInFrac": {
         "min": 0,
-        "max": 0.3
+        "max": 0.3,
+        "step": 0.01
       },
       "fadeOutFrac": {
         "min": 0,
-        "max": 0.5
+        "max": 0.5,
+        "step": 0.01
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "glass-crack": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "crackCount": {
         "min": 4,
-        "max": 24
+        "max": 24,
+        "step": 1
       },
       "crackLength": {
         "min": 100,
-        "max": 1200
+        "max": 1200,
+        "step": 10
       },
       "complexity": {
         "min": 2,
-        "max": 10
+        "max": 10,
+        "step": 1
       },
       "displace": {
         "min": 5,
-        "max": 120
+        "max": 120,
+        "step": 1
       },
       "branchChance": {
         "min": 0,
-        "max": 0.6
+        "max": 0.6,
+        "step": 0.05
       },
       "ringCount": {
         "min": 0,
-        "max": 5
+        "max": 5,
+        "step": 1
       },
       "holeRadius": {
         "min": 0,
-        "max": 150
+        "max": 150,
+        "step": 1
       },
       "growFrac": {
         "min": 0.05,
-        "max": 0.5
+        "max": 0.5,
+        "step": 0.01
       },
       "fadeOutFrac": {
         "min": 0,
-        "max": 0.6
+        "max": 0.6,
+        "step": 0.01
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "dot-design": {
       "patternMode": {
         "min": 0,
-        "max": 11
+        "max": 11,
+        "step": 1
       },
       "reverse": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 1
       },
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "sweepAngle": {
         "min": 0,
-        "max": 360
+        "max": 360,
+        "step": 1
       },
       "gridSize": {
         "min": 8,
-        "max": 48
+        "max": 48,
+        "step": 1
       },
       "dotShape": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 1
       },
       "symmetry": {
         "min": 1,
-        "max": 12
+        "max": 12,
+        "step": 1
       },
       "noiseScale": {
         "min": 0.2,
-        "max": 4
+        "max": 4,
+        "step": 0.1
       },
       "edgeJitter": {
         "min": 0,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "patternSeedX": {
         "min": -1000,
-        "max": 1000
+        "max": 1000,
+        "step": 1
       },
       "patternSeedY": {
         "min": -1000,
-        "max": 1000
+        "max": 1000,
+        "step": 1
       },
       "threshold": {
         "min": 0,
-        "max": 90
+        "max": 90,
+        "step": 1
       },
       "fillAmount": {
         "min": 20,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "colorMode": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "noise-glitch": {
       "sliceHeight": {
         "min": 2,
-        "max": 40
+        "max": 40,
+        "step": 1
       },
       "bandCount": {
         "min": 1,
-        "max": 15
+        "max": 15,
+        "step": 1
       },
       "displaceAmount": {
         "min": 5,
-        "max": 150
+        "max": 150,
+        "step": 5
       },
       "burstChance": {
         "min": 0,
-        "max": 0.1
+        "max": 0.1,
+        "step": 0.005
       },
       "burstDuration": {
         "min": 2,
-        "max": 40
+        "max": 40,
+        "step": 1
       },
       "colorSplit": {
         "min": 0,
-        "max": 30
+        "max": 30,
+        "step": 1
       },
       "scanlineOpacity": {
         "min": 0,
-        "max": 60
+        "max": 60,
+        "step": 1
       },
       "blockDensity": {
         "min": 0,
-        "max": 10
+        "max": 10,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "milky-way": {
       "starDensity": {
         "min": 100,
-        "max": 3000
+        "max": 3000,
+        "step": 50
       },
       "starSizeMax": {
         "min": 0.5,
-        "max": 6
+        "max": 6,
+        "step": 0.1
       },
       "bgBrightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "bandBrightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "bandWidth": {
         "min": 30,
-        "max": 500
+        "max": 500,
+        "step": 5
       },
       "taper": {
         "min": 2,
-        "max": 45
+        "max": 45,
+        "step": 1
       },
       "perspective": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "perspectiveFlip": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 1
       },
       "waveAmplitude": {
         "min": 0,
-        "max": 300
+        "max": 300,
+        "step": 5
       },
       "waveFreq": {
         "min": 0.0005,
-        "max": 0.008
+        "max": 0.008,
+        "step": 0.0001
       },
       "waveSpeed": {
         "min": 0.1,
-        "max": 4
+        "max": 4,
+        "step": 0.1
       },
       "cloudDensity": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "cloudScale": {
         "min": 0.3,
-        "max": 3
+        "max": 3,
+        "step": 0.1
       },
       "scatterRate": {
         "min": 0,
-        "max": 10
+        "max": 10,
+        "step": 0.5
       },
       "scatterSpeed": {
         "min": 0.1,
-        "max": 6
+        "max": 6,
+        "step": 0.1
       },
       "scatterLifetime": {
         "min": 20,
-        "max": 300
+        "max": 300,
+        "step": 5
       },
       "scatterSize": {
         "min": 1,
-        "max": 20
+        "max": 20,
+        "step": 0.5
       },
       "scatterShapeType": {
         "min": 0,
-        "max": 11
+        "max": 11,
+        "step": 1
       },
       "glow": {
         "min": 0,
-        "max": 50
+        "max": 50,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "color-wash": {
       "hue": {
         "min": 0,
-        "max": 360
+        "max": 360,
+        "step": 1
       },
       "saturation": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "lightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       },
       "intensity": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "cracked-wall": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "cameraCycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "seed": {
         "min": 0,
-        "max": 9999
+        "max": 9999,
+        "step": 1
       },
       "veinDensity": {
         "min": 8,
-        "max": 160
+        "max": 160,
+        "step": 1
       },
       "complexity": {
         "min": 2,
-        "max": 10
+        "max": 10,
+        "step": 1
       },
       "displace": {
         "min": 5,
-        "max": 120
+        "max": 120,
+        "step": 1
       },
       "branchChance": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "branchLength": {
         "min": 60,
-        "max": 900
+        "max": 900,
+        "step": 10
       },
       "hairlineCount": {
         "min": 0,
-        "max": 600
+        "max": 600,
+        "step": 5
       },
       "primaryWidth": {
         "min": 1,
-        "max": 24
+        "max": 24,
+        "step": 0.5
       },
       "hairlineWidthRatio": {
         "min": 0.05,
-        "max": 0.6
+        "max": 0.6,
+        "step": 0.01
       },
       "wriggleAmount": {
         "min": 0,
-        "max": 50
+        "max": 50,
+        "step": 0.5
       },
       "cameraPathMode": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 1
       },
       "cameraPanAmplitude": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.01
       },
       "cameraZoomBase": {
         "min": 0.5,
-        "max": 3
+        "max": 3,
+        "step": 0.05
       },
       "cameraZoomAmplitude": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 0.05
       },
       "cameraRotationAmplitude": {
         "min": 0,
-        "max": 90
+        "max": 90,
+        "step": 1
       },
       "glowBoost": {
         "min": 0,
-        "max": 40
+        "max": 40,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     },
     "magma-wall": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "cameraCycleDuration": {
         "min": 500,
-        "max": 20000
+        "max": 20000,
+        "step": 100
       },
       "seed": {
         "min": 0,
-        "max": 9999
+        "max": 9999,
+        "step": 1
       },
       "veinDensity": {
         "min": 8,
-        "max": 160
+        "max": 160,
+        "step": 1
       },
       "complexity": {
         "min": 2,
-        "max": 10
+        "max": 10,
+        "step": 1
       },
       "displace": {
         "min": 5,
-        "max": 120
+        "max": 120,
+        "step": 1
       },
       "branchChance": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.05
       },
       "branchLength": {
         "min": 60,
-        "max": 1500
+        "max": 1500,
+        "step": 10
       },
       "hairlineCount": {
         "min": 0,
-        "max": 600
+        "max": 600,
+        "step": 5
       },
       "primaryWidth": {
         "min": 1,
-        "max": 28
+        "max": 28,
+        "step": 0.5
       },
       "hairlineWidthRatio": {
         "min": 0.05,
-        "max": 0.6
+        "max": 0.6,
+        "step": 0.01
       },
       "wriggleAmount": {
         "min": 0,
-        "max": 60
+        "max": 60,
+        "step": 0.5
       },
       "cameraPathMode": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 1
       },
       "cameraPanAmplitude": {
         "min": 0,
-        "max": 1
+        "max": 1,
+        "step": 0.01
       },
       "cameraZoomBase": {
         "min": 0.5,
-        "max": 3
+        "max": 3,
+        "step": 0.05
       },
       "cameraZoomAmplitude": {
         "min": 0,
-        "max": 2
+        "max": 2,
+        "step": 0.05
       },
       "cameraRotationAmplitude": {
         "min": 0,
-        "max": 90
+        "max": 90,
+        "step": 1
       },
       "glowBoost": {
         "min": 0,
-        "max": 40
+        "max": 40,
+        "step": 1
       },
       "colorLightness": {
         "min": 0,
-        "max": 100
+        "max": 100,
+        "step": 1
       }
     }
   },
   "fxParams": {
     "positionX": {
       "min": -1,
-      "max": 1
+      "max": 1,
+      "step": 0.01
     },
     "positionY": {
       "min": -1,
-      "max": 1
+      "max": 1,
+      "step": 0.01
     },
     "rotation": {
       "min": -360,
-      "max": 360
+      "max": 360,
+      "step": 1
     },
     "scale": {
       "min": 0.1,
-      "max": 5
+      "max": 5,
+      "step": 0.05
     },
     "strobe": {
       "min": 0,
-      "max": 30
+      "max": 30,
+      "step": 0.5
     },
     "glowIntensity": {
       "min": 0,
-      "max": 100
+      "max": 100,
+      "step": 1
     },
     "feedbackDecay": {
       "min": 0,
-      "max": 0.95
+      "max": 0.95,
+      "step": 0.01
     },
     "feedbackRotate": {
       "min": -0.05,
-      "max": 0.05
+      "max": 0.05,
+      "step": 0.001
     },
     "distortionIntensity": {
       "min": 0,
-      "max": 40
+      "max": 40,
+      "step": 1
     },
     "kaleidoscopeSegment": {
       "min": 0,
-      "max": 12
+      "max": 12,
+      "step": 1
     },
     "mirrorMode": {
       "min": 0,
-      "max": 13
+      "max": 13,
+      "step": 1
     },
     "chromaticOffset": {
       "min": 0,
-      "max": 30
+      "max": 30,
+      "step": 0.5
     },
     "hueRotate": {
       "min": -180,
-      "max": 180
+      "max": 180,
+      "step": 1
     },
     "rotateX": {
       "min": -180,
-      "max": 180
+      "max": 180,
+      "step": 1
     },
     "rotateY": {
       "min": -180,
-      "max": 180
+      "max": 180,
+      "step": 1
     },
     "rotateZ": {
       "min": -180,
-      "max": 180
+      "max": 180,
+      "step": 1
     },
     "translateZ": {
       "min": -600,
-      "max": 600
+      "max": 600,
+      "step": 5
     },
     "medianBlurIntensity": {
       "min": 0,
-      "max": 100
+      "max": 100,
+      "step": 1
     },
     "embossIntensity": {
       "min": 0,
-      "max": 100
+      "max": 100,
+      "step": 1
     },
     "motionBlurIntensity": {
       "min": 0,
-      "max": 60
+      "max": 60,
+      "step": 1
     },
     "motionBlurAngle": {
       "min": 0,
-      "max": 360
+      "max": 360,
+      "step": 1
     },
     "radialBlurIntensity": {
       "min": 0,
-      "max": 1
+      "max": 10,
+      "step": 0.1
+    },
+    "edgeDetectIntensity": {
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    "pixelateBlockSize": {
+      "min": 0,
+      "max": 64,
+      "step": 1
+    },
+    "posterizeLevels": {
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    "solarizeThreshold": {
+      "min": 0,
+      "max": 255,
+      "step": 1
     }
   }
 }

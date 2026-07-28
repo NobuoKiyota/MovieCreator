@@ -440,6 +440,97 @@ select:focus {
   display: none !important;
 }
 
+/* Preset Picker (accordion dropdown for Layers -> Import Preset) */
+.preset-picker {
+  position: relative;
+}
+
+.preset-picker-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.4rem);
+  width: 260px;
+  max-height: 340px;
+  overflow-y: auto;
+  background: #110e25;
+  border: 1px solid var(--border-color-active);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-neon);
+  z-index: 30;
+  padding: 0.35rem;
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.preset-group {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.preset-group:last-child {
+  border-bottom: none;
+}
+
+.preset-group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.4rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  user-select: none;
+}
+
+.preset-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.preset-group summary::before {
+  content: '▸';
+  display: inline-block;
+  font-size: 0.65rem;
+  color: var(--color-accent);
+  transition: transform 0.15s ease;
+}
+
+.preset-group[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.preset-group summary:hover {
+  color: var(--color-accent);
+}
+
+.preset-group-count {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 400;
+}
+
+.preset-item {
+  padding: 0.32rem 0.5rem 0.32rem 1.4rem;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: var(--radius-sm);
+}
+
+.preset-item:hover {
+  background: var(--bg-control);
+  color: var(--color-text);
+}
+
+.preset-item.active {
+  background: var(--color-primary-glow);
+  color: var(--color-text);
+}
+
 /* 1. Layers Manager (Upper Half) */
 .layers-manager-container {
   height: 180px;

@@ -16,7 +16,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import * as XLSX from 'xlsx';
 
-// SheetJS's ESM build doesn't auto-detect Node's s the way its CJS/UMD build does (same gotcha
+// SheetJS's ESM build doesn't auto-detect Node's `fs` the way its CJS/UMD build does (same gotcha
 // documented in src/server/apiHandler.js) - readFile/writeFile throw until this is wired in.
 XLSX.set_fs(fs);
 
@@ -68,8 +68,8 @@ const TYPE_TO_CLASS = {
 
 const GEN_SHEET_NAME = 'Generator Params';
 const FX_SHEET_NAME = 'Common FX Params';
-const GEN_HEADER = ['Generator Type', 'Param Name', 'Label', 'Step', 'Min (Actual)', 'Max (Actual)', 'Min (Reference)', 'Max (Reference)'];
-const FX_HEADER = ['Param Name', 'Label', 'Step', 'Min (Actual)', 'Max (Actual)', 'Min (Reference)', 'Max (Reference)'];
+const GEN_HEADER = ['Generator Type', 'Param Name', 'Label', 'Step (Actual)', 'Min (Actual)', 'Max (Actual)', 'Step (Reference)', 'Min (Reference)', 'Max (Reference)'];
+const FX_HEADER = ['Param Name', 'Label', 'Step (Actual)', 'Min (Actual)', 'Max (Actual)', 'Step (Reference)', 'Min (Reference)', 'Max (Reference)'];
 
 function collectGeneratorRows() {
   const rows = [];
@@ -92,10 +92,11 @@ function collectGeneratorRows() {
 }
 
 function collectFxRows() {
-  // FX_PARAM_RANGES only has min/max; label/step come from Controls.js's fxConfigs, which isn't
-  // easily importable standalone in Node (it's built inside the Controls class constructor
-  // alongside a lot of DOM-dependent setup) - a small hand-maintained label map is simpler and
-  // more robust than trying to import/stub the whole Controls module just for this.
+  // FX_PARAM_RANGES now carries min/max/step (step used to live only in Controls.js's fxConfigs,
+  // duplicated and unreachable by this script - consolidated, see fxParamRanges.js). label still
+  // isn't in FX_PARAM_RANGES (Controls.js's fxConfigs isn't easily importable standalone in Node -
+  // it's built inside the Controls class constructor alongside a lot of DOM-dependent setup), so a
+  // small hand-maintained label map remains simpler than stubbing that whole module.
   const LABELS = {
     positionX: 'Position X', positionY: 'Position Y', rotation: 'Rotation', scale: 'Scale',
     strobe: 'Strobe Speed', glowIntensity: 'Neon Glow', feedbackDecay: 'Motion Trails',
@@ -103,26 +104,37 @@ function collectFxRows() {
     mirrorMode: 'Mirror Mode', chromaticOffset: 'Chromatic Aberr', hueRotate: 'Hue Rotate',
     rotateX: 'Rotate X', rotateY: 'Rotate Y', rotateZ: 'Rotate Z', translateZ: 'Depth (Z)',
     medianBlurIntensity: 'Median Blur', embossIntensity: 'Emboss', motionBlurIntensity: 'Motion Blur',
-    motionBlurAngle: 'Motion Blur Angle', radialBlurIntensity: 'Radial Blur'
+    motionBlurAngle: 'Motion Blur Angle', radialBlurIntensity: 'Radial Blur',
+    edgeDetectIntensity: 'Edge Detect', pixelateBlockSize: 'Pixelate', posterizeLevels: 'Posterize',
+    solarizeThreshold: 'Solarize'
   };
   return Object.entries(FX_PARAM_RANGES).map(([name, range]) => ({
     name,
     label: LABELS[name] || name,
-    step: null,
+    step: range.step,
     min: range.min,
     max: range.max
   }));
 }
 
-function sheetToRecords(ws, header) {
+// Reads the header from the SHEET ITSELF (row 0) rather than trusting a hardcoded header array to
+// still match - this is what makes re-running this script safe across schema changes (e.g. this
+// same change added Step (Actual)/Step (Reference) columns to a sheet that only had Min/Max
+// before): old rows get read correctly by column NAME no matter how columns were reordered/added
+// since the previous run, and a since-removed column (like the old single "Step" column) just
+// won't be found under its new name - handled by the `?? currentRows`-side fallback in the merge
+// functions below.
+function sheetToRecords(ws) {
   if (!ws) return [];
   const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+  if (aoa.length === 0) return [];
+  const header = aoa[0];
   const records = [];
   for (let r = 1; r < aoa.length; r++) {
     const row = aoa[r];
     if (!row || row.every(v => v === null)) continue;
     const record = {};
-    header.forEach((h, i) => { record[h] = row[i]; });
+    header.forEach((h, i) => { if (h) record[h] = row[i]; });
     records.push(record);
   }
   return records;
@@ -138,14 +150,18 @@ function mergeGeneratorRows(existingRecords, currentRows) {
     const key = `${row.type}|${row.name}`;
     const existing = existingByKey.get(key);
     if (existing) {
+      // Step (Actual) is a new column as of this change - existing rows from before it existed
+      // fall back to the current code's step value the first time they're migrated, exactly like
+      // a genuinely new row would.
+      const stepActual = existing['Step (Actual)'] ?? row.step;
       merged.push([
-        row.type, row.name, row.label, row.step,
-        existing['Min (Actual)'], existing['Max (Actual)'], // preserve user edits
-        row.min, row.max // refresh reference to current code
+        row.type, row.name, row.label,
+        stepActual, existing['Min (Actual)'], existing['Max (Actual)'], // preserve user edits
+        row.step, row.min, row.max // refresh reference to current code
       ]);
       existingByKey.delete(key);
     } else {
-      merged.push([row.type, row.name, row.label, row.step, row.min, row.max, row.min, row.max]);
+      merged.push([row.type, row.name, row.label, row.step, row.min, row.max, row.step, row.min, row.max]);
     }
   }
   // Rows for (generator, param) combos no longer present in code (removed param/generator) are
@@ -163,14 +179,15 @@ function mergeFxRows(existingRecords, currentRows) {
   for (const row of currentRows) {
     const existing = existingByKey.get(row.name);
     if (existing) {
+      const stepActual = existing['Step (Actual)'] ?? row.step;
       merged.push([
-        row.name, row.label, row.step,
-        existing['Min (Actual)'], existing['Max (Actual)'],
-        row.min, row.max
+        row.name, row.label,
+        stepActual, existing['Min (Actual)'], existing['Max (Actual)'],
+        row.step, row.min, row.max
       ]);
       existingByKey.delete(row.name);
     } else {
-      merged.push([row.name, row.label, row.step, row.min, row.max, row.min, row.max]);
+      merged.push([row.name, row.label, row.step, row.min, row.max, row.step, row.min, row.max]);
     }
   }
   for (const rec of existingByKey.values()) {
@@ -187,8 +204,8 @@ let existingGenRecords = [];
 let existingFxRecords = [];
 try {
   workbook = XLSX.readFile(EXCEL_PATH);
-  existingGenRecords = sheetToRecords(workbook.Sheets[GEN_SHEET_NAME], GEN_HEADER);
-  existingFxRecords = sheetToRecords(workbook.Sheets[FX_SHEET_NAME], FX_HEADER);
+  existingGenRecords = sheetToRecords(workbook.Sheets[GEN_SHEET_NAME]);
+  existingFxRecords = sheetToRecords(workbook.Sheets[FX_SHEET_NAME]);
   console.log(`Existing workbook found: ${existingGenRecords.length} generator rows, ${existingFxRecords.length} FX rows.`);
 } catch (e) {
   console.log('No existing workbook found - creating a new one from scratch.');
