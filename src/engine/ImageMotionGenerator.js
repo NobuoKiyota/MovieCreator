@@ -9,10 +9,14 @@
 export class ImageMotionGenerator {
   constructor() {
     this.name = 'ImageMotionGenerator';
-    this.imgMap = new Map(); // src/dataUrl -> HTMLImageElement キャッシュ
+    
+    // 画像要素の個別プロパティ (paramsの中にBase64を含めないことでJSON.stringifyフリーズを根本回避)
+    this.imageDataUrl = '';
+    this.imgElement = null;
+    this.imgLoaded = false;
+    this.imgError = false;
 
     this.params = {
-      imageDataUrl: '',       // DataURL または URL
       cycleDuration: 5000,    // 共通サイクル時間 (ms)
       parallaxDepth: 0.5,     // 視差奥行き感度 (-2.0 〜 +2.0)
       fitMode: 'contain',     // contain, cover, fill, original
@@ -35,6 +39,28 @@ export class ImageMotionGenerator {
     };
   }
 
+  /**
+   * 画像URL/DataURLの設定および非同期ロード (1回のみロード)
+   */
+  setImageUrl(url) {
+    if (!url || this.imageDataUrl === url) return;
+    this.imageDataUrl = url;
+    this.imgLoaded = false;
+    this.imgError = false;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      this.imgElement = img;
+      this.imgLoaded = true;
+    };
+    img.onerror = () => {
+      this.imgError = true;
+      console.warn('Image Motion Generator: Failed to load image src');
+    };
+    img.src = url;
+  }
+
   getParameterConfig() {
     return [
       { name: 'cycleDuration', label: 'Cycle Duration', type: 'range', min: 500, max: 20000, step: 100, default: 5000 },
@@ -54,51 +80,32 @@ export class ImageMotionGenerator {
   }
 
   /**
-   * 画像オブジェクトの事前生成/読み込みキャッシュを取得
-   */
-  getImage(src) {
-    if (!src) return null;
-    if (this.imgMap.has(src)) {
-      const cached = this.imgMap.get(src);
-      if (cached.error) return 'error';
-      return cached.complete && cached.naturalWidth !== 0 ? cached : null;
-    }
-
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      img.loaded = true;
-    };
-    img.onerror = () => {
-      img.error = true;
-      console.warn('Image Motion Generator: Failed to load image src');
-    };
-    img.src = src;
-    this.imgMap.set(src, img);
-    return null;
-  }
-
-  /**
-   * 描画メイン処理 (例外ガード＋数値バリデーション)
+   * 描画メイン処理 (爆速・軽量・ノンブロッキング)
    */
   draw(ctx, width, height, time = 0, globalParallax = { offsetX: 0, offsetY: 0 }) {
     try {
-      const src = this.params.imageDataUrl || this.params.imageSrc;
-      if (!src) {
+      // params内に旧DataURLが流れてきた場合はsetImageUrlに退避
+      if (this.params.imageDataUrl) {
+        this.setImageUrl(this.params.imageDataUrl);
+        delete this.params.imageDataUrl;
+      }
+
+      if (!this.imageDataUrl) {
         this.drawPlaceholder(ctx, width, height);
         return;
       }
 
-      const img = this.getImage(src);
-      if (img === 'error') {
+      if (this.imgError) {
         this.drawError(ctx, width, height);
         return;
       }
-      if (!img) {
+
+      if (!this.imgLoaded || !this.imgElement) {
         this.drawLoading(ctx, width, height);
         return;
       }
 
+      const img = this.imgElement;
       const imgW = Math.max(1, img.naturalWidth || width);
       const imgH = Math.max(1, img.naturalHeight || height);
 
@@ -171,7 +178,7 @@ export class ImageMotionGenerator {
       ctx.translate(centerX, centerY);
       ctx.rotate(rotation);
 
-      // マスク切り抜き (正の値のみ安全適用)
+      // マスク切り抜き
       const maskShape = this.params.maskShape || 'none';
       if (maskShape !== 'none') {
         ctx.save();
@@ -191,7 +198,7 @@ export class ImageMotionGenerator {
       const opacity = typeof this.params.opacity === 'number' && !isNaN(this.params.opacity) ? Math.max(0, Math.min(1, this.params.opacity)) : 1.0;
       ctx.globalAlpha *= opacity;
 
-      // 中央配置描画
+      // 中央配置描画 (高速描画)
       ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
 
       if (maskShape !== 'none') {

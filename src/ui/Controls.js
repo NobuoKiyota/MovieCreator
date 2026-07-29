@@ -348,7 +348,7 @@ export class Controls {
     if (fileName) {
       newLayer.name = fileName.replace(/\.[^/.]+$/, '');
     }
-    newLayer.generator.params.imageDataUrl = dataUrl;
+    newLayer.generator.setImageUrl(dataUrl);
     this.activeLayerId = newLayer.id;
     this.rebuildLayersList();
     this.rebuildInspector();
@@ -1923,7 +1923,7 @@ export class Controls {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
-          layer.generator.params.imageDataUrl = evt.target.result;
+          layer.generator.setImageUrl(evt.target.result);
           this.mainApp.renderSingleFrame();
         };
         reader.readAsDataURL(file);
