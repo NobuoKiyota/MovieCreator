@@ -901,7 +901,7 @@ export class SpectrumGenerator extends BaseGenerator {
   }
 }
 
-// 10. 3D Rotating Glowing Cube Generator
+// 10. 3D Rotating Glowing Cube Generator (Expanded Multi-Geometry)
 export class Cube3DGenerator extends BaseGenerator {
   constructor(params) {
     super(params);
@@ -912,6 +912,9 @@ export class Cube3DGenerator extends BaseGenerator {
 
   defaultParams() {
     return {
+      shapeType: 'cube',
+      sides: 4,
+      heightRatio: 1.0,
       size: 150,
       speedX: 0.5,
       speedY: 0.8,
@@ -927,6 +930,25 @@ export class Cube3DGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
+      {
+        name: 'shapeType',
+        label: 'Shape Type',
+        type: 'select',
+        options: [
+          { value: 'cube', label: 'Cube (Hexahedron)' },
+          { value: 'tetrahedron', label: 'Tetrahedron (4 faces)' },
+          { value: 'octahedron', label: 'Octahedron (8 faces)' },
+          { value: 'dodecahedron', label: 'Dodecahedron (12 faces)' },
+          { value: 'icosahedron', label: 'Icosahedron (20 faces)' },
+          { value: 'pyramid', label: 'Pyramid (N-gon)' },
+          { value: 'prism', label: 'Prism (N-gon)' },
+          { value: 'bipyramid', label: 'Bipyramid Crystal (N-gon)' },
+          { value: 'star_pyramid', label: 'Star Pyramid' },
+          { value: 'torus', label: 'Torus Ring' }
+        ]
+      },
+      { name: 'sides', label: 'Polygon Sides', type: 'range', min: 3, max: 12, step: 1 },
+      { name: 'heightRatio', label: 'Height Ratio', type: 'range', min: 0.3, max: 3.0, step: 0.1 },
       { name: 'size', label: 'Size', type: 'range', min: 20, max: 400, step: 5 },
       { name: 'speedX', label: 'Rotate Speed X', type: 'range', min: 0, max: 5, step: 0.1 },
       { name: 'speedY', label: 'Rotate Speed Y', type: 'range', min: 0, max: 5, step: 0.1 },
@@ -940,27 +962,252 @@ export class Cube3DGenerator extends BaseGenerator {
     ];
   }
 
+  generateGeometry(shapeType, size, sides, heightRatio) {
+    sides = Math.max(3, Math.min(12, Math.round(sides || 4)));
+    heightRatio = heightRatio || 1.0;
+    let vertices = [];
+    let rawFaces = [];
+
+    switch (shapeType) {
+      case 'tetrahedron': {
+        const s = size * 1.2;
+        vertices = [
+          { x: s, y: s, z: s },
+          { x: s, y: -s, z: -s },
+          { x: -s, y: s, z: -s },
+          { x: -s, y: -s, z: s }
+        ];
+        rawFaces = [[0, 1, 2], [0, 2, 3], [0, 3, 1], [1, 3, 2]];
+        break;
+      }
+      case 'octahedron': {
+        const s = size * 1.3;
+        const h = s * heightRatio;
+        vertices = [
+          { x: s, y: 0, z: 0 },
+          { x: -s, y: 0, z: 0 },
+          { x: 0, y: -h, z: 0 },
+          { x: 0, y: h, z: 0 },
+          { x: 0, y: 0, z: s },
+          { x: 0, y: 0, z: -s }
+        ];
+        rawFaces = [
+          [2, 0, 4], [2, 4, 1], [2, 1, 5], [2, 5, 0],
+          [3, 4, 0], [3, 1, 4], [3, 5, 1], [3, 0, 5]
+        ];
+        break;
+      }
+      case 'icosahedron': {
+        const phi = (1 + Math.sqrt(5)) / 2;
+        const scale = (size * 1.3) / Math.sqrt(1 + phi * phi);
+        vertices = [
+          { x: -1, y: phi, z: 0 }, { x: 1, y: phi, z: 0 }, { x: -1, y: -phi, z: 0 }, { x: 1, y: -phi, z: 0 },
+          { x: 0, y: -1, z: phi }, { x: 0, y: 1, z: phi }, { x: 0, y: -1, z: -phi }, { x: 0, y: 1, z: -phi },
+          { x: phi, y: 0, z: -1 }, { x: phi, y: 0, z: 1 }, { x: -phi, y: 0, z: -1 }, { x: -phi, y: 0, z: 1 }
+        ].map(v => ({ x: v.x * scale, y: v.y * scale, z: v.z * scale }));
+        rawFaces = [
+          [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+          [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+          [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+          [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
+        ];
+        break;
+      }
+      case 'dodecahedron': {
+        const phi = (1 + Math.sqrt(5)) / 2;
+        const icoScale = (size * 1.3) / Math.sqrt(1 + phi * phi);
+        const icoVerts = [
+          { x: -1, y: phi, z: 0 }, { x: 1, y: phi, z: 0 }, { x: -1, y: -phi, z: 0 }, { x: 1, y: -phi, z: 0 },
+          { x: 0, y: -1, z: phi }, { x: 0, y: 1, z: phi }, { x: 0, y: -1, z: -phi }, { x: 0, y: 1, z: -phi },
+          { x: phi, y: 0, z: -1 }, { x: phi, y: 0, z: 1 }, { x: -phi, y: 0, z: -1 }, { x: -phi, y: 0, z: 1 }
+        ].map(v => ({ x: v.x * icoScale, y: v.y * icoScale, z: v.z * icoScale }));
+        const icoFaces = [
+          [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+          [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+          [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+          [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
+        ];
+        // Calculate dual (centroids of icosahedron faces)
+        vertices = icoFaces.map(f => {
+          const v0 = icoVerts[f[0]], v1 = icoVerts[f[1]], v2 = icoVerts[f[2]];
+          const cx = (v0.x + v1.x + v2.x) / 3;
+          const cy = (v0.y + v1.y + v2.y) / 3;
+          const cz = (v0.z + v1.z + v2.z) / 3;
+          const len = Math.sqrt(cx * cx + cy * cy + cz * cz) || 1;
+          const targetLen = size * 1.15;
+          return { x: (cx / len) * targetLen, y: (cy / len) * targetLen, z: (cz / len) * targetLen };
+        });
+        // Build 12 pentagonal faces around each icosahedron vertex
+        rawFaces = [];
+        for (let i = 0; i < 12; i++) {
+          const centerV = icoVerts[i];
+          const incidentFaces = [];
+          icoFaces.forEach((f, fIdx) => {
+            if (f.includes(i)) incidentFaces.push(fIdx);
+          });
+          // Sort face centroids around centerV vector
+          const nx = centerV.x, ny = centerV.y, nz = centerV.z;
+          incidentFaces.sort((a, b) => {
+            const va = vertices[a], vb = vertices[b];
+            const crossX = va.y * vb.z - va.z * vb.y;
+            const crossY = va.z * vb.x - va.x * vb.z;
+            const crossZ = va.x * vb.y - va.y * vb.x;
+            const dot = crossX * nx + crossY * ny + crossZ * nz;
+            return dot > 0 ? 1 : -1;
+          });
+          rawFaces.push(incidentFaces);
+        }
+        break;
+      }
+      case 'pyramid': {
+        const h = size * heightRatio;
+        vertices = [{ x: 0, y: -h, z: 0 }];
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          vertices.push({ x: Math.cos(angle) * size, y: h * 0.5, z: Math.sin(angle) * size });
+        }
+        rawFaces = [];
+        const baseIndices = [];
+        for (let i = 1; i <= sides; i++) {
+          baseIndices.push(i);
+          const next = i === sides ? 1 : i + 1;
+          rawFaces.push([0, next, i]);
+        }
+        rawFaces.push(baseIndices.reverse());
+        break;
+      }
+      case 'prism': {
+        const h = size * heightRatio * 0.75;
+        vertices = [];
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          vertices.push({ x: Math.cos(angle) * size, y: -h, z: Math.sin(angle) * size });
+        }
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          vertices.push({ x: Math.cos(angle) * size, y: h, z: Math.sin(angle) * size });
+        }
+        rawFaces = [];
+        const topFace = [], bottomFace = [];
+        for (let i = 0; i < sides; i++) {
+          topFace.push(i);
+          bottomFace.push(sides + i);
+          const next = (i + 1) % sides;
+          rawFaces.push([i, next, sides + next, sides + i]);
+        }
+        rawFaces.push(topFace);
+        rawFaces.push(bottomFace.reverse());
+        break;
+      }
+      case 'bipyramid': {
+        const h = size * heightRatio;
+        vertices = [
+          { x: 0, y: -h, z: 0 },
+          { x: 0, y: h, z: 0 }
+        ];
+        for (let i = 0; i < sides; i++) {
+          const angle = (i / sides) * Math.PI * 2;
+          vertices.push({ x: Math.cos(angle) * size, y: 0, z: Math.sin(angle) * size });
+        }
+        rawFaces = [];
+        for (let i = 0; i < sides; i++) {
+          const curr = 2 + i;
+          const next = 2 + ((i + 1) % sides);
+          rawFaces.push([0, next, curr]);
+          rawFaces.push([1, curr, next]);
+        }
+        break;
+      }
+      case 'star_pyramid': {
+        const h = size * heightRatio;
+        vertices = [{ x: 0, y: -h, z: 0 }];
+        const totalPoints = sides * 2;
+        const baseIndices = [];
+        for (let i = 0; i < totalPoints; i++) {
+          const angle = (i / totalPoints) * Math.PI * 2;
+          const r = (i % 2 === 0) ? size : size * 0.45;
+          vertices.push({ x: Math.cos(angle) * r, y: h * 0.5, z: Math.sin(angle) * r });
+          baseIndices.push(i + 1);
+        }
+        rawFaces = [];
+        for (let i = 0; i < totalPoints; i++) {
+          const curr = 1 + i;
+          const next = 1 + ((i + 1) % totalPoints);
+          rawFaces.push([0, next, curr]);
+        }
+        rawFaces.push(baseIndices.reverse());
+        break;
+      }
+      case 'torus': {
+        const R = size * 0.85;
+        const r = size * 0.35 * heightRatio;
+        const segU = Math.max(8, sides * 2);
+        const segV = 6;
+        vertices = [];
+        for (let u = 0; u < segU; u++) {
+          const phi = (u / segU) * Math.PI * 2;
+          const cosPhi = Math.cos(phi);
+          const sinPhi = Math.sin(phi);
+          for (let v = 0; v < segV; v++) {
+            const theta = (v / segV) * Math.PI * 2;
+            const cosTheta = Math.cos(theta);
+            const sinTheta = Math.sin(theta);
+            vertices.push({
+              x: (R + r * cosTheta) * cosPhi,
+              y: r * sinTheta,
+              z: (R + r * cosTheta) * sinPhi
+            });
+          }
+        }
+        rawFaces = [];
+        for (let u = 0; u < segU; u++) {
+          const nextU = (u + 1) % segU;
+          for (let v = 0; v < segV; v++) {
+            const nextV = (v + 1) % segV;
+            const i00 = u * segV + v;
+            const i10 = nextU * segV + v;
+            const i11 = nextU * segV + nextV;
+            const i01 = u * segV + nextV;
+            rawFaces.push([i00, i10, i11, i01]);
+          }
+        }
+        break;
+      }
+      case 'cube':
+      default: {
+        const s = size;
+        vertices = [
+          { x: -s, y: -s, z: -s }, { x: s, y: -s, z: -s },
+          { x: s, y: s, z: -s }, { x: -s, y: s, z: -s },
+          { x: -s, y: -s, z: s }, { x: s, y: -s, z: s },
+          { x: s, y: s, z: s }, { x: -s, y: s, z: s }
+        ];
+        rawFaces = [
+          [0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4],
+          [2, 3, 7, 6], [0, 3, 7, 4], [1, 2, 6, 5]
+        ];
+        break;
+      }
+    }
+
+    return { vertices, faces: rawFaces.map(indices => ({ indices, avgZ: 0 })) };
+  }
+
   update(time, frameCount, width, height) {
-    this.angleX += this.params.speedX * 0.01;
-    this.angleY += this.params.speedY * 0.01;
-    this.angleZ += this.params.speedZ * 0.01;
+    this.angleX += (this.params.speedX || 0.5) * 0.01;
+    this.angleY += (this.params.speedY || 0.8) * 0.01;
+    this.angleZ += (this.params.speedZ || 0.3) * 0.01;
   }
 
   draw(ctx, width, height, time) {
     const cx = width / 2;
     const cy = height / 2;
-    const size = this.params.size;
+    const size = this.params.size || 150;
+    const shapeType = this.params.shapeType || 'cube';
+    const sides = this.params.sides || 4;
+    const heightRatio = this.params.heightRatio || 1.0;
 
-    const vertices = [
-      { x: -size, y: -size, z: -size },
-      { x: size, y: -size, z: -size },
-      { x: size, y: size, z: -size },
-      { x: -size, y: size, z: -size },
-      { x: -size, y: -size, z: size },
-      { x: size, y: -size, z: size },
-      { x: size, y: size, z: size },
-      { x: -size, y: size, z: size }
-    ];
+    const { vertices, faces } = this.generateGeometry(shapeType, size, sides, heightRatio);
 
     const cosX = Math.cos(this.angleX);
     const sinX = Math.sin(this.angleX);
@@ -991,25 +1238,16 @@ export class Cube3DGenerator extends BaseGenerator {
       };
     });
 
-    const color = adjustColorLightness(this.params.color, this.params.colorLightness);
-    const fillColor = adjustColorLightness(this.params.fillColor, this.params.colorLightness);
-
-    const faces = [
-      { indices: [0, 1, 2, 3], avgZ: 0 },
-      { indices: [4, 5, 6, 7], avgZ: 0 },
-      { indices: [0, 1, 5, 4], avgZ: 0 },
-      { indices: [2, 3, 7, 6], avgZ: 0 },
-      { indices: [0, 3, 7, 4], avgZ: 0 },
-      { indices: [1, 2, 6, 5], avgZ: 0 }
-    ];
+    const color = adjustColorLightness(this.params.color || '#a855f7', this.params.colorLightness ?? 50);
+    const fillColor = adjustColorLightness(this.params.fillColor || '#06b6d4', this.params.colorLightness ?? 50);
 
     faces.forEach(face => {
-      face.avgZ = (
-        projected[face.indices[0]].z +
-        projected[face.indices[1]].z +
-        projected[face.indices[2]].z +
-        projected[face.indices[3]].z
-      ) / 4;
+      let sumZ = 0;
+      for (let i = 0; i < face.indices.length; i++) {
+        const pIdx = face.indices[i];
+        if (projected[pIdx]) sumZ += projected[pIdx].z;
+      }
+      face.avgZ = sumZ / (face.indices.length || 1);
     });
 
     faces.sort((a, b) => b.avgZ - a.avgZ);
@@ -1018,27 +1256,30 @@ export class Cube3DGenerator extends BaseGenerator {
     ctx.lineCap = 'round';
 
     faces.forEach(face => {
+      if (!face.indices || face.indices.length < 3) return;
       ctx.beginPath();
       const p0 = projected[face.indices[0]];
+      if (!p0) return;
       ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < 4; i++) {
+      for (let i = 1; i < face.indices.length; i++) {
         const p = projected[face.indices[i]];
-        ctx.lineTo(p.x, p.y);
+        if (p) ctx.lineTo(p.x, p.y);
       }
       ctx.closePath();
 
-      if (this.params.fillOpacity > 0) {
-        ctx.fillStyle = hexToRgba(fillColor, this.params.fillOpacity);
+      const fillOpacity = this.params.fillOpacity ?? 0.15;
+      if (fillOpacity > 0) {
+        ctx.fillStyle = hexToRgba(fillColor, fillOpacity);
         ctx.fill();
       }
 
-      const glow = this.params.glow;
+      const glow = this.params.glow ?? 25;
       if (glow > 0) {
         ctx.shadowColor = color;
         ctx.shadowBlur = glow;
       }
       ctx.strokeStyle = color;
-      ctx.lineWidth = this.params.thickness;
+      ctx.lineWidth = this.params.thickness || 3;
       ctx.stroke();
 
       ctx.shadowBlur = 0;

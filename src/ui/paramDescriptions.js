@@ -79,7 +79,10 @@ export const GENERATOR_PARAM_DESCRIPTIONS = {
     colorLightness: '色の明るさ'
   },
   'cube-3d': {
-    size: 'キューブの大きさ',
+    shapeType: '3D形状の種類（正多面体/角錐/角柱/双角錐/星型錐/トーラスなど）',
+    sides: '角錐・角柱・双角錐等の底面の角数（3〜12角）',
+    heightRatio: '立体形状の高さ・縦横比率の倍率',
+    size: '3D立体の大きさ',
     speedX: 'X軸まわりの回転速度',
     speedY: 'Y軸まわりの回転速度',
     speedZ: 'Z軸まわりの回転速度',

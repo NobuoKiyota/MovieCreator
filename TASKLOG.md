@@ -9,6 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-30 00:04 [Antigravity] 完了: 3D Rotating Glowing Cubeへの多様形状(プラトン立体/N角錐/N角柱/双角錐/星型錐/トーラス)パラメータおよび描画エンジンの追加完了
+- 2026-07-29 23:01 [Antigravity] 完了: リモートの最新変更(17コミット)をpullして同期完了 (134eb95)
 - 2026-07-29 15:48 [Antigravity] 完了: MP4/WebM動画演出拡張機能(Video Motion Layer)およびStart Offset(トリム機能)の実装完了
 - 2026-07-29 15:45 [Antigravity] 着手: MP4/WebM動画演出拡張機能(Video Motion Layer)の実装
 - 2026-07-29 15:40 [Antigravity] 完了: レイヤー/プロジェクト保存・インポート時のクリップ静止画データ(imageDataUrl)完全保持・復元に対応
