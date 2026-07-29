@@ -1,8 +1,9 @@
 /**
  * ImageMotionGenerator.js
  * 静止画（イラスト・写真・スクリーンショット）を取り込み、
+ * 息づかい(Pulse)、手振れ・浮遊(Floating Shake)、ケン・バーンズ(Pan & Zoom)、
  * 2.5Dパララックス視差、トランスフォーム、フィットモード、フェザーマスク切り抜き、
- * シネマグラフ表現の基盤を提供する専用ジェネレーター
+ * シネマグラフ表現を提供する専用ジェネレーター
  */
 
 export class ImageMotionGenerator {
@@ -16,6 +17,14 @@ export class ImageMotionGenerator {
       parallaxDepth: 0.5,     // 視差奥行き感度 (-2.0 〜 +2.0)
       fitMode: 'contain',     // contain, cover, fill, original
       opacity: 1.0,           // 不透明度 (0.0 〜 1.0)
+
+      // 自動アニメーション・シネマグラフモーション
+      breathAmount: 0.05,     // 息づかい・脈動拡大縮小 (0.0 〜 0.3)
+      floatAmount: 15.0,      // ゆらゆら手振れ・浮遊 (0 〜 100 px)
+      autoPanZoom: 0.08,      // パン＆ズーム効果 (0.0 〜 0.5)
+      motionSpeed: 1.0,       // モーション全体スピード (0.1 〜 5.0)
+
+      // 基本トランスフォーム
       scaleX: 1.0,            // 個別スケールX (0.1 〜 5.0)
       scaleY: 1.0,            // 個別スケールY (0.1 〜 5.0)
       posX: 0,                // オフセット位置X (-500 〜 500)
@@ -29,6 +38,10 @@ export class ImageMotionGenerator {
   getParameterConfig() {
     return [
       { name: 'cycleDuration', label: 'Cycle Duration', type: 'range', min: 500, max: 20000, step: 100, default: 5000 },
+      { name: 'breathAmount', label: 'Breath Pulse (息づかい)', type: 'range', min: 0.0, max: 0.3, step: 0.005, default: 0.05 },
+      { name: 'floatAmount', label: 'Floating Shake (手振れ浮遊)', type: 'range', min: 0.0, max: 100.0, step: 1.0, default: 15.0 },
+      { name: 'autoPanZoom', label: 'Ken Burns Pan&Zoom', type: 'range', min: 0.0, max: 0.5, step: 0.01, default: 0.08 },
+      { name: 'motionSpeed', label: 'Motion Speed', type: 'range', min: 0.1, max: 5.0, step: 0.1, default: 1.0 },
       { name: 'parallaxDepth', label: 'Parallax Depth', type: 'range', min: -2.0, max: 2.0, step: 0.05, default: 0.5 },
       { name: 'opacity', label: 'Image Opacity', type: 'range', min: 0.0, max: 1.0, step: 0.01, default: 1.0 },
       { name: 'scaleX', label: 'Scale X', type: 'range', min: 0.1, max: 5.0, step: 0.05, default: 1.0 },
@@ -58,7 +71,7 @@ export class ImageMotionGenerator {
   }
 
   /**
-   * 描画メイン処理
+   * 描画メイン処理 (時間 time による動的アニメーション適用)
    * @param {CanvasRenderingContext2D} ctx 
    * @param {number} width キャンバス幅
    * @param {number} height キャンバス高さ
@@ -81,7 +94,27 @@ export class ImageMotionGenerator {
     const imgW = img.naturalWidth || width;
     const imgH = img.naturalHeight || height;
 
-    // パララックス視差計算 (parallaxDepth: -2.0 〜 +2.0)
+    // --- ⏰ 時間 time に基づく動的アニメーション計算 ---
+    const speed = this.params.motionSpeed !== undefined ? this.params.motionSpeed : 1.0;
+    const tSec = (time / 1000) * speed;
+
+    // 1. 息づかい・脈動スケール (Breath Pulse)
+    const breathAmount = this.params.breathAmount || 0;
+    const breathScale = 1.0 + Math.sin(tSec * 1.5) * breathAmount;
+
+    // 2. 浮遊感・手振れ (Floating Shake)
+    const floatAmount = this.params.floatAmount || 0;
+    const floatX = Math.sin(tSec * 0.8) * floatAmount;
+    const floatY = Math.cos(tSec * 1.1) * floatAmount;
+    const floatRot = Math.sin(tSec * 0.5) * (floatAmount * 0.05); // 角度の微揺れ
+
+    // 3. Ken Burns パン＆ズーム (Pan & Zoom)
+    const panZoomAmount = this.params.autoPanZoom || 0;
+    const panZoomScale = 1.0 + (Math.sin(tSec * 0.3) * 0.5 + 0.5) * panZoomAmount;
+    const panX = Math.sin(tSec * 0.25) * (width * 0.05 * panZoomAmount);
+    const panY = Math.cos(tSec * 0.2) * (height * 0.05 * panZoomAmount);
+
+    // 4. パララックス視差計算 (parallaxDepth: -2.0 〜 +2.0)
     const depth = this.params.parallaxDepth !== undefined ? this.params.parallaxDepth : 0.0;
     const parallaxX = (globalParallax.offsetX || 0) * depth * (width * 0.1);
     const parallaxY = (globalParallax.offsetY || 0) * depth * (height * 0.1);
@@ -108,11 +141,12 @@ export class ImageMotionGenerator {
       baseH = height;
     }
 
-    const scaleX = this.params.scaleX !== undefined ? this.params.scaleX : 1.0;
-    const scaleY = this.params.scaleY !== undefined ? this.params.scaleY : 1.0;
-    const posX = (this.params.posX !== undefined ? this.params.posX : 0) + parallaxX;
-    const posY = (this.params.posY !== undefined ? this.params.posY : 0) + parallaxY;
-    const rotation = (this.params.rotation || 0) * (Math.PI / 180);
+    // トランスフォーム総合成算（ユーザー設定 + 時間アニメーション）
+    const scaleX = (this.params.scaleX !== undefined ? this.params.scaleX : 1.0) * breathScale * panZoomScale;
+    const scaleY = (this.params.scaleY !== undefined ? this.params.scaleY : 1.0) * breathScale * panZoomScale;
+    const posX = (this.params.posX !== undefined ? this.params.posX : 0) + parallaxX + floatX + panX;
+    const posY = (this.params.posY !== undefined ? this.params.posY : 0) + parallaxY + floatY + panY;
+    const rotation = ((this.params.rotation || 0) + floatRot) * (Math.PI / 180);
 
     const drawW = baseW * scaleX;
     const drawH = baseH * scaleY;
