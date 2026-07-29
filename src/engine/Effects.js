@@ -793,33 +793,41 @@ export function applyGlassTile(ctx, canvas, intensity = 0) {
 }
 
 
-// 17c. Seamless Tile - GIMP's classic "Make Seamless" technique: toroidally wrap-shift the frame
-// by half its width/height (swap the 4 quadrants diagonally), which relocates the original
-// left/right and top/bottom edges - the ones that must match for the frame to tile cleanly - from
-// the invisible canvas boundary into a visible cross through the CENTER. The canvas's own outer
-// boundary becomes automatically tileable as a side effect (the pixels now sitting at the new
-// edges were adjacent in the original, just 1px apart, so they already match). What's left is to
-// hide the mismatch now exposed on that center cross, which this does with a spatially-varying
-// blur: fully blurred exactly on the seam lines, fading back to the untouched sharp image
-// `bandWidth` px away - an approximation (not true content-aware synthesis) but cheap and reads as
-// seamless for this app's noisy/textured neon content. Unlike every other FX here, the per-pixel
-// loop is bounded to just the seam band (skips immediately outside it), not the whole buffer, to
-// keep the getImageData/putImageData-dominated cost in the same ballpark as the other stylize FX
-// despite covering a full-resolution quadrant swap first.
+// 17c. Seamless Tile - GIMP's classic "Make Seamless" technique: toroidally wrap-shift the frame,
+// which relocates the original left/right and top/bottom edges - the ones that must match for the
+// frame to tile cleanly - from the invisible canvas boundary into a visible seam inside the frame.
+// The canvas's own outer boundary becomes automatically tileable as a side effect regardless of
+// shift amount (the pixels now sitting at the new edges were adjacent in the original, just 1px
+// apart, so they already match - see file history for the full derivation). What's left is to hide
+// the mismatch now exposed at the seam, which this does with a spatially-varying blur: fully
+// blurred exactly on the seam lines, fading back to the untouched sharp image `bandWidth` px away -
+// an approximation (not true content-aware synthesis) but cheap and reads as seamless for this
+// app's noisy/textured neon content.
+//
+// FIX (2026-07-29, user-reported): the shift amount was hardcoded to exactly half width/height
+// regardless of `intensity` - only the blend band's WIDTH scaled with the slider, so the dominant
+// visual change (the frame jumping into a hard 4-quadrant swap) was fully present at any
+// intensity > 0, reading as a binary on/off toggle ("0か1しかない印象") rather than a dial. Fixed
+// by scaling the SHIFT AMOUNT itself with intensity too (0 = no shift/no-op, 100 = full half-width
+// shift): any shift amount still keeps the canvas's own boundary automatically tileable (per the
+// derivation above), so intermediate values now read as a continuously growing pan-with-wraparound
+// instead of jumping straight to the full quadrant swap.
 export function applySeamlessTile(ctx, canvas, intensity = 0) {
   if (intensity <= 0) return;
   const strength = Math.min(1, intensity / 100);
   const w = canvas.width, h = canvas.height;
-  const halfW = Math.floor(w / 2), halfH = Math.floor(h / 2);
+  const shiftX = Math.round((w / 2) * strength);
+  const shiftY = Math.round((h / 2) * strength);
+  if (shiftX <= 0 && shiftY <= 0) return;
 
   const shifted = document.createElement('canvas');
   shifted.width = w;
   shifted.height = h;
   const sctx = shifted.getContext('2d');
-  sctx.drawImage(canvas, halfW, halfH, w - halfW, h - halfH, 0, 0, w - halfW, h - halfH); // TL <- orig BR
-  sctx.drawImage(canvas, 0, halfH, halfW, h - halfH, w - halfW, 0, halfW, h - halfH);      // TR <- orig BL
-  sctx.drawImage(canvas, halfW, 0, w - halfW, halfH, 0, h - halfH, w - halfW, halfH);      // BL <- orig TR
-  sctx.drawImage(canvas, 0, 0, halfW, halfH, w - halfW, h - halfH, halfW, halfH);          // BR <- orig TL
+  sctx.drawImage(canvas, shiftX, shiftY, w - shiftX, h - shiftY, 0, 0, w - shiftX, h - shiftY);
+  sctx.drawImage(canvas, 0, shiftY, shiftX, h - shiftY, w - shiftX, 0, shiftX, h - shiftY);
+  sctx.drawImage(canvas, shiftX, 0, w - shiftX, shiftY, 0, h - shiftY, w - shiftX, shiftY);
+  sctx.drawImage(canvas, 0, 0, shiftX, shiftY, w - shiftX, h - shiftY, shiftX, shiftY);
 
   const ratio = 0.4;
   const smallW = Math.max(1, Math.round(w * ratio));
@@ -833,9 +841,9 @@ export function applySeamlessTile(ctx, canvas, intensity = 0) {
   const data = imgData.data;
   const src = Uint8ClampedArray.from(data);
 
-  const bandWidth = (20 + strength * 60) * ratio;
-  const blurRadius = 2;
-  const seamX = (w - halfW) * ratio, seamY = (h - halfH) * ratio;
+  const bandWidth = (10 + strength * 70) * ratio;
+  const blurRadius = 1 + Math.round(strength * 2);
+  const seamX = (w - shiftX) * ratio, seamY = (h - shiftY) * ratio;
 
   for (let y = 0; y < smallH; y++) {
     const distY = Math.abs(y - seamY);
