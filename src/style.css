@@ -813,6 +813,29 @@ select:focus {
   font-size: 0.8rem;
   color: var(--color-accent);
   text-align: right;
+  cursor: text;
+}
+
+.val-display-edit {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-text);
+  text-align: right;
+  background: var(--bg-control);
+  border: 1px solid var(--border-color-active);
+  border-radius: 4px;
+  width: 4.5em;
+  padding: 0 0.2rem;
+  outline: none;
+}
+
+.val-display-edit::-webkit-outer-spin-button,
+.val-display-edit::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.val-display-edit[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .btn-modulation-toggle {

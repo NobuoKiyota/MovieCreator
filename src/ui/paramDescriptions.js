@@ -311,7 +311,6 @@ export const FX_PARAM_DESCRIPTIONS = {
   feedbackDecay: 'モーショントレイル(残像)の残り具合。0で残像なし、1に近いほど長く尾を引く',
   feedbackRotate: '残像が毎フレーム少しずつ回転していく角度。トレイルが渦を巻くように広がる',
   distortionIntensity: '画面を横スライスして波打たせるノイズ歪み(スリット状の揺れ)の強さ',
-  kaleidoscopeSegment: '万華鏡効果の分割数。2未満でオフ、増やすほど画面が細かく鏡映複製される',
   mirrorMode: '画面のミラー分割方法(0=オフ,1=左右2分割,2=上下2分割,3=上下左右4分割,4以降は6/8/12/16/20分割の放射ミラー、奇数値はさらに交互反転させたバリエーション)',
   chromaticOffset: 'RGB各色チャンネルをずらして表示する色収差の強さ',
   hueRotate: '完成した映像の色相を丸ごと回転させる角度(度)。各generatorのColorパラメータを変えずに色味を変えられる',
@@ -334,7 +333,6 @@ export const FX_PARAM_DESCRIPTIONS = {
   paperTileIntensity: '紙の繊維のようなざらついた凹凸テクスチャを重ねる強さ',
   cartoonIntensity: '色面を平坦化しつつ輪郭を黒くなぞる、漫画/カートゥーン風の強さ',
   oilifyIntensity: '筆のタッチのような塊にまとめる油絵風(オイリファイ)の強さ',
-  cubismIntensity: 'ランダムな正方形タイルを敷き詰めて再構成する、キュービズム風モザイクの強さ',
   glassTileIntensity: 'ガラスブロック越しに見ているような、格子状のレンズ歪みの強さ',
   seamlessTileIntensity: '画面を上下左右にタイル状に並べても継ぎ目が目立たないようにする強さ'
 };

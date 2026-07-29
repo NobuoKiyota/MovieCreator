@@ -139,7 +139,6 @@ export class Controls {
       feedbackDecay:       { name: 'feedbackDecay',       label: 'Motion Trails',  ...R.feedbackDecay,       type: 'range' },
       feedbackRotate:      { name: 'feedbackRotate',      label: 'Trail Spin',     ...R.feedbackRotate,      type: 'range' },
       distortionIntensity: { name: 'distortionIntensity', label: 'Noise Warp',     ...R.distortionIntensity, type: 'range' },
-      kaleidoscope:        { name: 'kaleidoscopeSegment', label: 'Kaleidoscope',   ...R.kaleidoscopeSegment, type: 'range' },
       mirrorMode:          { name: 'mirrorMode',          label: 'Mirror Mode',    ...R.mirrorMode,          type: 'range' },
       chromatic:           { name: 'chromaticOffset',     label: 'Chromatic Aberr',...R.chromaticOffset,     type: 'range' },
       hueRotate:           { name: 'hueRotate',           label: 'Hue Rotate',     ...R.hueRotate,           type: 'range' },
@@ -162,7 +161,6 @@ export class Controls {
       paperTileIntensity:     { name: 'paperTileIntensity',     label: 'Paper Tile',     ...R.paperTileIntensity,     type: 'range' },
       cartoonIntensity:       { name: 'cartoonIntensity',       label: 'Cartoon',        ...R.cartoonIntensity,       type: 'range' },
       oilifyIntensity:        { name: 'oilifyIntensity',        label: 'Oilify',         ...R.oilifyIntensity,        type: 'range' },
-      cubismIntensity:        { name: 'cubismIntensity',        label: 'Cubism',         ...R.cubismIntensity,        type: 'range' },
       glassTileIntensity:     { name: 'glassTileIntensity',     label: 'Glass Tile',     ...R.glassTileIntensity,     type: 'range' },
       seamlessTileIntensity:  { name: 'seamlessTileIntensity',  label: 'Seamless Tile',  ...R.seamlessTileIntensity,  type: 'range' }
     };
@@ -2105,6 +2103,62 @@ export class Controls {
         }
       });
 
+
+      // Double-click the numeric readout (not the slider itself - that's already bound to
+      // "reset to default" above) swaps it for a real <input type="number"> so an exact value can
+      // be typed instead of fighting the slider's drag precision. Enter or blur commits (clamped
+      // to config.min/max); Escape cancels. A `done` guard stops the value from being committed
+      // twice - removing the focused input via replaceWith() also fires its own blur event, which
+      // would otherwise re-run the Enter path's commit a second time.
+      valDisplay.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const startVal = parseFloat(rangeInput.value);
+        const editInput = this.createElement('input');
+        editInput.type = 'number';
+        editInput.className = 'val-display-edit';
+        editInput.value = startVal;
+        editInput.step = config.step;
+        editInput.min = config.min;
+        editInput.max = config.max;
+        valDisplay.replaceWith(editInput);
+        editInput.focus();
+        editInput.select();
+
+        let done = false;
+        const finish = (apply) => {
+          if (done) return;
+          done = true;
+          if (apply) {
+            let v = parseFloat(editInput.value);
+            if (Number.isNaN(v)) v = startVal;
+            // Snap to the slider's own step grid (anchored at min, matching how a native range
+            // input snaps) so a typed value never visually disagrees with rangeInput.value, which
+            // silently self-snaps on assignment regardless of what we ask it to hold.
+            if (config.step > 0) {
+              v = Math.round((v - config.min) / config.step) * config.step + config.min;
+            }
+            v = Math.max(config.min, Math.min(config.max, v));
+            rangeInput.value = v;
+            valDisplay.textContent = v % 1 === 0 ? v.toString() : v.toFixed(4);
+            onValUpdate(v);
+
+            if (mod && !mod.enabled && !mod.keyframeEnabled) {
+              mod.min = v;
+              mod.max = v;
+              mod.jitterBase = v;
+            }
+            this.mainApp.renderSingleFrame();
+          }
+          editInput.replaceWith(valDisplay);
+        };
+
+        editInput.addEventListener('keydown', (ke) => {
+          if (ke.key === 'Enter') { ke.preventDefault(); finish(true); }
+          else if (ke.key === 'Escape') { ke.preventDefault(); finish(false); }
+        });
+        editInput.addEventListener('blur', () => finish(true));
+      });
+
       // Click toggles Spawn Jitter on/off; a vertical drag instead scrubs this parameter's own
       // jitter width (DAW-knob style), so there's no separate numeric input to add per parameter.
       let jitterDragStartY = null;
@@ -2738,14 +2792,13 @@ export class Controls {
         switch (fxName) {
           // Deliberately excluded from randomization (see CLAUDE.md's "ガチャ回避" notes) -
           // positionX/Y (basically 0,0), strobe (almost never used), distortionIntensity/
-          // kaleidoscopeSegment/mirrorMode/chromaticOffset (almost never used / manual-only
+          // mirrorMode/chromaticOffset (almost never used / manual-only
           // composition choices), rotateY/rotateZ (3D effects unused except X), translateZ
           // (overlaps with Scale).
           case 'positionX':
           case 'positionY':
           case 'strobe':
           case 'distortionIntensity':
-          case 'kaleidoscopeSegment':
           case 'mirrorMode':
           case 'chromaticOffset':
           case 'rotateY':
@@ -2766,7 +2819,6 @@ export class Controls {
           case 'paperTileIntensity':
           case 'cartoonIntensity':
           case 'oilifyIntensity':
-          case 'cubismIntensity':
           case 'glassTileIntensity':
           case 'seamlessTileIntensity':
             r = forceFxOff(0);
@@ -3032,7 +3084,7 @@ export class Controls {
     });
     for (let fxName in this.fxConfigs) {
       // this.fxConfigs is keyed by a UI-only shorthand that doesn't always match the real
-      // modulations/effects key (e.g. 'kaleidoscope' -> name: 'kaleidoscopeSegment') - use
+      // modulations/effects key (e.g. 'chromatic' -> name: 'chromaticOffset') - use
       // .name, not the loop key, wherever this actually indexes into layer state.
       applyOne(this.fxConfigs[fxName].name, this.fxConfigs[fxName]);
     }

@@ -193,13 +193,22 @@ export function applyFilmGrain(ctx, width, height, opacity = 0.05) {
   ctx.restore();
 }
 
-// 6. Kaleidoscope Symmetry Mirror
-// Shared by applyKaleidoscope (zoom>1, always alternating) and Mirror Mode's radial presets
-// (zoom=1, i.e. an undistorted 1:1 copy of the reference wedge, no magnification): clips the
-// canvas into `segments` equal angular wedges and draws a rotated copy of the WHOLE source per
-// wedge. Because the whole source rotates before clipping, what lands in wedge i is actually
-// the same reference content from wedge 0, rotated into position i - a "copy the reference
-// wedge, rotating by 360/segments degrees each time" fan, not an independent redraw per wedge.
+// 6. Radial Wedge Fan (shared by Mirror Mode's radial N-way presets)
+// Clips the canvas into `segments` equal angular wedges and draws a rotated copy of the WHOLE
+// source per wedge. Because the whole source rotates before clipping, what lands in wedge i is
+// actually the same reference content from wedge 0, rotated into position i - a "copy the
+// reference wedge, rotating by 360/segments degrees each time" fan, not an independent redraw per
+// wedge.
+//
+// This used to also back a standalone Kaleidoscope FX slider (zoom=1.6, always alternating),
+// removed 2026-07-29: the 1.6x zoom, meant to make wedges look more distinct from each other,
+// instead samples a smaller, often sparser slice of source content near the canvas center - for
+// generator content spread across the wider canvas (which is most of them), this measured out to
+// only ~1.7x the unprocessed frame's lit-pixel count at 12 segments, vs Mirror Mode's own 12-way
+// radial preset (this same function at zoom=1) reaching ~5.8x - i.e. Kaleidoscope was
+// substantially LESS visible than the already-existing Mirror Mode option it overlapped with, not
+// more, confirming the user's report that the effect barely read as a kaleidoscope. Mirror Mode's
+// radial presets (mode 4+) fully cover this function's use case, so removed rather than re-tuned.
 function drawRadialWedgeCopies(ctx, sourceCanvas, w, h, segments, { zoom = 1, alternate = false } = {}) {
   const angle = (Math.PI * 2) / segments;
   const cx = w / 2;
@@ -227,31 +236,10 @@ function drawRadialWedgeCopies(ctx, sourceCanvas, w, h, segments, { zoom = 1, al
   }
 }
 
-export function applyKaleidoscope(ctx, canvas, segments = 6) {
-  // 2026-07-20: lowered from <3 to <2 so a plain 2-way point mirror (the simplest reading of
-  // "mirror around the center") is reachable via the existing slider, instead of requiring a
-  // separate dedicated "center mirror" toggle.
-  if (segments < 2) return;
-  const w = canvas.width;
-  const h = canvas.height;
-
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = w;
-  tempCanvas.height = h;
-  tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
-
-  ctx.clearRect(0, 0, w, h);
-
-  // Sample a magnified crop of the source per wedge, not a near-1:1 copy - otherwise
-  // the mirrored wedges mostly overlap with the original center content and the
-  // "kaleidoscope" repetition barely reads as a distinct pattern.
-  drawRadialWedgeCopies(ctx, tempCanvas, w, h, segments, { zoom: 1.6, alternate: true });
-}
-
-// 6b. Mirror Mode (screen-split mirroring) - 2026-07-20, added alongside a review of
-// applyKaleidoscope (which already covers "mirror around the center" via its N-segment radial
-// mirror; lowered its minimum from 3 to 2 segments there for a plain point-mirror option instead
-// of duplicating that here). This is the distinct one: reflect a rectangular half/quadrant onto
+// 6b. Mirror Mode (screen-split mirroring) - 2026-07-20, added alongside a review of the (since
+// removed, 2026-07-29) standalone Kaleidoscope FX, which already covered "mirror around the
+// center" via its own N-segment radial mirror. This is the distinct one: reflect a rectangular
+// half/quadrant onto
 // the rest of the canvas, like a body of water reflecting what's above it, rather than a radial
 // kaleidoscope. Revised 2026-07-20 from a 2-value top/bottom-only toggle into a single clearer
 // 4-state parameter matching how many "screens" (mirrored copies) are visible:
@@ -261,7 +249,7 @@ export function applyKaleidoscope(ctx, canvas, segments = 6) {
 //   3 = left-right + up-down mirror (4 screens): top-left quadrant is the source, mirrored into
 //       the other three quadrants (a quad/tile mirror)
 // Extended 2026-07-20 with radial N-way presets (modes 4-9) built on the same
-// drawRadialWedgeCopies fan used by applyKaleidoscope, but zoom=1 (an undistorted 1:1 copy
+// drawRadialWedgeCopies fan the (removed) Kaleidoscope FX also used, but zoom=1 (an undistorted
 // of the reference wedge, not Kaleidoscope's magnified sampling) - "オリジナルを中心点から
 // 分割し、360/N度ずつ回転コピー". Each fold count has a plain rotate-only variant and an
 // alternating-mirror variant (odd wedges additionally flipped, closer to true kaleidoscope optics):
@@ -1114,75 +1102,4 @@ export function applyOilify(ctx, canvas, intensity = 0) {
       }
     }
   });
-}
-
-// 22. Cubism - GIMP's Cubism scatters randomly-placed, randomly-rotated square tiles across the
-// frame, each filled with a single sampled color, reconstructing the image as a shattered mosaic.
-// The tile LAYOUT (position/size/rotation) is generated once per canvas size and cached (same
-// reasoning as the texture patterns above) rather than re-randomized every frame - a fresh random
-// scatter each frame would read as flickering noise, not a cohesive style (the same lesson behind
-// the Particles/Magic Sparks per-particle-noise-offset fix elsewhere in this app: motion needs
-// continuity, not a full re-roll). Each frame only re-samples colors from a small downsampled
-// buffer at the cached tile positions, then stamps a rotated filled rectangle per tile with plain
-// vector fillRect calls (cheap - no per-pixel processing, and this app's generators already draw
-// hundreds of individual particle shapes per frame the same way). The frame is NOT cleared first -
-// tiles are drawn ON TOP at alpha = (sampled alpha) * intensity, so low intensity reads as a subtle
-// mosaic texture layered over the untouched original and high intensity fully replaces it.
-const _cubismLayoutCache = {};
-function getCubismLayout(w, h) {
-  const key = `${w}x${h}`;
-  let layout = _cubismLayoutCache[key];
-  if (layout) return layout;
-  const baseTileSize = 34;
-  const cols = Math.ceil(w / baseTileSize) + 2;
-  const rows = Math.ceil(h / baseTileSize) + 2;
-  layout = [];
-  for (let ry = -1; ry < rows - 1; ry++) {
-    for (let rx = -1; rx < cols - 1; rx++) {
-      const jitterX = (Math.random() - 0.5) * baseTileSize * 0.9;
-      const jitterY = (Math.random() - 0.5) * baseTileSize * 0.9;
-      layout.push({
-        x: rx * baseTileSize + baseTileSize / 2 + jitterX,
-        y: ry * baseTileSize + baseTileSize / 2 + jitterY,
-        size: baseTileSize * (0.8 + Math.random() * 0.6),
-        angle: Math.random() * Math.PI * 2
-      });
-    }
-  }
-  _cubismLayoutCache[key] = layout;
-  return layout;
-}
-
-export function applyCubism(ctx, canvas, intensity = 0) {
-  if (intensity <= 0) return;
-  const t = Math.min(1, intensity / 100);
-  const w = canvas.width, h = canvas.height;
-  const ratio = 0.2;
-  const smallW = Math.max(1, Math.round(w * ratio));
-  const smallH = Math.max(1, Math.round(h * ratio));
-  const small = document.createElement('canvas');
-  small.width = smallW;
-  small.height = smallH;
-  const sctx = small.getContext('2d');
-  sctx.drawImage(canvas, 0, 0, smallW, smallH);
-  const sample = sctx.getImageData(0, 0, smallW, smallH).data;
-
-  const layout = getCubismLayout(w, h);
-  ctx.save();
-  ctx.globalCompositeOperation = 'source-over';
-  for (const tile of layout) {
-    if (tile.x < -tile.size || tile.x > w + tile.size || tile.y < -tile.size || tile.y > h + tile.size) continue;
-    const sx = Math.min(smallW - 1, Math.max(0, Math.round(tile.x * ratio)));
-    const sy = Math.min(smallH - 1, Math.max(0, Math.round(tile.y * ratio)));
-    const idx = (sy * smallW + sx) * 4;
-    const a = sample[idx + 3];
-    if (a < 8) continue; // near-fully-transparent source - skip so tiles never stamp over empty background
-    ctx.save();
-    ctx.translate(tile.x, tile.y);
-    ctx.rotate(tile.angle);
-    ctx.fillStyle = `rgba(${sample[idx]},${sample[idx + 1]},${sample[idx + 2]},${(a / 255) * t})`;
-    ctx.fillRect(-tile.size / 2, -tile.size / 2, tile.size, tile.size);
-    ctx.restore();
-  }
-  ctx.restore();
 }

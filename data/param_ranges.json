@@ -1311,11 +1311,6 @@
       "max": 40,
       "step": 1
     },
-    "kaleidoscopeSegment": {
-      "min": 0,
-      "max": 12,
-      "step": 1
-    },
     "mirrorMode": {
       "min": 0,
       "max": 13,
@@ -1422,11 +1417,6 @@
       "step": 50
     },
     "oilifyIntensity": {
-      "min": 0,
-      "max": 100,
-      "step": 1
-    },
-    "cubismIntensity": {
       "min": 0,
       "max": 100,
       "step": 1

@@ -36,7 +36,6 @@ import {
   applyDistortion,
   applyVignette,
   applyFilmGrain,
-  applyKaleidoscope,
   applyMirrorMode,
   applyChromaticAberration,
   applyHueRotate,
@@ -54,7 +53,6 @@ import {
   applyPaperTile,
   applyCartoon,
   applyOilify,
-  applyCubism,
   applyGlassTile,
   applySeamlessTile
 } from './Effects.js';
@@ -133,7 +131,6 @@ export class Layer {
       distortionIntensity: 0, // 0 to 40
       distortionFrequency: 0.008, // fewer wave cycles across the canvas = calmer, less jittery
       distortionSpeed: 1.5,
-      kaleidoscopeSegment: 0,
       mirrorMode: 0,     // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt),10/11=16-way(+alt),12/13=20-way(+alt) (see Effects.js)
       chromaticOffset: 0,
       hueRotate: 0,      // degrees (-180 to 180), see Effects.js applyHueRotate
@@ -160,7 +157,6 @@ export class Layer {
       paperTileIntensity: 0,
       cartoonIntensity: 0,
       oilifyIntensity: 0,
-      cubismIntensity: 0,
       glassTileIntensity: 0,
       seamlessTileIntensity: 0
     };
@@ -762,11 +758,6 @@ export class Layer {
       applyCartoon(this.ctx, this.canvas, this.effects.cartoonIntensity);
     }
 
-    // Apply Cubism (stylize)
-    if (this.effects.cubismIntensity > 0) {
-      applyCubism(this.ctx, this.canvas, this.effects.cubismIntensity);
-    }
-
     // Apply Hue Rotate
     if (this.effects.hueRotate !== 0) {
       applyHueRotate(this.ctx, this.canvas, this.effects.hueRotate);
@@ -786,11 +777,6 @@ export class Layer {
     // Apply Paper Tile (physical-surface overlay)
     if (this.effects.paperTileIntensity > 0) {
       applyPaperTile(this.ctx, this.canvas, this.effects.paperTileIntensity);
-    }
-
-    // Apply Kaleidoscope (2026-07-20: 3 -> 2, see applyKaleidoscope's own comment)
-    if (this.effects.kaleidoscopeSegment >= 2) {
-      applyKaleidoscope(this.ctx, this.canvas, this.effects.kaleidoscopeSegment);
     }
 
     // Apply Mirror Mode

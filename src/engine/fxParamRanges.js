@@ -14,7 +14,6 @@ export const FX_PARAM_RANGES = {
   feedbackDecay:       { min: 0.0,   max: 0.95, step: 0.01  },
   feedbackRotate:      { min: -0.05, max: 0.05, step: 0.001 },
   distortionIntensity: { min: 0,     max: 40,   step: 1     },
-  kaleidoscopeSegment: { min: 0,     max: 12,   step: 1     },
   mirrorMode:          { min: 0,     max: 13,   step: 1     }, // 0=off,1=L-R,2=U-D,3=quad,4/5=6-way(+alt),6/7=8-way(+alt),8/9=12-way(+alt),10/11=16-way(+alt),12/13=20-way(+alt)
   chromaticOffset:     { min: 0,     max: 30,   step: 0.5   },
   hueRotate:           { min: -180,  max: 180,  step: 1     }, // degrees, native CSS/Canvas hue-rotate() filter - lets `color` itself become an LFO/keyframe/Move-scored target without touching any generator's own color param
@@ -37,7 +36,6 @@ export const FX_PARAM_RANGES = {
   paperTileIntensity:     { min: 0, max: 100, step: 1 },
   cartoonIntensity:       { min: 0, max: 100, step: 1 },
   oilifyIntensity:        { min: 0, max: 100, step: 1 },
-  cubismIntensity:        { min: 0, max: 100, step: 1 },
   glassTileIntensity:     { min: 0, max: 100, step: 1 },
   seamlessTileIntensity:  { min: 0, max: 100, step: 1 }
 };

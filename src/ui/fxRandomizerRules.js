@@ -13,7 +13,7 @@
 // Shared shape for FX parameters deliberately excluded from randomization (see CLAUDE.md's
 // "ガチャ回避" notes) - almost never improves the look left to chance, so always forced to a
 // fixed value with modulation disabled. Used by positionX, positionY, strobe,
-// distortionIntensity, kaleidoscopeSegment, mirrorMode, chromaticOffset, rotateY, rotateZ,
+// distortionIntensity, mirrorMode, chromaticOffset, rotateY, rotateZ,
 // translateZ.
 export function forceFxOff(value = 0) {
   return {

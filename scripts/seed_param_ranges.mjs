@@ -100,15 +100,14 @@ function collectFxRows() {
   const LABELS = {
     positionX: 'Position X', positionY: 'Position Y', rotation: 'Rotation', scale: 'Scale',
     strobe: 'Strobe Speed', glowIntensity: 'Neon Glow', feedbackDecay: 'Motion Trails',
-    feedbackRotate: 'Trail Spin', distortionIntensity: 'Noise Warp', kaleidoscopeSegment: 'Kaleidoscope',
-    mirrorMode: 'Mirror Mode', chromaticOffset: 'Chromatic Aberr', hueRotate: 'Hue Rotate',
+    feedbackRotate: 'Trail Spin', distortionIntensity: 'Noise Warp',     mirrorMode: 'Mirror Mode', chromaticOffset: 'Chromatic Aberr', hueRotate: 'Hue Rotate',
     rotateX: 'Rotate X', rotateY: 'Rotate Y', rotateZ: 'Rotate Z', translateZ: 'Depth (Z)',
     medianBlurIntensity: 'Median Blur', embossIntensity: 'Emboss', motionBlurIntensity: 'Motion Blur',
     motionBlurAngle: 'Motion Blur Angle', radialBlurIntensity: 'Radial Blur',
     edgeDetectIntensity: 'Edge Detect', pixelateBlockSize: 'Pixelate', posterizeLevels: 'Posterize',
     solarizeThreshold: 'Solarize', spherizeIntensity: 'Spherize', littlePlanetIntensity: 'Little Planet',
     canvasTextureIntensity: 'Canvas Texture', paperTileIntensity: 'Paper Tile', cartoonIntensity: 'Cartoon',
-    oilifyIntensity: 'Oilify', cubismIntensity: 'Cubism', glassTileIntensity: 'Glass Tile',
+    oilifyIntensity: 'Oilify', glassTileIntensity: 'Glass Tile',
     seamlessTileIntensity: 'Seamless Tile'
   };
   return Object.entries(FX_PARAM_RANGES).map(([name, range]) => ({
