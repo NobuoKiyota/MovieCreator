@@ -9,6 +9,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-29 15:40 [Antigravity] 完了: レイヤー/プロジェクト保存・インポート時のクリップ静止画データ(imageDataUrl)完全保持・復元に対応
 - 2026-07-29 15:35 [Antigravity] 完了: Parallax Depthの初期値を0.0に変更し静止画追加時のマウス追従を標準オフ化
 - 2026-07-29 15:30 [Antigravity] 完了: updateSliderUIでのundefined値に対するtoFixed例外クラッシュの防止
 - 2026-07-29 15:28 [Antigravity] 完了: ImageMotionGeneratorへのupdate/resetメソッド追加およびLayerManagerでのgenerator.update安全性チェックによるTypeError解消

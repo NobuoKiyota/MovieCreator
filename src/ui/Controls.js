@@ -3100,6 +3100,7 @@ export class Controls {
         blendMode: layer.blendMode,
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
+        imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
         params: { ...candidateState.params },
         effects: { ...candidateState.effects },
         modulations: JSON.parse(JSON.stringify(candidateState.modulations))
@@ -3146,6 +3147,11 @@ export class Controls {
       newLayer.blendMode = lData.blendMode || 'lighter';
       newLayer.randomSpread = lData.randomSpread !== undefined ? lData.randomSpread : 50;
       newLayer.currentPresetName = lData.currentPresetName || 'static-none';
+
+      const imgUrl = lData.imageDataUrl || (lData.params && lData.params.imageDataUrl);
+      if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
+        newLayer.generator.setImageUrl(imgUrl);
+      }
 
       if (lData.params) {
         newLayer.generator.params = { ...newLayer.generator.params, ...lData.params };
@@ -4067,6 +4073,7 @@ export class Controls {
         blendMode: layer.blendMode,
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
+        imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
         params: { ...layer.generator.params },
         effects: { ...layer.effects },
         modulations: JSON.parse(JSON.stringify(layer.modulations))
@@ -4139,6 +4146,11 @@ export class Controls {
         newLayer.blendMode = layerData.blendMode || 'lighter';
         newLayer.randomSpread = layerData.randomSpread !== undefined ? layerData.randomSpread : 50;
         newLayer.currentPresetName = layerData.currentPresetName || 'static-none';
+
+        const imgUrl = layerData.imageDataUrl || (layerData.params && layerData.params.imageDataUrl);
+        if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
+          newLayer.generator.setImageUrl(imgUrl);
+        }
 
         if (layerData.params) {
           newLayer.generator.params = { ...newLayer.generator.params, ...layerData.params };
@@ -4225,6 +4237,7 @@ export class Controls {
         blendMode: layer.blendMode,
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
+        imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
         params: { ...layer.generator.params },
         effects: { ...layer.effects },
         modulations: JSON.parse(JSON.stringify(layer.modulations))
@@ -4273,6 +4286,7 @@ export class Controls {
         blendMode: layer.blendMode,
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
+        imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
         params: { ...layer.generator.params },
         effects: { ...layer.effects },
         modulations: JSON.parse(JSON.stringify(layer.modulations))
@@ -4337,6 +4351,11 @@ export class Controls {
           newLayer.blendMode = layerData.blendMode || 'lighter';
           newLayer.randomSpread = layerData.randomSpread !== undefined ? layerData.randomSpread : 50;
           newLayer.currentPresetName = layerData.currentPresetName || 'static-none';
+
+          const imgUrl = layerData.imageDataUrl || (layerData.params && layerData.params.imageDataUrl);
+          if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
+            newLayer.generator.setImageUrl(imgUrl);
+          }
 
           if (layerData.params) {
             newLayer.generator.params = { ...newLayer.generator.params, ...layerData.params };
@@ -5449,6 +5468,7 @@ export class Controls {
         blendMode: activeLayer.blendMode,
         randomSpread: activeLayer.randomSpread,
         currentPresetName: activeLayer.currentPresetName,
+        imageDataUrl: activeLayer.generator.imageDataUrl || (activeLayer.generator.params && activeLayer.generator.params.imageDataUrl) || undefined,
         params: { ...activeLayer.generator.params },
         effects: { ...activeLayer.effects },
         modulations: JSON.parse(JSON.stringify(activeLayer.modulations))
@@ -5502,6 +5522,11 @@ export class Controls {
       newLayer.blendMode = lData.blendMode || 'lighter';
       newLayer.randomSpread = lData.randomSpread !== undefined ? lData.randomSpread : 50;
       newLayer.currentPresetName = lData.currentPresetName || 'static-none';
+
+      const imgUrl = lData.imageDataUrl || (lData.params && lData.params.imageDataUrl);
+      if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
+        newLayer.generator.setImageUrl(imgUrl);
+      }
 
       if (lData.params) {
         newLayer.generator.params = { ...newLayer.generator.params, ...lData.params };
