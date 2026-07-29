@@ -9,6 +9,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-29 15:10 [Antigravity] 完了: 静止画レイヤーのLFO・タイムライン・cycleDuration同期バグ修正
 - 2026-07-29 15:05 [Antigravity] 完了: 静止画アニメーション化拡張機能(Static Image Motionizer)およびドラッグ＆ドロップ/Paste対応の実装
 - 2026-07-29 15:00 [Antigravity] 着手: 静止画アニメーション化拡張機能(Static Image Motionizer)およびドラッグ＆ドロップ/Paste対応の実装
 - 2026-07-29 [Claude Code] 完了: 全select要素のドロップダウンリスト(option)が白背景+薄い文字色で読めなくなっていたバグを修正(ネイティブoptionポップアップはselectのbackgroundを継承しないため、option自体に背景色を明示)。全て未コミット

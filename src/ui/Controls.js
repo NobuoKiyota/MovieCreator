@@ -107,7 +107,7 @@ export class Controls {
       'Rotating Glowing Cube', 'Neon Lightning', 'Neon Fog', 'Cyber Flame', 'Neon Snowflake',
       'Neon Spirograph', 'Aurora Curtain', 'Dry Ice Smoke', '3D Shape Particles', 'Lighthouse Beacon',
       'Shockwave Burst', 'Glass Crack', 'Dot Design', 'Noise Glitch', 'Milky Way', 'Color Wash',
-      'Cracked Wall', 'Magma Wall'
+      'Cracked Wall', 'Magma Wall', 'Image Layer (Motionizer)'
     ].sort((a, b) => b.length - a.length);
 
     // Floating Inspector elements

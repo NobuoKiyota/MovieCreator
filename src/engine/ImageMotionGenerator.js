@@ -12,14 +12,15 @@ export class ImageMotionGenerator {
 
     this.params = {
       imageDataUrl: '',       // DataURL または URL
-      parallaxDepth: 0.0,    // 視差奥行き感度 (-2.0 〜 +2.0)
+      cycleDuration: 5000,    // 共通サイクル時間 (ms)
+      parallaxDepth: 0.5,     // 視差奥行き感度 (-2.0 〜 +2.0)
       fitMode: 'contain',     // contain, cover, fill, original
-      opacity: 1.0,           // 不透明度
-      scaleX: 1.0,            // 個別スケールX
-      scaleY: 1.0,            // 個別スケールY
-      posX: 0,                // オフセット位置X
-      posY: 0,                // オフセット位置Y
-      rotation: 0,            // 回転
+      opacity: 1.0,           // 不透明度 (0.0 〜 1.0)
+      scaleX: 1.0,            // 個別スケールX (0.1 〜 5.0)
+      scaleY: 1.0,            // 個別スケールY (0.1 〜 5.0)
+      posX: 0,                // オフセット位置X (-500 〜 500)
+      posY: 0,                // オフセット位置Y (-500 〜 500)
+      rotation: 0,            // 個別回転 (-180 〜 180)
       maskShape: 'none',      // none, circle, ellipse
       maskSize: 1.0           // マスクサイズ (0.1 〜 2.0)
     };
@@ -27,7 +28,8 @@ export class ImageMotionGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'parallaxDepth', label: 'Parallax Depth', type: 'range', min: -2.0, max: 2.0, step: 0.05, default: 0.0 },
+      { name: 'cycleDuration', label: 'Cycle Duration', type: 'range', min: 500, max: 20000, step: 100, default: 5000 },
+      { name: 'parallaxDepth', label: 'Parallax Depth', type: 'range', min: -2.0, max: 2.0, step: 0.05, default: 0.5 },
       { name: 'opacity', label: 'Image Opacity', type: 'range', min: 0.0, max: 1.0, step: 0.01, default: 1.0 },
       { name: 'scaleX', label: 'Scale X', type: 'range', min: 0.1, max: 5.0, step: 0.05, default: 1.0 },
       { name: 'scaleY', label: 'Scale Y', type: 'range', min: 0.1, max: 5.0, step: 0.05, default: 1.0 },
