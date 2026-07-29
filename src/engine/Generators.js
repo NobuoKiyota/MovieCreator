@@ -3974,3 +3974,4 @@ export class MagmaWallGenerator extends BaseGenerator {
 }
 
 export { ImageMotionGenerator, imageMotionGenerator } from './ImageMotionGenerator.js';
+export { VideoMotionGenerator, videoMotionGenerator } from './VideoMotionGenerator.js';

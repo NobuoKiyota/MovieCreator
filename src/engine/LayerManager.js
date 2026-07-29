@@ -28,7 +28,8 @@ import {
   ColorWashGenerator,
   CrackedWallGenerator,
   MagmaWallGenerator,
-  ImageMotionGenerator
+  ImageMotionGenerator,
+  VideoMotionGenerator
 } from './Generators.js';
 
 import {
@@ -231,6 +232,7 @@ export class Layer {
       case 'cracked-wall': return new CrackedWallGenerator();
       case 'magma-wall': return new MagmaWallGenerator();
       case 'image': return new ImageMotionGenerator();
+      case 'video': return new VideoMotionGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }

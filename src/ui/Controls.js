@@ -312,16 +312,24 @@ export class Controls {
       e.preventDefault();
       if (dropOverlay) dropOverlay.classList.add('hidden');
 
-      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-      if (files.length > 0) {
-        files.forEach(file => {
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            this.createImageLayerFromDataUrl(evt.target.result, file.name);
-          };
-          reader.readAsDataURL(file);
-        });
-      }
+      const allFiles = Array.from(e.dataTransfer.files);
+      
+      // 画像ファイル処理
+      const imageFiles = allFiles.filter(f => f.type.startsWith('image/'));
+      imageFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          this.createImageLayerFromDataUrl(evt.target.result, file.name);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // 動画ファイル処理 (MP4, WebM, MOV, OGV)
+      const videoFiles = allFiles.filter(f => f.type.startsWith('video/') || /\.(mp4|webm|mov|ogv)$/i.test(f.name));
+      videoFiles.forEach(file => {
+        const objectUrl = URL.createObjectURL(file);
+        this.createVideoLayerFromUrl(objectUrl, file.name);
+      });
     });
 
     window.addEventListener('paste', (e) => {
@@ -338,6 +346,12 @@ export class Controls {
             };
             reader.readAsDataURL(file);
           }
+        } else if (item.type.indexOf('video') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const objectUrl = URL.createObjectURL(file);
+            this.createVideoLayerFromUrl(objectUrl, 'Pasted_Video_' + Date.now());
+          }
         }
       }
     });
@@ -349,6 +363,22 @@ export class Controls {
       newLayer.name = fileName.replace(/\.[^/.]+$/, '');
     }
     newLayer.generator.setImageUrl(dataUrl);
+    this.activeLayerId = newLayer.id;
+    this.rebuildLayersList();
+    this.rebuildInspector();
+    if (!this.mainApp.isPlaying) {
+      this.mainApp.play();
+    } else {
+      this.mainApp.renderSingleFrame();
+    }
+  }
+
+  createVideoLayerFromUrl(url, fileName = 'Video Layer') {
+    const newLayer = this.layerManager.addLayer('video');
+    if (fileName) {
+      newLayer.name = fileName.replace(/\.[^/.]+$/, '');
+    }
+    newLayer.generator.setVideoUrl(url);
     this.activeLayerId = newLayer.id;
     this.rebuildLayersList();
     this.rebuildInspector();
@@ -1944,6 +1974,78 @@ export class Controls {
       this.inspectorContentEl.appendChild(imgSection);
     }
 
+    if (layer.type === 'video') {
+      const currentFit = layer.generator.params.fitMode || 'contain';
+      const currentMask = layer.generator.params.maskShape || 'none';
+      const currentLoop = layer.generator.params.loopMode || 'auto';
+
+      const vidSection = document.createElement('div');
+      vidSection.className = 'inspector-section';
+      vidSection.innerHTML = `
+        <h3 style="color: #a855f7; border-bottom: 1px solid rgba(168,85,247,0.3); padding-bottom: 0.2rem; margin-bottom: 0.5rem; font-size: 0.85rem;">🎥 Video Layer Settings</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Video File:</span>
+            <input type="file" class="video-file-input" accept="video/mp4,video/webm,video/quicktime,video/ogg" style="font-size: 0.7rem; color: #cbd5e1;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Loop Mode:</span>
+            <select class="video-loop-select" style="background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.3rem; flex: 1;">
+              <option value="auto" ${currentLoop === 'auto' ? 'selected' : ''}>Auto Loop (自動ループ)</option>
+              <option value="once" ${currentLoop === 'once' ? 'selected' : ''}>Play Once (1回再生)</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Fit Mode:</span>
+            <select class="video-fit-select" style="background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.3rem; flex: 1;">
+              <option value="contain" ${currentFit === 'contain' ? 'selected' : ''}>Contain (アスペクト維持収まる)</option>
+              <option value="cover" ${currentFit === 'cover' ? 'selected' : ''}>Cover (アスペクト維持全域)</option>
+              <option value="fill" ${currentFit === 'fill' ? 'selected' : ''}>Fill (キャンバス全域伸縮)</option>
+              <option value="original" ${currentFit === 'original' ? 'selected' : ''}>Original (原寸表示)</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Mask Shape:</span>
+            <select class="video-mask-select" style="background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.3rem; flex: 1;">
+              <option value="none" ${currentMask === 'none' ? 'selected' : ''}>None (なし)</option>
+              <option value="circle" ${currentMask === 'circle' ? 'selected' : ''}>Circle (円形クリップ)</option>
+              <option value="ellipse" ${currentMask === 'ellipse' ? 'selected' : ''}>Ellipse (楕円クリップ)</option>
+            </select>
+          </div>
+        </div>
+      `;
+
+      const fileInput = vidSection.querySelector('.video-file-input');
+      const loopSelect = vidSection.querySelector('.video-loop-select');
+      const fitSelect = vidSection.querySelector('.video-fit-select');
+      const maskSelect = vidSection.querySelector('.video-mask-select');
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const objectUrl = URL.createObjectURL(file);
+        layer.generator.setVideoUrl(objectUrl);
+        this.mainApp.renderSingleFrame();
+      });
+
+      loopSelect.addEventListener('change', (e) => {
+        layer.generator.params.loopMode = e.target.value;
+        this.mainApp.renderSingleFrame();
+      });
+
+      fitSelect.addEventListener('change', (e) => {
+        layer.generator.params.fitMode = e.target.value;
+        this.mainApp.renderSingleFrame();
+      });
+
+      maskSelect.addEventListener('change', (e) => {
+        layer.generator.params.maskShape = e.target.value;
+        this.mainApp.renderSingleFrame();
+      });
+
+      this.inspectorContentEl.appendChild(vidSection);
+    }
+
     // 1-A-2. Batch Export Control Header
     const batchHeader = this.createElement('div');
     batchHeader.className = 'batch-export-header';
@@ -3101,6 +3203,7 @@ export class Controls {
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
         imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
+        videoDataUrl: layer.generator.videoDataUrl || (layer.generator.params && layer.generator.params.videoDataUrl) || undefined,
         params: { ...candidateState.params },
         effects: { ...candidateState.effects },
         modulations: JSON.parse(JSON.stringify(candidateState.modulations))
@@ -3151,6 +3254,11 @@ export class Controls {
       const imgUrl = lData.imageDataUrl || (lData.params && lData.params.imageDataUrl);
       if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
         newLayer.generator.setImageUrl(imgUrl);
+      }
+
+      const vidUrl = lData.videoDataUrl || (lData.params && lData.params.videoDataUrl);
+      if (vidUrl && newLayer.generator && typeof newLayer.generator.setVideoUrl === 'function') {
+        newLayer.generator.setVideoUrl(vidUrl);
       }
 
       if (lData.params) {
@@ -4074,6 +4182,7 @@ export class Controls {
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
         imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
+        videoDataUrl: layer.generator.videoDataUrl || (layer.generator.params && layer.generator.params.videoDataUrl) || undefined,
         params: { ...layer.generator.params },
         effects: { ...layer.effects },
         modulations: JSON.parse(JSON.stringify(layer.modulations))
@@ -4150,6 +4259,11 @@ export class Controls {
         const imgUrl = layerData.imageDataUrl || (layerData.params && layerData.params.imageDataUrl);
         if (imgUrl && newLayer.generator && typeof newLayer.generator.setImageUrl === 'function') {
           newLayer.generator.setImageUrl(imgUrl);
+        }
+
+        const vidUrl = layerData.videoDataUrl || (layerData.params && layerData.params.videoDataUrl);
+        if (vidUrl && newLayer.generator && typeof newLayer.generator.setVideoUrl === 'function') {
+          newLayer.generator.setVideoUrl(vidUrl);
         }
 
         if (layerData.params) {
@@ -5372,6 +5486,8 @@ export class Controls {
         blendMode: layer.blendMode,
         randomSpread: layer.randomSpread,
         currentPresetName: layer.currentPresetName,
+        imageDataUrl: layer.generator.imageDataUrl || (layer.generator.params && layer.generator.params.imageDataUrl) || undefined,
+        videoDataUrl: layer.generator.videoDataUrl || (layer.generator.params && layer.generator.params.videoDataUrl) || undefined,
         params: { ...layer.generator.params },
         effects: { ...layer.effects },
         modulations: JSON.parse(JSON.stringify(layer.modulations))
@@ -5419,8 +5535,8 @@ export class Controls {
     document.body.appendChild(toast);
     setTimeout(() => {
       toast.style.opacity = '0';
-      setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 400);
-    }, 3500);
+      setTimeout(() => toast.remove(), 400);
+    }, 3000);
   }
 
   // Suggests "<base name><NN+1>" as the Save dialog's prefilled default, by scanning presets/ for
@@ -5469,6 +5585,7 @@ export class Controls {
         randomSpread: activeLayer.randomSpread,
         currentPresetName: activeLayer.currentPresetName,
         imageDataUrl: activeLayer.generator.imageDataUrl || (activeLayer.generator.params && activeLayer.generator.params.imageDataUrl) || undefined,
+        videoDataUrl: activeLayer.generator.videoDataUrl || (activeLayer.generator.params && activeLayer.generator.params.videoDataUrl) || undefined,
         params: { ...activeLayer.generator.params },
         effects: { ...activeLayer.effects },
         modulations: JSON.parse(JSON.stringify(activeLayer.modulations))
