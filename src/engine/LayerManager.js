@@ -256,7 +256,8 @@ export class Layer {
           min: config.min,
           max: config.max,
           timePct: 50, // 50% of the total duration by default
-          behavior: 'return', // 'repeat' (saw), 'return' (ping-pong), 'one' (ramp & hold)
+          behavior: 'return', // 'repeat' (saw), 'repeatReverse' (reverse saw), 'return' (ping-pong),
+          // 'one' (ramp up once & hold at max), 'oneReverse' (ramp down once & hold at min)
           keyframeEnabled: false,
           keyframes: [],
           spawnJitter: false, // see applySpawnJitter()
@@ -571,8 +572,16 @@ export class Layer {
 
         if (mod.behavior === 'one') {
           factor = Math.min(1.0, tSec / cycleDuration);
+        } else if (mod.behavior === 'oneReverse') {
+          // Mirror of 'one': starts at max (factor=1) and ramps DOWN to min (factor=0) once,
+          // then holds - a "play once backward" complement to 'one's "play once forward".
+          factor = Math.max(0.0, 1.0 - tSec / cycleDuration);
         } else if (mod.behavior === 'repeat') {
           factor = (tSec % cycleDuration) / cycleDuration;
+        } else if (mod.behavior === 'repeatReverse') {
+          // Mirror of 'repeat': a sawtooth ramping from max down to min each cycle, snapping
+          // back to max at the cycle boundary instead of 'repeat's min-to-max-snap-to-min.
+          factor = 1.0 - (tSec % cycleDuration) / cycleDuration;
         } else if (mod.behavior === 'return') {
           const phase = (tSec % (cycleDuration * 2)) / cycleDuration;
           factor = phase <= 1.0 ? phase : 2.0 - phase;

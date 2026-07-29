@@ -2328,8 +2328,10 @@ export class Controls {
               <label>LFO MODE</label>
               <select class="mod-behavior">
                 <option value="repeat" ${mod.behavior === 'repeat' ? 'selected' : ''}>Repeat</option>
+                <option value="repeatReverse" ${mod.behavior === 'repeatReverse' ? 'selected' : ''}>Repeat (Reverse)</option>
                 <option value="return" ${mod.behavior === 'return' ? 'selected' : ''}>Return</option>
                 <option value="one" ${mod.behavior === 'one' ? 'selected' : ''}>One</option>
+                <option value="oneReverse" ${mod.behavior === 'oneReverse' ? 'selected' : ''}>One (Reverse)</option>
               </select>
             </div>
           </div>

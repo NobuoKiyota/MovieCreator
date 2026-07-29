@@ -326,6 +326,17 @@ select:focus {
   box-shadow: 0 0 8px rgba(168, 85, 247, 0.25);
 }
 
+/* The native <option> popup is a separate OS-rendered surface that does NOT inherit the parent
+   <select>'s ackground (only color reliably carries over in most browsers) - without this,
+   every dropdown in the app defaults to a plain white popup background with this theme's light
+   color: var(--color-text) text on top, reading as blank/unreadable until an option is
+   highlighted. Applies globally so every <select> (LFO MODE, layer type, project/preset pickers,
+   export format, etc.) gets a readable dark popup, not just the ones already reported. */
+select option {
+  background: #1a1a2e;
+  color: var(--color-text);
+}
+
 /* Header selects size to their longest <option> by default (e.g. "Transparent (WebM)",
    "1080p (1920x1080)"); pin them to a compact width with ellipsis so the transport bar
    doesn't overflow. */
