@@ -35,6 +35,25 @@ class MovieCreatorApp {
     // Timecode overlay
     this.showTimecode = false;
     this.btnTimecodeToggleEl = document.getElementById('btn-timecode-toggle');
+
+    // 2.5D Parallax mouse tracking
+    this.globalParallax = { offsetX: 0, offsetY: 0 };
+    this.setupParallaxListeners();
+  }
+
+  setupParallaxListeners() {
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
+      this.globalParallax.offsetX = normX;
+      this.globalParallax.offsetY = normY;
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.globalParallax.offsetX = 0;
+      this.globalParallax.offsetY = 0;
+    });
   }
 
   init() {
@@ -148,8 +167,16 @@ class MovieCreatorApp {
     // 3. Update physics / particle simulations
     this.layerManager.update(this.accumulatedTime, this.frameCount);
 
-    // 4. Draw layers and composition onto Master Context
-    this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0);
+    // 4. Compute combined Parallax (Mouse + Gentle Auto LFO)
+    const autoParallaxX = Math.sin(this.accumulatedTime * 0.0015) * 0.15;
+    const autoParallaxY = Math.cos(this.accumulatedTime * 0.0012) * 0.15;
+    const activeParallax = {
+      offsetX: this.globalParallax.offsetX || autoParallaxX,
+      offsetY: this.globalParallax.offsetY || autoParallaxY
+    };
+
+    // Draw layers and composition onto Master Context
+    this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0, activeParallax);
 
     // 5. Draw Timecode Overlay (preview only, not during export)
     if (this.showTimecode) {
@@ -172,7 +199,7 @@ class MovieCreatorApp {
     // Sync UI display
     this.controls.updateUIValues();
     // Render master frame
-    this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0);
+    this.layerManager.draw(this.ctx, this.accumulatedTime, this.frameCount, bgMode, 1.0, this.globalParallax);
     // Timecode overlay
     if (this.showTimecode) {
       this.drawTimecodeOverlay(this.accumulatedTime);

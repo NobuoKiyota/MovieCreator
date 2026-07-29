@@ -27,7 +27,8 @@ import {
   MilkyWayGenerator,
   ColorWashGenerator,
   CrackedWallGenerator,
-  MagmaWallGenerator
+  MagmaWallGenerator,
+  ImageMotionGenerator
 } from './Generators.js';
 
 import {
@@ -191,6 +192,7 @@ export class Layer {
       case 'color-wash': return 'Color Wash';
       case 'cracked-wall': return 'Cracked Wall';
       case 'magma-wall': return 'Magma Wall';
+      case 'image': return 'Image Layer (Motionizer)';
       default: return 'Custom Layer';
     }
   }
@@ -228,6 +230,7 @@ export class Layer {
       case 'color-wash': return new ColorWashGenerator();
       case 'cracked-wall': return new CrackedWallGenerator();
       case 'magma-wall': return new MagmaWallGenerator();
+      case 'image': return new ImageMotionGenerator();
       default: throw new Error(`Unknown generator type: ${type}`);
     }
   }
@@ -615,7 +618,7 @@ export class Layer {
     this.generator.update(time, frameCount, width, height);
   }
 
-  draw(time, frameCount) {
+  draw(time, frameCount, globalParallax = { offsetX: 0, offsetY: 0 }) {
     if (!this.visible) return;
 
     // Spawn Jitter: re-roll jitter-enabled parameters whenever a new "spawn" starts. Cycle-based
@@ -624,7 +627,7 @@ export class Layer {
     // every boundary; plain (non-cyclic) generators have no cycleDuration and so stay at index 0
     // forever, meaning this only fires once, right after layer creation (lastSpawnCycleIndex
     // starts at -1). Must run before generator.draw() so jittered params affect this frame.
-    const cycleDuration = this.generator.params.cycleDuration;
+    const cycleDuration = this.generator.params ? this.generator.params.cycleDuration : undefined;
     const spawnCycleIndex = cycleDuration ? Math.floor(time / cycleDuration) : 0;
     if (spawnCycleIndex !== this.lastSpawnCycleIndex) {
       this.lastSpawnCycleIndex = spawnCycleIndex;
@@ -656,7 +659,7 @@ export class Layer {
       this.rawCtx.clearRect(0, 0, w, h);
       this.rawCtx.save();
       apply3DTransform(this.rawCtx);
-      this.generator.draw(this.rawCtx, w, h, time);
+      this.generator.draw(this.rawCtx, w, h, time, globalParallax);
       this.rawCtx.restore();
     } else {
       // Process feedback trail on raw canvas
@@ -668,7 +671,7 @@ export class Layer {
       // Draw fresh generator frames on top of raw faded history trail
       this.rawCtx.save();
       apply3DTransform(this.rawCtx);
-      this.generator.draw(this.rawCtx, w, h, time);
+      this.generator.draw(this.rawCtx, w, h, time, globalParallax);
       this.rawCtx.restore();
     }
 
@@ -880,7 +883,7 @@ export class LayerManager {
     }
   }
 
-  draw(masterCtx, time, frameCount, backgroundMode, fadeFactor = 1.0) {
+  draw(masterCtx, time, frameCount, backgroundMode, fadeFactor = 1.0, globalParallax = { offsetX: 0, offsetY: 0 }) {
     // 1. Draw Background
     masterCtx.save();
     if (backgroundMode === 'transparent') {
@@ -908,7 +911,7 @@ export class LayerManager {
       if (!layer.visible) continue;
       
       // Update and filter offscreen Canvas
-      layer.draw(time, frameCount);
+      layer.draw(time, frameCount, globalParallax);
 
       // Composite onto Master using the strobe-integrated render opacity
       masterCtx.save();

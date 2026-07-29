@@ -294,9 +294,75 @@ export class Controls {
     return (this.activeDocument || document).createElement(tagName);
   }
 
+  setupDragAndDropAndPaste() {
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (dropOverlay) dropOverlay.classList.remove('hidden');
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+        if (dropOverlay) dropOverlay.classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (dropOverlay) dropOverlay.classList.add('hidden');
+
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (files.length > 0) {
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            this.createImageLayerFromDataUrl(evt.target.result, file.name);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    });
+
+    window.addEventListener('paste', (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+
+      for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+              this.createImageLayerFromDataUrl(evt.target.result, 'Pasted_Image_' + Date.now());
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      }
+    });
+  }
+
+  createImageLayerFromDataUrl(dataUrl, fileName = 'Image Layer') {
+    const newLayer = this.layerManager.addLayer('image');
+    if (fileName) {
+      newLayer.name = fileName.replace(/\.[^/.]+$/, '');
+    }
+    newLayer.generator.params.imageDataUrl = dataUrl;
+    this.activeLayerId = newLayer.id;
+    this.rebuildLayersList();
+    this.rebuildInspector();
+    if (!this.mainApp.isPlaying) {
+      this.mainApp.play();
+    } else {
+      this.mainApp.renderSingleFrame();
+    }
+  }
+
   init() {
     this.loadMoveScores();
     this.updateTemplateDropdown();
+    this.setupDragAndDropAndPaste();
     // 1. Layer add toggling
     this.btnAddLayerEl.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1807,6 +1873,74 @@ export class Controls {
     });
 
     this.inspectorContentEl.appendChild(randomizerHeader);
+
+    // Image Layer 専用コントロールパネル
+    if (layer.type === 'image') {
+      const imgSection = this.createElement('div');
+      imgSection.className = 'inspector-section';
+      imgSection.style.padding = '0.5rem';
+      imgSection.style.margin = '0.5rem 0';
+      imgSection.style.background = 'rgba(0, 229, 255, 0.05)';
+      imgSection.style.border = '1px solid rgba(0, 229, 255, 0.2)';
+      imgSection.style.borderRadius = '6px';
+
+      const currentFit = layer.generator.params.fitMode || 'contain';
+      const currentMask = layer.generator.params.maskShape || 'none';
+
+      imgSection.innerHTML = `
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #00e5ff;">🖼️ Image Layer Settings</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Select File:</span>
+            <input type="file" class="image-file-input" accept="image/*" style="font-size: 0.7rem; color: #cbd5e1; flex: 1;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Fit Mode:</span>
+            <select class="image-fit-select" style="background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.3rem; flex: 1;">
+              <option value="contain" ${currentFit === 'contain' ? 'selected' : ''}>Contain (アスペクト維持収まる)</option>
+              <option value="cover" ${currentFit === 'cover' ? 'selected' : ''}>Cover (アスペクト維持全域)</option>
+              <option value="fill" ${currentFit === 'fill' ? 'selected' : ''}>Fill (キャンバス全域伸縮)</option>
+              <option value="original" ${currentFit === 'original' ? 'selected' : ''}>Original (原寸表示)</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="width: 90px; color: #cbd5e1;">Mask Shape:</span>
+            <select class="image-mask-select" style="background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px; padding: 0.15rem 0.3rem; flex: 1;">
+              <option value="none" ${currentMask === 'none' ? 'selected' : ''}>None (なし)</option>
+              <option value="circle" ${currentMask === 'circle' ? 'selected' : ''}>Circle (円形クリップ)</option>
+              <option value="ellipse" ${currentMask === 'ellipse' ? 'selected' : ''}>Ellipse (楕円クリップ)</option>
+            </select>
+          </div>
+        </div>
+      `;
+
+      const fileInput = imgSection.querySelector('.image-file-input');
+      const fitSelect = imgSection.querySelector('.image-fit-select');
+      const maskSelect = imgSection.querySelector('.image-mask-select');
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          layer.generator.params.imageDataUrl = evt.target.result;
+          this.mainApp.renderSingleFrame();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      fitSelect.addEventListener('change', (e) => {
+        layer.generator.params.fitMode = e.target.value;
+        this.mainApp.renderSingleFrame();
+      });
+
+      maskSelect.addEventListener('change', (e) => {
+        layer.generator.params.maskShape = e.target.value;
+        this.mainApp.renderSingleFrame();
+      });
+
+      this.inspectorContentEl.appendChild(imgSection);
+    }
 
     // 1-A-2. Batch Export Control Header
     const batchHeader = this.createElement('div');

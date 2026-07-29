@@ -9,6 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-29 15:05 [Antigravity] 完了: 静止画アニメーション化拡張機能(Static Image Motionizer)およびドラッグ＆ドロップ/Paste対応の実装
+- 2026-07-29 15:00 [Antigravity] 着手: 静止画アニメーション化拡張機能(Static Image Motionizer)およびドラッグ＆ドロップ/Paste対応の実装
 - 2026-07-29 [Claude Code] 完了: 全select要素のドロップダウンリスト(option)が白背景+薄い文字色で読めなくなっていたバグを修正(ネイティブoptionポップアップはselectのbackgroundを継承しないため、option自体に背景色を明示)。全て未コミット
 - 2026-07-29 [Claude Code] 完了: LFO MODEに repeatReverse(逆ノコギリ波)/oneReverse(1回だけ下降して最小値で停止)を追加。既存のrepeat/oneをそれぞれ数式反転したミラー挙動。全て未コミット
 - 2026-07-29 [Claude Code] 完了: Seamless Tileのバグ修正(intensityがシフト量ではなく継ぎ目ぼかし幅しか制御していなかった問題)。Cubism/Kaleidoscopeを削除(Cubismはユーザー確認済み、Kaleidoscopeはzoom=1.6が中央付近の疎な領域を拡大するだけでMirror Modeの1/3程度しか可視ピクセルを生成できていないことを実測で確認、Mirror Modeが完全上位互換のため削除)。Inspectorの数値表示をダブルクリックで直接入力できるように追加(スライダー本体のダブルクリックは初期値リセットのまま維持、ステップ境界にスナップして食い違いを防止)。全て未コミット

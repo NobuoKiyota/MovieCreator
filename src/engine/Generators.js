@@ -3972,3 +3972,5 @@ export class MagmaWallGenerator extends BaseGenerator {
     ctx.restore();
   }
 }
+
+export { ImageMotionGenerator, imageMotionGenerator } from './ImageMotionGenerator.js';

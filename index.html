@@ -114,8 +114,14 @@
       <!-- プレビュー＆エクスポートエリア -->
       <section class="preview-section">
         <div class="canvas-wrapper">
-          <div class="canvas-container">
+          <div class="canvas-container" id="canvas-container">
             <canvas id="preview-canvas" width="1280" height="720"></canvas>
+            <div id="drop-overlay" class="drop-overlay hidden">
+              <div class="drop-message">
+                <span class="drop-icon">🖼️</span>
+                <span>Drop image to create Image Layer</span>
+              </div>
+            </div>
             <div id="recording-overlay" class="recording-overlay hidden">
               <div class="glass-panel">
                 <div class="spinner"></div>
@@ -240,6 +246,7 @@
                     <option value="noise-glitch">Noise Glitch (ノイズグリッチ)</option>
                     <option value="milky-way">Milky Way (天の川)</option>
                     <option value="color-wash">Color Wash (全体色調変更)</option>
+                    <option value="image">Image Layer (静止画・モーション化)</option>
                   </select>
                 </div>
                 <button id="btn-confirm-add-layer" class="btn btn-small btn-primary">Add</button>
