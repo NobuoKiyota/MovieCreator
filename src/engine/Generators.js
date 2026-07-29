@@ -692,6 +692,8 @@ export class MeteorGenerator extends BaseGenerator {
       speed: 16,
       tailLength: 60,
       thickness: 2,
+      tailWiggle: 0,
+      headSize: 3,
       color: '#a855f7',
       colorLightness: 50
     };
@@ -703,6 +705,8 @@ export class MeteorGenerator extends BaseGenerator {
       { name: 'speed', label: 'Meteor Speed', type: 'range', min: 5, max: 35, step: 1 },
       { name: 'tailLength', label: 'Tail Length', type: 'range', min: 10, max: 150, step: 5 },
       { name: 'thickness', label: 'Thickness', type: 'range', min: 0.5, max: 10, step: 0.5 },
+      { name: 'tailWiggle', label: 'Tail Wiggle', type: 'range', min: 0, max: 30, step: 0.5 },
+      { name: 'headSize', label: 'Head Size', type: 'range', min: 0, max: 10, step: 0.5 },
       { name: 'colorLightness', label: 'Brightness', type: 'range', min: 0, max: 100, step: 1 },
       { name: 'color', label: 'Color', type: 'color' }
     ];
@@ -719,6 +723,7 @@ export class MeteorGenerator extends BaseGenerator {
         y: -50,
         speed: (Math.random() * 0.5 + 0.75) * (this.params.speed || 16),
         length: (Math.random() * 0.4 + 0.8) * (this.params.tailLength || 60),
+        seed: Math.random() * 1000,
         alpha: 1.0,
         active: true
       });
@@ -738,24 +743,66 @@ export class MeteorGenerator extends BaseGenerator {
 
   draw(ctx, width, height, time) {
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     
-    const themeColor = adjustColorLightness(this.params.color, this.params.colorLightness);
+    const themeColor = adjustColorLightness(this.params.color || '#a855f7', this.params.colorLightness ?? 50);
+    const baseThickness = Math.max(0.5, this.params.thickness || 2);
+    const wiggleAmp = this.params.tailWiggle || 0;
+    const headSize = this.params.headSize ?? 3;
 
     for (let m of this.meteors) {
-      const gradient = ctx.createLinearGradient(
-        m.x, m.y, 
-        m.x + m.length * 0.8, m.y - m.length
-      );
-      gradient.addColorStop(0, themeColor);
-      gradient.addColorStop(0.3, themeColor);
-      gradient.addColorStop(1, 'transparent');
+      const numSegs = 10;
+      const dirX = 0.8;
+      const dirY = -1.0;
+      const normX = 0.78;
+      const normY = 0.625;
+      const seed = m.seed || 0;
 
-      ctx.strokeStyle = gradient;
-      ctx.lineWidth = this.params.thickness;
-      ctx.beginPath();
-      ctx.moveTo(m.x, m.y);
-      ctx.lineTo(m.x + m.length * 0.8, m.y - m.length);
-      ctx.stroke();
+      // 1. Draw tapered & wiggled tail segments
+      for (let i = 0; i < numSegs; i++) {
+        const t0 = i / numSegs;
+        const t1 = (i + 1) / numSegs;
+
+        const w0 = Math.sin((time * 0.012) + (t0 * 4.5) + seed) * (t0 * wiggleAmp);
+        const w1 = Math.sin((time * 0.012) + (t1 * 4.5) + seed) * (t1 * wiggleAmp);
+
+        const x0 = m.x + dirX * m.length * t0 + normX * w0;
+        const y0 = m.y + dirY * m.length * t0 + normY * w0;
+
+        const x1 = m.x + dirX * m.length * t1 + normX * w1;
+        const y1 = m.y + dirY * m.length * t1 + normY * w1;
+
+        // Taper: head (t=0) is thickest, tail end (t=1) fades to thin
+        const segThickness = Math.max(0.2, baseThickness * (1.0 - t0 * 0.85));
+
+        const segGradient = ctx.createLinearGradient(x0, y0, x1, y1);
+        const alpha0 = Math.max(0, 1.0 - t0 * 0.9);
+        const alpha1 = Math.max(0, 1.0 - t1 * 0.9);
+
+        segGradient.addColorStop(0, hexToRgba(themeColor, alpha0));
+        segGradient.addColorStop(1, hexToRgba(themeColor, alpha1));
+
+        ctx.strokeStyle = segGradient;
+        ctx.lineWidth = segThickness;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+      }
+
+      // 2. Draw bright glowing head core
+      if (headSize > 0) {
+        const r = Math.max(1, headSize * (baseThickness * 0.4 + 1));
+        const headGrad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r);
+        headGrad.addColorStop(0, '#ffffff');
+        headGrad.addColorStop(0.4, themeColor);
+        headGrad.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = headGrad;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }

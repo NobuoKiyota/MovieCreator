@@ -60,6 +60,8 @@ export const GENERATOR_PARAM_DESCRIPTIONS = {
     speed: '流星が飛ぶ速さ',
     tailLength: '流星の尾の長さ',
     thickness: '流星の線の太さ',
+    tailWiggle: '尾が火球・彗星のようにゆらゆらとなびく揺らぎの強さ',
+    headSize: '流星の先端(核)の輝きの大きさ',
     colorLightness: '色の明るさ'
   },
   ripple: {

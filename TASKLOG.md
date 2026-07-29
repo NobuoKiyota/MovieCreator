@@ -9,6 +9,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-30 01:36 [Antigravity] 完了: Meteor ShowerのTailテーパー形状(流線形)およびTail Wiggle(尾の揺らぎ)・Head Size描画の実装完了
 - 2026-07-30 01:27 [Antigravity] 完了: ランダム仕様・変異幅(Spread/Jitter)減衰解除およびSpawn Jitter再抽選タイマー最適化完了
 - 2026-07-30 01:21 [Antigravity] 修正: Meteor Shower/RippleのFrequency(spawnRate)発生頻度の頭打ちバグ解消およびスライダー範囲拡張
 - 2026-07-30 00:38 [Antigravity] 完了: 共通FXへの公転半径(orbitRadius)パラメータ追加および周回トランスフォームパイプラインの実装完了
