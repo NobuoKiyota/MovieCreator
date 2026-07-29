@@ -699,7 +699,7 @@ export class MeteorGenerator extends BaseGenerator {
 
   getParameterConfig() {
     return [
-      { name: 'spawnRate', label: 'Frequency', type: 'range', min: 1, max: 10, step: 0.5 },
+      { name: 'spawnRate', label: 'Frequency', type: 'range', min: 1, max: 30, step: 0.5 },
       { name: 'speed', label: 'Meteor Speed', type: 'range', min: 5, max: 35, step: 1 },
       { name: 'tailLength', label: 'Tail Length', type: 'range', min: 10, max: 150, step: 5 },
       { name: 'thickness', label: 'Thickness', type: 'range', min: 0.5, max: 10, step: 0.5 },
@@ -709,15 +709,16 @@ export class MeteorGenerator extends BaseGenerator {
   }
 
   update(time, frameCount, width, height) {
-    this.spawnTimer++;
-    const threshold = Math.max(5, 60 - this.params.spawnRate * 5);
-    if (this.spawnTimer >= threshold) {
-      this.spawnTimer = 0;
+    const rate = Math.max(0.1, this.params.spawnRate || 4);
+    // Accumulator-based spawn timer: 1 = ~1 meteor/sec, 10 = ~10 meteors/sec, 30 = ~30 meteors/sec
+    this.spawnTimer += rate / 60;
+    while (this.spawnTimer >= 1) {
+      this.spawnTimer -= 1;
       this.meteors.push({
         x: Math.random() * (width + 200) - 100,
         y: -50,
-        speed: (Math.random() * 0.5 + 0.75) * this.params.speed,
-        length: (Math.random() * 0.4 + 0.8) * this.params.tailLength,
+        speed: (Math.random() * 0.5 + 0.75) * (this.params.speed || 16),
+        length: (Math.random() * 0.4 + 0.8) * (this.params.tailLength || 60),
         alpha: 1.0,
         active: true
       });
@@ -790,15 +791,15 @@ export class RippleGenerator extends BaseGenerator {
   }
 
   update(time, frameCount, width, height) {
-    this.spawnTimer++;
-    const threshold = Math.max(8, 70 - this.params.spawnRate * 6);
-    if (this.spawnTimer >= threshold) {
-      this.spawnTimer = 0;
+    const rate = Math.max(0.1, this.params.spawnRate || 3);
+    this.spawnTimer += rate / 60;
+    while (this.spawnTimer >= 1) {
+      this.spawnTimer -= 1;
       this.ripples.push({
         x: Math.random() * width,
         y: Math.random() * height,
         radius: 5,
-        speed: (Math.random() * 0.3 + 0.85) * this.params.expansionSpeed,
+        speed: (Math.random() * 0.3 + 0.85) * (this.params.expansionSpeed || 2.5),
         active: true
       });
     }
