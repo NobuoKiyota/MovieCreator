@@ -615,7 +615,9 @@ export class Layer {
 
   update(time, frameCount, width, height) {
     if (!this.visible) return;
-    this.generator.update(time, frameCount, width, height);
+    if (this.generator && typeof this.generator.update === 'function') {
+      this.generator.update(time, frameCount, width, height);
+    }
   }
 
   draw(time, frameCount, globalParallax = { offsetX: 0, offsetY: 0 }) {

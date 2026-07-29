@@ -35,8 +35,15 @@ export class ImageMotionGenerator {
       posY: 0,                // オフセット位置Y (-500 〜 500)
       rotation: 0,            // 個別回転 (-180 〜 180)
       maskShape: 'none',      // none, circle, ellipse
-      maskSize: 1.0           // マスクサイズ (0.1 〜 2.0)
     };
+  }
+
+  update(time, frameCount, width, height) {
+    // 物理シミュレーション/時間経過による個別パラメータの更新用フック（必要に応じて拡張可能）
+  }
+
+  reset() {
+    // 巻き戻しリセットフック
   }
 
   /**
