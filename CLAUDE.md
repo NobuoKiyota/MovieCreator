@@ -179,6 +179,7 @@
   - `2` = 上下ミラー(2画面): 上半分を元に、下半分がその反転コピー(水面に映る反射のような見た目)
   - `3` = 上下左右ミラー(4画面): 左上を元に、残り3象限がその反転コピー(タイル状の万華鏡風)
   - `Layer.effects.mirrorMode`(`FX_PARAM_RANGES`に範囲0-3を定義)として共通FXパイプラインに`Distortion→Glow→Kaleidoscope→Mirror Mode→Chromatic Aberration→strobe`の順で組み込み、インスペクターに「Mirror Mode」スライダーとして追加。ランダマイザーでは強制0固定(Kaleidoscope/Noise Warp/Chromatic Aberrationと同じく「意図的に手動で選ぶ演出」という扱い)。
+- **共通FXへの Orbit Radius (公転半径 `orbitRadius`) の追加** — 2026-07-30完了。中心から離れた軌道上をぐるぐる回転（公転）させるトランスフォーム機能。`orbitRadius` (0-800px) と `rotation` (または `rotateZ` / LFO `repeat`・`repeatReverse` 逆回転) を連動させて中心の外周を円旋回可能。
 
 ## 保守のガイドライン
 

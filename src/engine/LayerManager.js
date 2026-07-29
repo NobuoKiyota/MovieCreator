@@ -119,6 +119,7 @@ export class Layer {
       positionX: 0,      // spawn position offset, fraction of canvas width (-1 to 1, 0 = center)
       positionY: 0,      // spawn position offset, fraction of canvas height (-1 to 1, 0 = center)
       rotation: 0,       // degrees (-360 to 360)
+      orbitRadius: 0,    // orbital offset radius in pixels from center
       scale: 1.0,        // 0.1 to 5.0
       strobe: 0,         // Speed / Frequency (0 to 30 Hz)
 
@@ -702,6 +703,9 @@ export class Layer {
     this.ctx.translate(w / 2, h / 2);
     if (this.effects.rotation !== 0) {
       this.ctx.rotate(this.effects.rotation * Math.PI / 180);
+    }
+    if (this.effects.orbitRadius) {
+      this.ctx.translate(this.effects.orbitRadius, 0);
     }
     if (this.effects.scale !== 1.0) {
       this.ctx.scale(this.effects.scale, this.effects.scale);

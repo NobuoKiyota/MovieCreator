@@ -8,6 +8,7 @@ export const FX_PARAM_RANGES = {
   positionX:           { min: -1,    max: 1,    step: 0.01  }, // fraction of canvas width, 0 = center
   positionY:           { min: -1,    max: 1,    step: 0.01  }, // fraction of canvas height, 0 = center
   rotation:            { min: -360,  max: 360,  step: 1     },
+  orbitRadius:         { min: 0,     max: 800,  step: 1     },
   scale:               { min: 0.1,   max: 5.0,  step: 0.05  },
   strobe:              { min: 0,     max: 30,   step: 0.5   },
   glowIntensity:       { min: 0,     max: 100,  step: 1     },

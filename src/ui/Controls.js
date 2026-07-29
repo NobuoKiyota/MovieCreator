@@ -133,6 +133,7 @@ export class Controls {
       positionX:           { name: 'positionX',           label: 'Position X',     ...R.positionX,           type: 'range' },
       positionY:           { name: 'positionY',           label: 'Position Y',     ...R.positionY,           type: 'range' },
       rotation:            { name: 'rotation',            label: 'Rotation',       ...R.rotation,            type: 'range' },
+      orbitRadius:         { name: 'orbitRadius',         label: 'Orbit Radius',   ...R.orbitRadius,         type: 'range' },
       scale:               { name: 'scale',               label: 'Scale',          ...R.scale,               type: 'range' },
       strobe:              { name: 'strobe',              label: 'Strobe Speed',   ...R.strobe,              type: 'range' },
       glowIntensity:       { name: 'glowIntensity',       label: 'Neon Glow',      ...R.glowIntensity,       type: 'range' },
