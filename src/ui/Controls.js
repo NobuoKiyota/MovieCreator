@@ -1579,6 +1579,8 @@ export class Controls {
   }
 
   updateSliderUI(paramName, currentVal) {
+    if (currentVal === undefined || currentVal === null || typeof currentVal !== 'number' || isNaN(currentVal)) return;
+
     const fieldWrapper = this.inspectorContentEl.querySelector(`.layer-field-wrapper[data-param="${paramName}"]`);
     if (!fieldWrapper) return;
     

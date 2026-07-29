@@ -35,6 +35,7 @@ export class ImageMotionGenerator {
       posY: 0,                // オフセット位置Y (-500 〜 500)
       rotation: 0,            // 個別回転 (-180 〜 180)
       maskShape: 'none',      // none, circle, ellipse
+      maskSize: 1.0           // マスクサイズ (0.1 〜 2.0)
     };
   }
 
