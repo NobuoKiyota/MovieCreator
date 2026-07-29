@@ -18,7 +18,7 @@ export class ImageMotionGenerator {
 
     this.params = {
       cycleDuration: 5000,    // 共通サイクル時間 (ms)
-      parallaxDepth: 0.5,     // 視差奥行き感度 (-2.0 〜 +2.0)
+      parallaxDepth: 0.0,     // 視差奥行き感度 (-2.0 〜 +2.0, デフォルトは0)
       fitMode: 'contain',     // contain, cover, fill, original
       opacity: 1.0,           // 不透明度 (0.0 〜 1.0)
 
@@ -76,7 +76,7 @@ export class ImageMotionGenerator {
       { name: 'floatAmount', label: 'Floating Shake (手振れ浮遊)', type: 'range', min: 0.0, max: 100.0, step: 1.0, default: 15.0 },
       { name: 'autoPanZoom', label: 'Ken Burns Pan&Zoom', type: 'range', min: 0.0, max: 0.5, step: 0.01, default: 0.08 },
       { name: 'motionSpeed', label: 'Motion Speed', type: 'range', min: 0.1, max: 5.0, step: 0.1, default: 1.0 },
-      { name: 'parallaxDepth', label: 'Parallax Depth', type: 'range', min: -2.0, max: 2.0, step: 0.05, default: 0.5 },
+      { name: 'parallaxDepth', label: 'Parallax Depth', type: 'range', min: -2.0, max: 2.0, step: 0.05, default: 0.0 },
       { name: 'opacity', label: 'Image Opacity', type: 'range', min: 0.0, max: 1.0, step: 0.01, default: 1.0 },
       { name: 'scaleX', label: 'Scale X', type: 'range', min: 0.1, max: 5.0, step: 0.05, default: 1.0 },
       { name: 'scaleY', label: 'Scale Y', type: 'range', min: 0.1, max: 5.0, step: 0.05, default: 1.0 },
