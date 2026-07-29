@@ -59,132 +59,149 @@ export class ImageMotionGenerator {
   getImage(src) {
     if (!src) return null;
     if (this.imgMap.has(src)) {
-      const img = this.imgMap.get(src);
-      return img.complete && img.naturalWidth !== 0 ? img : null;
+      const cached = this.imgMap.get(src);
+      if (cached.error) return 'error';
+      return cached.complete && cached.naturalWidth !== 0 ? cached : null;
     }
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      img.loaded = true;
+    };
+    img.onerror = () => {
+      img.error = true;
+      console.warn('Image Motion Generator: Failed to load image src');
+    };
     img.src = src;
     this.imgMap.set(src, img);
     return null;
   }
 
   /**
-   * 描画メイン処理 (時間 time による動的アニメーション適用)
-   * @param {CanvasRenderingContext2D} ctx 
-   * @param {number} width キャンバス幅
-   * @param {number} height キャンバス高さ
-   * @param {number} time 経過時間 (ms)
-   * @param {Object} globalParallax { offsetX, offsetY } グローバル視差オフセット
+   * 描画メイン処理 (例外ガード＋数値バリデーション)
    */
   draw(ctx, width, height, time = 0, globalParallax = { offsetX: 0, offsetY: 0 }) {
-    const src = this.params.imageDataUrl || this.params.imageSrc;
-    if (!src) {
-      this.drawPlaceholder(ctx, width, height);
-      return;
-    }
-
-    const img = this.getImage(src);
-    if (!img) {
-      this.drawLoading(ctx, width, height);
-      return;
-    }
-
-    const imgW = img.naturalWidth || width;
-    const imgH = img.naturalHeight || height;
-
-    // --- ⏰ 時間 time に基づく動的アニメーション計算 ---
-    const speed = this.params.motionSpeed !== undefined ? this.params.motionSpeed : 1.0;
-    const tSec = (time / 1000) * speed;
-
-    // 1. 息づかい・脈動スケール (Breath Pulse)
-    const breathAmount = this.params.breathAmount || 0;
-    const breathScale = 1.0 + Math.sin(tSec * 1.5) * breathAmount;
-
-    // 2. 浮遊感・手振れ (Floating Shake)
-    const floatAmount = this.params.floatAmount || 0;
-    const floatX = Math.sin(tSec * 0.8) * floatAmount;
-    const floatY = Math.cos(tSec * 1.1) * floatAmount;
-    const floatRot = Math.sin(tSec * 0.5) * (floatAmount * 0.05); // 角度の微揺れ
-
-    // 3. Ken Burns パン＆ズーム (Pan & Zoom)
-    const panZoomAmount = this.params.autoPanZoom || 0;
-    const panZoomScale = 1.0 + (Math.sin(tSec * 0.3) * 0.5 + 0.5) * panZoomAmount;
-    const panX = Math.sin(tSec * 0.25) * (width * 0.05 * panZoomAmount);
-    const panY = Math.cos(tSec * 0.2) * (height * 0.05 * panZoomAmount);
-
-    // 4. パララックス視差計算 (parallaxDepth: -2.0 〜 +2.0)
-    const depth = this.params.parallaxDepth !== undefined ? this.params.parallaxDepth : 0.0;
-    const parallaxX = (globalParallax.offsetX || 0) * depth * (width * 0.1);
-    const parallaxY = (globalParallax.offsetY || 0) * depth * (height * 0.1);
-
-    // フィットモード計算 (cover, contain, fill, original)
-    const fitMode = this.params.fitMode || 'contain';
-    let baseW = width;
-    let baseH = height;
-    let scaleRatio = 1.0;
-
-    if (fitMode === 'contain') {
-      scaleRatio = Math.min(width / imgW, height / imgH);
-      baseW = imgW * scaleRatio;
-      baseH = imgH * scaleRatio;
-    } else if (fitMode === 'cover') {
-      scaleRatio = Math.max(width / imgW, height / imgH);
-      baseW = imgW * scaleRatio;
-      baseH = imgH * scaleRatio;
-    } else if (fitMode === 'original') {
-      baseW = imgW;
-      baseH = imgH;
-    } else { // fill
-      baseW = width;
-      baseH = height;
-    }
-
-    // トランスフォーム総合成算（ユーザー設定 + 時間アニメーション）
-    const scaleX = (this.params.scaleX !== undefined ? this.params.scaleX : 1.0) * breathScale * panZoomScale;
-    const scaleY = (this.params.scaleY !== undefined ? this.params.scaleY : 1.0) * breathScale * panZoomScale;
-    const posX = (this.params.posX !== undefined ? this.params.posX : 0) + parallaxX + floatX + panX;
-    const posY = (this.params.posY !== undefined ? this.params.posY : 0) + parallaxY + floatY + panY;
-    const rotation = ((this.params.rotation || 0) + floatRot) * (Math.PI / 180);
-
-    const drawW = baseW * scaleX;
-    const drawH = baseH * scaleY;
-
-    const centerX = width / 2 + posX;
-    const centerY = height / 2 + posY;
-
-    ctx.save();
-    ctx.translate(centerX, centerY);
-    ctx.rotate(rotation);
-
-    // マスク切り抜き
-    const maskShape = this.params.maskShape || 'none';
-    if (maskShape !== 'none') {
-      ctx.save();
-      ctx.beginPath();
-      if (maskShape === 'circle') {
-        const radius = Math.min(drawW, drawH) * 0.5 * (this.params.maskSize || 1.0);
-        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      } else if (maskShape === 'ellipse') {
-        const rx = (drawW / 2) * (this.params.maskSize || 1.0);
-        const ry = (drawH / 2) * (this.params.maskSize || 1.0);
-        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    try {
+      const src = this.params.imageDataUrl || this.params.imageSrc;
+      if (!src) {
+        this.drawPlaceholder(ctx, width, height);
+        return;
       }
-      ctx.clip();
-    }
 
-    const opacity = this.params.opacity !== undefined ? this.params.opacity : 1.0;
-    ctx.globalAlpha *= Math.max(0, Math.min(1, opacity));
+      const img = this.getImage(src);
+      if (img === 'error') {
+        this.drawError(ctx, width, height);
+        return;
+      }
+      if (!img) {
+        this.drawLoading(ctx, width, height);
+        return;
+      }
 
-    // 中央配置描画
-    ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+      const imgW = Math.max(1, img.naturalWidth || width);
+      const imgH = Math.max(1, img.naturalHeight || height);
 
-    if (maskShape !== 'none') {
+      // --- ⏰ 時間 time に基づく動的アニメーション計算 ---
+      const speed = typeof this.params.motionSpeed === 'number' && !isNaN(this.params.motionSpeed) ? this.params.motionSpeed : 1.0;
+      const tSec = (time / 1000) * speed;
+
+      // 1. 息づかい・脈動スケール (Breath Pulse)
+      const breathAmount = typeof this.params.breathAmount === 'number' && !isNaN(this.params.breathAmount) ? this.params.breathAmount : 0;
+      const breathScale = 1.0 + Math.sin(tSec * 1.5) * breathAmount;
+
+      // 2. 浮遊感・手振れ (Floating Shake)
+      const floatAmount = typeof this.params.floatAmount === 'number' && !isNaN(this.params.floatAmount) ? this.params.floatAmount : 0;
+      const floatX = Math.sin(tSec * 0.8) * floatAmount;
+      const floatY = Math.cos(tSec * 1.1) * floatAmount;
+      const floatRot = Math.sin(tSec * 0.5) * (floatAmount * 0.05);
+
+      // 3. Ken Burns パン＆ズーム (Pan & Zoom)
+      const panZoomAmount = typeof this.params.autoPanZoom === 'number' && !isNaN(this.params.autoPanZoom) ? this.params.autoPanZoom : 0;
+      const panZoomScale = 1.0 + (Math.sin(tSec * 0.3) * 0.5 + 0.5) * panZoomAmount;
+      const panX = Math.sin(tSec * 0.25) * (width * 0.05 * panZoomAmount);
+      const panY = Math.cos(tSec * 0.2) * (height * 0.05 * panZoomAmount);
+
+      // 4. パララックス視差計算
+      const depth = typeof this.params.parallaxDepth === 'number' && !isNaN(this.params.parallaxDepth) ? this.params.parallaxDepth : 0.0;
+      const parallaxX = (globalParallax.offsetX || 0) * depth * (width * 0.1);
+      const parallaxY = (globalParallax.offsetY || 0) * depth * (height * 0.1);
+
+      // フィットモード計算
+      const fitMode = this.params.fitMode || 'contain';
+      let baseW = width;
+      let baseH = height;
+      let scaleRatio = 1.0;
+
+      if (fitMode === 'contain') {
+        scaleRatio = Math.min(width / imgW, height / imgH);
+        baseW = imgW * scaleRatio;
+        baseH = imgH * scaleRatio;
+      } else if (fitMode === 'cover') {
+        scaleRatio = Math.max(width / imgW, height / imgH);
+        baseW = imgW * scaleRatio;
+        baseH = imgH * scaleRatio;
+      } else if (fitMode === 'original') {
+        baseW = imgW;
+        baseH = imgH;
+      } else { // fill
+        baseW = width;
+        baseH = height;
+      }
+
+      const paramScaleX = typeof this.params.scaleX === 'number' && !isNaN(this.params.scaleX) ? this.params.scaleX : 1.0;
+      const paramScaleY = typeof this.params.scaleY === 'number' && !isNaN(this.params.scaleY) ? this.params.scaleY : 1.0;
+      const paramPosX = typeof this.params.posX === 'number' && !isNaN(this.params.posX) ? this.params.posX : 0;
+      const paramPosY = typeof this.params.posY === 'number' && !isNaN(this.params.posY) ? this.params.posY : 0;
+      const paramRot = typeof this.params.rotation === 'number' && !isNaN(this.params.rotation) ? this.params.rotation : 0;
+
+      const scaleX = Math.max(0.001, paramScaleX * breathScale * panZoomScale);
+      const scaleY = Math.max(0.001, paramScaleY * breathScale * panZoomScale);
+      const posX = paramPosX + parallaxX + floatX + panX;
+      const posY = paramPosY + parallaxY + floatY + panY;
+      const rotation = (paramRot + floatRot) * (Math.PI / 180);
+
+      const drawW = Math.max(1, baseW * scaleX);
+      const drawH = Math.max(1, baseH * scaleY);
+
+      const centerX = width / 2 + posX;
+      const centerY = height / 2 + posY;
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(rotation);
+
+      // マスク切り抜き (正の値のみ安全適用)
+      const maskShape = this.params.maskShape || 'none';
+      if (maskShape !== 'none') {
+        ctx.save();
+        ctx.beginPath();
+        const maskSize = typeof this.params.maskSize === 'number' && !isNaN(this.params.maskSize) ? Math.max(0.01, this.params.maskSize) : 1.0;
+        if (maskShape === 'circle') {
+          const radius = Math.max(0.1, Math.min(drawW, drawH) * 0.5 * maskSize);
+          ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        } else if (maskShape === 'ellipse') {
+          const rx = Math.max(0.1, (drawW / 2) * maskSize);
+          const ry = Math.max(0.1, (drawH / 2) * maskSize);
+          ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+        }
+        ctx.clip();
+      }
+
+      const opacity = typeof this.params.opacity === 'number' && !isNaN(this.params.opacity) ? Math.max(0, Math.min(1, this.params.opacity)) : 1.0;
+      ctx.globalAlpha *= opacity;
+
+      // 中央配置描画
+      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+
+      if (maskShape !== 'none') {
+        ctx.restore();
+      }
+
       ctx.restore();
+    } catch (e) {
+      console.error('ImageMotionGenerator rendering exception safely caught:', e);
     }
-
-    ctx.restore();
   }
 
   drawPlaceholder(ctx, width, height) {
@@ -208,6 +225,15 @@ export class ImageMotionGenerator {
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Loading Image...', width / 2, height / 2);
+    ctx.restore();
+  }
+
+  drawError(ctx, width, height) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⚠️ Failed to load image file', width / 2, height / 2);
     ctx.restore();
   }
 }

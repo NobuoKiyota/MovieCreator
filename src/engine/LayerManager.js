@@ -621,7 +621,8 @@ export class Layer {
   draw(time, frameCount, globalParallax = { offsetX: 0, offsetY: 0 }) {
     if (!this.visible) return;
 
-    // Spawn Jitter: re-roll jitter-enabled parameters whenever a new "spawn" starts. Cycle-based
+    try {
+      // Spawn Jitter: re-roll jitter-enabled parameters whenever a new "spawn" starts. Cycle-based
     // generators (Glass Crack, Shockwave Burst, ...) restart every params.cycleDuration, so this
     // recomputes their cycle index the same way those generators do internally and re-rolls on
     // every boundary; plain (non-cyclic) generators have no cycleDuration and so stay at index 0
@@ -820,6 +821,9 @@ export class Layer {
       currentOpacity *= strobeVal > 0 ? 1.0 : 0.0;
     }
     this.currentRenderOpacity = currentOpacity;
+    } catch (e) {
+      console.error('Safely caught layer render exception:', e);
+    }
   }
 }
 
