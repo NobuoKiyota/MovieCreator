@@ -2233,7 +2233,14 @@ export class Controls {
       const mainField = this.createElement('div');
       mainField.className = 'layer-field';
 
-      const currentVal = isFx ? layer.effects[config.name] : layer.generator.params[config.name];
+      let currentVal = isFx ? layer.effects[config.name] : layer.generator.params[config.name];
+      if (currentVal === undefined || currentVal === null) {
+        const defaults = isFx ? layer.getDefaultEffects() : (layer.generator.defaultParams ? layer.generator.defaultParams() : {});
+        currentVal = defaults[config.name] !== undefined ? defaults[config.name] : (config.min || 0);
+        if (!isFx && layer.generator.params) {
+          layer.generator.params[config.name] = currentVal;
+        }
+      }
       let displayVal = currentVal;
       if (typeof displayVal === 'number') {
         displayVal = displayVal % 1 === 0 ? displayVal.toString() : displayVal.toFixed(4);
@@ -2612,11 +2619,34 @@ export class Controls {
     } else if (config.type === 'color') {
       const field = this.createElement('div');
       field.className = 'layer-field';
+      const currentVal = layer.generator.params[config.name] || '#ffffff';
       field.innerHTML = `
         <label>${config.label}</label>
-        <input type="color" value="${layer.generator.params[config.name]}" style="grid-column: span 2; width:100%; border:none; height:28px; border-radius:4px; cursor:pointer;">
+        <input type="color" value="${currentVal}" style="grid-column: span 2; width:100%; border:none; height:28px; border-radius:4px; cursor:pointer;">
       `;
       field.querySelector('input').addEventListener('input', (e) => {
+        onValUpdate(e.target.value);
+        this.mainApp.renderSingleFrame();
+      });
+      fieldWrapper.appendChild(field);
+    } else if (config.type === 'select') {
+      const field = this.createElement('div');
+      field.className = 'layer-field';
+      const currentVal = layer.generator.params[config.name] !== undefined ? layer.generator.params[config.name] : (config.options && config.options[0] ? config.options[0].value : '');
+      const optionsHtml = (config.options || []).map(opt => {
+        const selected = String(currentVal) === String(opt.value) ? 'selected' : '';
+        return `<option value="${opt.value}" ${selected}>${opt.label}</option>`;
+      }).join('');
+
+      field.innerHTML = `
+        <label>${config.label}</label>
+        <div style="grid-column: span 2;">
+          <select class="param-select" style="width: 100%; padding: 0.35rem 0.75rem; font-size: 0.8rem; background: #1e1e2d; color: #fff; border: 1px solid #334155; border-radius: 4px;">
+            ${optionsHtml}
+          </select>
+        </div>
+      `;
+      field.querySelector('select').addEventListener('change', (e) => {
         onValUpdate(e.target.value);
         this.mainApp.renderSingleFrame();
       });

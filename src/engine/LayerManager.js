@@ -255,20 +255,28 @@ export class Layer {
     // 1. Initialize modulations for Generator dynamic ranges
     const configs = this.generator.getParameterConfig();
     configs.forEach(config => {
+      if (this.generator.params && this.generator.params[config.name] === undefined && this.generator.defaultParams) {
+        const defaults = this.generator.defaultParams();
+        if (defaults[config.name] !== undefined) {
+          this.generator.params[config.name] = defaults[config.name];
+        }
+      }
       if (config.type === 'range') {
-        this.modulations[config.name] = {
-          enabled: false,
-          min: config.min,
-          max: config.max,
-          timePct: 50, // 50% of the total duration by default
-          behavior: 'return', // 'repeat' (saw), 'repeatReverse' (reverse saw), 'return' (ping-pong),
-          // 'one' (ramp up once & hold at max), 'oneReverse' (ramp down once & hold at min)
-          keyframeEnabled: false,
-          keyframes: [],
-          spawnJitter: false, // see applySpawnJitter()
-          jitterBase: this.generator.params[config.name],
-          jitterWidth: 20 // % of this parameter's own min-max range; drag the 🎲 button to adjust
-        };
+        if (!this.modulations[config.name]) {
+          this.modulations[config.name] = {
+            enabled: false,
+            min: config.min,
+            max: config.max,
+            timePct: 50, // 50% of the total duration by default
+            behavior: 'return', // 'repeat' (saw), 'repeatReverse' (reverse saw), 'return' (ping-pong),
+            // 'one' (ramp up once & hold at max), 'oneReverse' (ramp down once & hold at min)
+            keyframeEnabled: false,
+            keyframes: [],
+            spawnJitter: false, // see applySpawnJitter()
+            jitterBase: this.generator.params[config.name],
+            jitterWidth: 20 // % of this parameter's own min-max range; drag the 🎲 button to adjust
+          };
+        }
       }
     });
 
