@@ -9,6 +9,11 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-28 [Claude Code] 完了: 共通FX追加(Seamless Tile)。半分ずらしトロイダルシフト+継ぎ目帯の可変ぼかしでタイル張り時の境目を目立たなくする。GIMP由来エフェクト全12種(Median Blur/Emboss/Motion Blur/Radial Blur/Posterize/Solarize/Pixelate/Edge Detect/Spherize/Little Planet/Canvas Texture/Paper Tile/Cartoon/Oilify/Cubism/Glass Tile/Seamless Tile)完了、commit/push予定
+- 2026-07-28 [Claude Code] 完了: 共通FX追加(Glass Tile)。タイル単位のレンズ歪み+継ぎ目ハイライトで、Cubismが苦手だった疎なパーティクル系レイヤーの代替として機能する設計。全て未コミット
+- 2026-07-28 [Claude Code] 完了: Canvas Texture/Paper Tileの透過部分にalphaが漏れて背景が浮かび上がるバグを修正(overlay合成モードのalpha計算に起因、destination-inでマスクして解消)。全て未コミット
+- 2026-07-28 [Claude Code] 完了: 共通FX追加(Cubism)。全て未コミット
+- 2026-07-28 [Claude Code] 完了: 共通FX追加(Cartoon/Oilify)、レイヤープリセット保存ダイアログで既存の最大番号+1を自動でデフォルト名に提案する機能を追加。全て未コミット
 - 2026-07-28 [Claude Code] 完了: 共通FX4種追加(Spherize/Little Planet/Canvas Texture/Paper Tile)、Layersプリセットドロップダウンをoptgroupからアコーディオン(details/summary)方式に作り直し
 - 2026-07-28 [Claude Code] 完了: 共通FX4種追加(Posterize/Solarize/Pixelate/Edge Detect)、Parameter RangesエディタにStep編集・リアルタイム反映・検索バグ修正、Magic Sparksの収束バグ修正、LFO Automationの0入力無視バグ修正、Layersプリセットドロップダウンのoptgroup階層化 (c457332)
 - 2026-07-27 20:44 [Claude Code] 完了: Cracked Wall/Magma Wallジェネレーター追加、共通FX4種(Median Blur/Emboss/Motion Blur/Radial Blur)追加、全パラメータmin/maxのxlsx管理システム構築、VideoRecorderのLFO書き出し漏れバグ修正

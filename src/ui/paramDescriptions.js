@@ -331,5 +331,10 @@ export const FX_PARAM_DESCRIPTIONS = {
   spherizeIntensity: '画面中心をレンズのように膨らませる魚眼(球面化)の強さ',
   littlePlanetIntensity: '画面を中心点の周りに巻き込んで、惑星のような球状パノラマ風に歪める強さ',
   canvasTextureIntensity: '画布(キャンバス地)の織り目のような凹凸テクスチャを重ねる強さ',
-  paperTileIntensity: '紙の繊維のようなざらついた凹凸テクスチャを重ねる強さ'
+  paperTileIntensity: '紙の繊維のようなざらついた凹凸テクスチャを重ねる強さ',
+  cartoonIntensity: '色面を平坦化しつつ輪郭を黒くなぞる、漫画/カートゥーン風の強さ',
+  oilifyIntensity: '筆のタッチのような塊にまとめる油絵風(オイリファイ)の強さ',
+  cubismIntensity: 'ランダムな正方形タイルを敷き詰めて再構成する、キュービズム風モザイクの強さ',
+  glassTileIntensity: 'ガラスブロック越しに見ているような、格子状のレンズ歪みの強さ',
+  seamlessTileIntensity: '画面を上下左右にタイル状に並べても継ぎ目が目立たないようにする強さ'
 };

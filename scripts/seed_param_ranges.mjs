@@ -107,7 +107,9 @@ function collectFxRows() {
     motionBlurAngle: 'Motion Blur Angle', radialBlurIntensity: 'Radial Blur',
     edgeDetectIntensity: 'Edge Detect', pixelateBlockSize: 'Pixelate', posterizeLevels: 'Posterize',
     solarizeThreshold: 'Solarize', spherizeIntensity: 'Spherize', littlePlanetIntensity: 'Little Planet',
-    canvasTextureIntensity: 'Canvas Texture', paperTileIntensity: 'Paper Tile'
+    canvasTextureIntensity: 'Canvas Texture', paperTileIntensity: 'Paper Tile', cartoonIntensity: 'Cartoon',
+    oilifyIntensity: 'Oilify', cubismIntensity: 'Cubism', glassTileIntensity: 'Glass Tile',
+    seamlessTileIntensity: 'Seamless Tile'
   };
   return Object.entries(FX_PARAM_RANGES).map(([name, range]) => ({
     name,

@@ -51,7 +51,12 @@ import {
   applySpherize,
   applyLittlePlanet,
   applyCanvasTexture,
-  applyPaperTile
+  applyPaperTile,
+  applyCartoon,
+  applyOilify,
+  applyCubism,
+  applyGlassTile,
+  applySeamlessTile
 } from './Effects.js';
 
 export class Layer {
@@ -152,7 +157,12 @@ export class Layer {
       spherizeIntensity: 0,
       littlePlanetIntensity: 0,
       canvasTextureIntensity: 0,
-      paperTileIntensity: 0
+      paperTileIntensity: 0,
+      cartoonIntensity: 0,
+      oilifyIntensity: 0,
+      cubismIntensity: 0,
+      glassTileIntensity: 0,
+      seamlessTileIntensity: 0
     };
   }
 
@@ -701,9 +711,25 @@ export class Layer {
       applyLittlePlanet(this.ctx, this.canvas, this.effects.littlePlanetIntensity);
     }
 
+    // Apply Glass Tile (geometric remap)
+    if (this.effects.glassTileIntensity > 0) {
+      applyGlassTile(this.ctx, this.canvas, this.effects.glassTileIntensity);
+    }
+
+    // Apply Seamless Tile (geometric remap)
+    if (this.effects.seamlessTileIntensity > 0) {
+      applySeamlessTile(this.ctx, this.canvas, this.effects.seamlessTileIntensity);
+    }
+
     // Apply Median Blur (stylize - runs early so later FX operate on the flattened result)
     if (this.effects.medianBlurIntensity > 0) {
       applyMedianBlur(this.ctx, this.canvas, this.effects.medianBlurIntensity);
+    }
+
+    // Apply Oilify (stylize - grouped with Median Blur above, both are neighborhood-based
+    // flattening filters)
+    if (this.effects.oilifyIntensity > 0) {
+      applyOilify(this.ctx, this.canvas, this.effects.oilifyIntensity);
     }
 
     // Apply Emboss (stylize)
@@ -729,6 +755,16 @@ export class Layer {
     // Apply Solarize (stylize)
     if (this.effects.solarizeThreshold > 0) {
       applySolarize(this.ctx, this.canvas, this.effects.solarizeThreshold);
+    }
+
+    // Apply Cartoon (stylize)
+    if (this.effects.cartoonIntensity > 0) {
+      applyCartoon(this.ctx, this.canvas, this.effects.cartoonIntensity);
+    }
+
+    // Apply Cubism (stylize)
+    if (this.effects.cubismIntensity > 0) {
+      applyCubism(this.ctx, this.canvas, this.effects.cubismIntensity);
     }
 
     // Apply Hue Rotate

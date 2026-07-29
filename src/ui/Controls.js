@@ -159,7 +159,12 @@ export class Controls {
       spherizeIntensity:      { name: 'spherizeIntensity',      label: 'Spherize',       ...R.spherizeIntensity,      type: 'range' },
       littlePlanetIntensity:  { name: 'littlePlanetIntensity',  label: 'Little Planet',  ...R.littlePlanetIntensity,  type: 'range' },
       canvasTextureIntensity: { name: 'canvasTextureIntensity', label: 'Canvas Texture', ...R.canvasTextureIntensity, type: 'range' },
-      paperTileIntensity:     { name: 'paperTileIntensity',     label: 'Paper Tile',     ...R.paperTileIntensity,     type: 'range' }
+      paperTileIntensity:     { name: 'paperTileIntensity',     label: 'Paper Tile',     ...R.paperTileIntensity,     type: 'range' },
+      cartoonIntensity:       { name: 'cartoonIntensity',       label: 'Cartoon',        ...R.cartoonIntensity,       type: 'range' },
+      oilifyIntensity:        { name: 'oilifyIntensity',        label: 'Oilify',         ...R.oilifyIntensity,        type: 'range' },
+      cubismIntensity:        { name: 'cubismIntensity',        label: 'Cubism',         ...R.cubismIntensity,        type: 'range' },
+      glassTileIntensity:     { name: 'glassTileIntensity',     label: 'Glass Tile',     ...R.glassTileIntensity,     type: 'range' },
+      seamlessTileIntensity:  { name: 'seamlessTileIntensity',  label: 'Seamless Tile',  ...R.seamlessTileIntensity,  type: 'range' }
     };
     this.activeDocument = document;
 
@@ -2759,6 +2764,11 @@ export class Controls {
           case 'littlePlanetIntensity':
           case 'canvasTextureIntensity':
           case 'paperTileIntensity':
+          case 'cartoonIntensity':
+          case 'oilifyIntensity':
+          case 'cubismIntensity':
+          case 'glassTileIntensity':
+          case 'seamlessTileIntensity':
             r = forceFxOff(0);
             break;
           case 'rotation':
@@ -5204,6 +5214,30 @@ export class Controls {
     }, 3500);
   }
 
+  // Suggests "<base name><NN+1>" as the Save dialog's prefilled default, by scanning presets/ for
+  // the highest existing "<base name><NN><optional suffix>.mvlayer" file and incrementing it - so
+  // re-saving a variation of a layer that already has e.g. "Neon Horizon (Noise)06.mvlayer" saved
+  // prefills "Neon Horizon (Noise)07" instead of requiring the number to be typed by hand every
+  // time. Falls back to "<base name>01" when nothing matches yet (first save of this layer name).
+  async suggestNextPresetName(layerName) {
+    const baseName = layerName.replace(/\s*\(Imported\)\s*$/i, '').replace(/\d+$/, '').trim();
+    try {
+      const res = await fetch('/api/files');
+      const data = await res.json();
+      if (!data || !Array.isArray(data.presets)) return `${baseName}01`;
+      const escaped = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`^${escaped}(\\d+)[^.]*\\.mvlayer$`, 'i');
+      let maxNum = 0;
+      data.presets.forEach(file => {
+        const m = file.match(re);
+        if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+      });
+      return `${baseName}${String(maxNum + 1).padStart(2, '0')}`;
+    } catch (e) {
+      return `${baseName}01`;
+    }
+  }
+
   async apiExportLayer() {
     const activeLayer = this.layerManager.layers.find(l => l.id === this.activeLayerId);
     if (!activeLayer) {
@@ -5211,7 +5245,8 @@ export class Controls {
       return;
     }
 
-    const rawName = await this.showSaveDialog('Save Layer Preset As:', activeLayer.name);
+    const suggestedName = await this.suggestNextPresetName(activeLayer.name);
+    const rawName = await this.showSaveDialog('Save Layer Preset As:', suggestedName);
     if (!rawName) return;
 
     const layerData = {

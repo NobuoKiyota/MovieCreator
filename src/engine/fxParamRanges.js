@@ -34,5 +34,10 @@ export const FX_PARAM_RANGES = {
   spherizeIntensity:      { min: 0, max: 100, step: 1 },
   littlePlanetIntensity:  { min: 0, max: 100, step: 1 },
   canvasTextureIntensity: { min: 0, max: 100, step: 1 },
-  paperTileIntensity:     { min: 0, max: 100, step: 1 }
+  paperTileIntensity:     { min: 0, max: 100, step: 1 },
+  cartoonIntensity:       { min: 0, max: 100, step: 1 },
+  oilifyIntensity:        { min: 0, max: 100, step: 1 },
+  cubismIntensity:        { min: 0, max: 100, step: 1 },
+  glassTileIntensity:     { min: 0, max: 100, step: 1 },
+  seamlessTileIntensity:  { min: 0, max: 100, step: 1 }
 };

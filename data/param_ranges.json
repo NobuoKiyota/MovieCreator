@@ -768,7 +768,7 @@
     "glass-crack": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000,
+        "max": 10000,
         "step": 100
       },
       "crackCount": {
@@ -835,7 +835,7 @@
       },
       "cycleDuration": {
         "min": 500,
-        "max": 20000,
+        "max": 10000,
         "step": 100
       },
       "sweepAngle": {
@@ -1073,13 +1073,13 @@
     "cracked-wall": {
       "cycleDuration": {
         "min": 500,
-        "max": 20000,
+        "max": 10000,
         "step": 100
       },
       "cameraCycleDuration": {
-        "min": 500,
-        "max": 20000,
-        "step": 100
+        "min": 1000,
+        "max": 1000000,
+        "step": 1000
       },
       "seed": {
         "min": 0,
@@ -1087,17 +1087,17 @@
         "step": 1
       },
       "veinDensity": {
-        "min": 8,
-        "max": 160,
+        "min": 1,
+        "max": 800,
         "step": 1
       },
       "complexity": {
-        "min": 2,
-        "max": 10,
+        "min": 1,
+        "max": 200,
         "step": 1
       },
       "displace": {
-        "min": 5,
+        "min": 1,
         "max": 120,
         "step": 1
       },
@@ -1107,8 +1107,8 @@
         "step": 0.05
       },
       "branchLength": {
-        "min": 60,
-        "max": 900,
+        "min": 100,
+        "max": 5000,
         "step": 10
       },
       "hairlineCount": {
@@ -1408,10 +1408,35 @@
     },
     "canvasTextureIntensity": {
       "min": 0,
+      "max": 1000,
+      "step": 10
+    },
+    "paperTileIntensity": {
+      "min": 0,
       "max": 100,
       "step": 1
     },
-    "paperTileIntensity": {
+    "cartoonIntensity": {
+      "min": 0,
+      "max": 2000,
+      "step": 50
+    },
+    "oilifyIntensity": {
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    "cubismIntensity": {
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    "glassTileIntensity": {
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    "seamlessTileIntensity": {
       "min": 0,
       "max": 100,
       "step": 1
