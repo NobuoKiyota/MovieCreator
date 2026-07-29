@@ -2888,7 +2888,7 @@ export class Controls {
             baseVal = baseVal * (1 - goodAttractionWeight) + goodCentroidVal * goodAttractionWeight;
           }
 
-          const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+          const offset = (Math.random() * 2 - 1) * (range * spread * 0.75);
           let newVal = baseVal + offset;
           newVal = Math.max(localMin, Math.min(localMax, newVal));
           newVal = snapToStep(newVal, config);
@@ -2938,7 +2938,7 @@ export class Controls {
                 candidateModulations[config.name] = candidateMod;
               } else if (mod.keyframeEnabled && mod.keyframes && mod.keyframes.length > 0) {
                 candidateMod.keyframes.forEach(kf => {
-                  const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+                  const kfOffset = (Math.random() * 2 - 1) * (range * spread * 0.75);
                   let newKfVal = kf.value + kfOffset;
                   newKfVal = Math.max(localMin, Math.min(localMax, newKfVal));
                   kf.value = snapToStep(newKfVal, config);
@@ -2953,8 +2953,8 @@ export class Controls {
                 const modMax = localMax - (localMax - localMin) * 0.1;
                 this.applyMotionTemplate(candidateMod, pick, modMin, modMax, durationVal);
               } else if (mod.enabled) {
-                const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.2);
-                const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.2);
+                const offsetMin = (Math.random() * 2 - 1) * (range * spread * 0.75);
+                const offsetMax = (Math.random() * 2 - 1) * (range * spread * 0.75);
 
                 let newMin = mod.min + offsetMin;
                 let newMax = mod.max + offsetMax;
@@ -3042,7 +3042,7 @@ export class Controls {
         if (goodRotationCentroid !== null && goodAttractionWeight > 0) {
           baseVal = baseVal * (1 - goodAttractionWeight) + goodRotationCentroid * goodAttractionWeight;
         }
-        const offset = (Math.random() * 2 - 1) * (range * spread * 0.2);
+        const offset = (Math.random() * 2 - 1) * (range * spread * 0.75);
         tempRotation = baseVal + offset;
         tempRotation = Math.max(rotConfig.min, Math.min(rotConfig.max, tempRotation));
       }

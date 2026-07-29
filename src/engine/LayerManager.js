@@ -327,7 +327,7 @@ export class Layer {
     const target = (name in FX_PARAM_RANGES) ? this.effects : this.generator.params;
     const range = config.max - config.min;
     const base = mod.jitterBase !== undefined ? mod.jitterBase : target[name];
-    const offset = (Math.random() * 2 - 1) * (range * (widthPct / 100) * 0.2);
+    const offset = (Math.random() * 2 - 1) * (range * (widthPct / 100) * 0.75);
     target[name] = Math.max(config.min, Math.min(config.max, base + offset));
   }
 
@@ -641,8 +641,8 @@ export class Layer {
     // every boundary; plain (non-cyclic) generators have no cycleDuration and so stay at index 0
     // forever, meaning this only fires once, right after layer creation (lastSpawnCycleIndex
     // starts at -1). Must run before generator.draw() so jittered params affect this frame.
-    const cycleDuration = this.generator.params ? this.generator.params.cycleDuration : undefined;
-    const spawnCycleIndex = cycleDuration ? Math.floor(time / cycleDuration) : 0;
+    const cycleDuration = (this.generator.params && this.generator.params.cycleDuration) ? this.generator.params.cycleDuration : 2000;
+    const spawnCycleIndex = Math.floor(time / cycleDuration);
     if (spawnCycleIndex !== this.lastSpawnCycleIndex) {
       this.lastSpawnCycleIndex = spawnCycleIndex;
       this.applySpawnJitter();
