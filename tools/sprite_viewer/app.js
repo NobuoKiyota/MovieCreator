@@ -61,15 +61,36 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(getApiUrl('/api/forsprite-files'));
       const data = await res.json();
       if (data.success && data.projects) {
-        renderHierarchyList(data.projects, data.standalonePngs);
+        renderHierarchyList(data.projects, data.standalonePngs, false);
+        return;
       }
     } catch (err) {
-      console.warn('Failed to load forSprite files in Viewer:', err);
-      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.75rem; color:#ef4444; padding:0.5rem;">読み込み失敗 (開発サーバー非稼働)</div>`;
+      console.warn('Failed to load forSprite files in Viewer, checking LocalStorage:', err);
+    }
+
+    // LocalStorage Fallback (開発サーバー非稼働時)
+    try {
+      const localStore = JSON.parse(localStorage.getItem('moviecreator_forsprite_projects') || '{}');
+      const localProjects = Object.keys(localStore).map(base => {
+        const item = localStore[base];
+        return {
+          base,
+          isLocal: true,
+          pngDataUrl: item.pngDataUrl,
+          jsonText: item.jsonText,
+          plistText: item.plistText,
+          pngFile: item.pngDataUrl ? `${base}.png` : null,
+          plistFile: item.plistText ? `${base}.plist` : null,
+          jsonFile: item.jsonText ? `${base}.json` : null
+        };
+      });
+      renderHierarchyList(localProjects, [], true);
+    } catch (e) {
+      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.8rem; color:var(--text-sub); text-align:center; padding:0.5rem 0;">保存素材がありません</div>`;
     }
   }
 
-  function renderHierarchyList(projects, standalonePngs) {
+  function renderHierarchyList(projects, standalonePngs, isOffline = false) {
     viewerHierarchyListEl.innerHTML = '';
 
     const items = [...projects];
@@ -81,8 +102,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (items.length === 0) {
-      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.8rem; color:var(--text-sub); text-align:center; padding:1rem 0;">保存素材がありません</div>`;
+      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.8rem; color:var(--text-sub); text-align:center; padding:0.5rem 0;">保存素材がありません</div>`;
       return;
+    }
+
+    if (isOffline) {
+      const offlineNotice = document.createElement('div');
+      offlineNotice.style.cssText = 'font-size:0.7rem; color:#f59e0b; padding:0.2rem 0.4rem; background:rgba(245,158,11,0.1); border-radius:4px; margin-bottom:0.4rem;';
+      offlineNotice.textContent = '⚡ ブラウザローカル保存から表示中';
+      viewerHierarchyListEl.appendChild(offlineNotice);
     }
 
     items.forEach(item => {
@@ -121,6 +149,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadProjectFromApi(item) {
     try {
+      if (item.isLocal) {
+        if (!item.pngDataUrl) return;
+        spriteImage = new Image();
+        spriteImage.onload = () => {
+          if (item.jsonText) {
+            try { parseJsonMeta(JSON.parse(item.jsonText)); } catch (e) { autoGridSplit(spriteImage.width, spriteImage.height); }
+          } else if (item.plistText) {
+            parsePlistMeta(item.plistText);
+          } else {
+            autoGridSplit(spriteImage.width, spriteImage.height);
+          }
+          initAnimation();
+        };
+        spriteImage.src = item.pngDataUrl;
+        return;
+      }
+
       if (!item.pngFile) {
         alert('スプライト画像(PNG)が見つかりません。');
         return;

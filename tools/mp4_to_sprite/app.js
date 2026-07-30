@@ -139,20 +139,46 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch(getApiUrl('/api/forsprite-files'));
       const data = await res.json();
       if (data.success && data.projects) {
-        renderHierarchyList(data.projects, data.standalonePngs);
+        renderHierarchyList(data.projects, data.standalonePngs, false);
+        return;
       }
     } catch (err) {
-      console.warn('Failed to load forSprite files:', err);
-      hierarchyProjectListEl.innerHTML = `<div style="font-size:0.75rem; color:#ef4444; padding:0.5rem;">読み込み失敗 (開発サーバー非稼働)</div>`;
+      console.warn('API server offline, falling back to LocalStorage:', err);
+    }
+
+    // LocalStorage Fallback (開発サーバー非稼働時)
+    try {
+      const localStore = JSON.parse(localStorage.getItem('moviecreator_forsprite_projects') || '{}');
+      const localProjects = Object.keys(localStore).map(base => {
+        const item = localStore[base];
+        return {
+          base,
+          isLocal: true,
+          config: item.config,
+          pngFile: item.pngDataUrl ? `${base}.png` : null,
+          plistFile: item.plistText ? `${base}.plist` : null,
+          jsonFile: item.jsonText ? `${base}.json` : null
+        };
+      });
+      renderHierarchyList(localProjects, [], true);
+    } catch (e) {
+      hierarchyProjectListEl.innerHTML = `<div style="font-size:0.8rem; color:#64748b; text-align:center; padding:1rem 0;">保存プロジェクトがありません</div>`;
     }
   }
 
-  function renderHierarchyList(projects, standalonePngs) {
+  function renderHierarchyList(projects, standalonePngs, isOffline = false) {
     hierarchyProjectListEl.innerHTML = '';
 
     if (projects.length === 0 && (!standalonePngs || standalonePngs.length === 0)) {
       hierarchyProjectListEl.innerHTML = `<div style="font-size:0.8rem; color:#64748b; text-align:center; padding:1rem 0;">保存プロジェクトがありません</div>`;
       return;
+    }
+
+    if (isOffline) {
+      const offlineNotice = document.createElement('div');
+      offlineNotice.style.cssText = 'font-size:0.7rem; color:#f59e0b; padding:0.2rem 0.4rem; background:rgba(245,158,11,0.1); border-radius:4px; margin-bottom:0.4rem;';
+      offlineNotice.textContent = '⚡ ブラウザローカル保存から表示中';
+      hierarchyProjectListEl.appendChild(offlineNotice);
     }
 
     projects.forEach(proj => {
@@ -183,10 +209,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.addEventListener('click', async () => {
         try {
-          const res = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(proj.configFile)}`));
-          const cfg = await res.json();
-          applyProjectConfig(cfg);
-          alert(`✅ プロジェクト設定を復元しました: ${proj.base}`);
+          if (proj.isLocal && proj.config) {
+            applyProjectConfig(proj.config);
+            alert(`✅ ローカル保持設定を復元しました: ${proj.base}`);
+          } else {
+            const res = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(proj.configFile)}`));
+            const cfg = await res.json();
+            applyProjectConfig(cfg);
+            alert(`✅ プロジェクト設定を復元しました: ${proj.base}`);
+          }
         } catch (err) {
           alert(`設定の読み込みに失敗しました: ${err.message}`);
         }
@@ -235,6 +266,15 @@ document.addEventListener('DOMContentLoaded', () => {
       jsonText: generatedResult.jsonText
     };
 
+    // Save to LocalStorage cache (Offline fallback)
+    try {
+      const localStore = JSON.parse(localStorage.getItem('moviecreator_forsprite_projects') || '{}');
+      localStore[config.filenameBase] = payload;
+      localStorage.setItem('moviecreator_forsprite_projects', JSON.stringify(localStore));
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+
     try {
       if (btnSaveCtrlS) btnSaveCtrlS.textContent = '⏳ 保存中...';
       const res = await fetch(getApiUrl('/api/save-sprite-project'), {
@@ -250,8 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
         alert(`❌ 保存エラー: ${data.error}`);
       }
     } catch (err) {
-      console.error('Save sprite project error:', err);
-      alert(`保存処理中にエラーが発生しました: ${err.message}`);
+      console.warn('API save offline, saved to LocalStorage cache:', err);
+      alert(`✅ ローカル保存完了 (ブラウザ記憶領域に保存されました)`);
+      refreshForSpriteHierarchy();
     } finally {
       if (btnSaveCtrlS) btnSaveCtrlS.textContent = '💾 保存 (Ctrl+S)';
     }
@@ -638,6 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('mouseup', () => {
     if (activeInteraction) {
       activeInteraction = null;
+      document.body.style.cursor = 'default';
       if (!cropState || cropState.displayW < 10 || cropState.displayH < 10) {
         resetCrop();
       }
@@ -649,6 +691,38 @@ document.addEventListener('DOMContentLoaded', () => {
     resetCrop();
     updatePreview();
   });
+
+  // Mouse Wheel Zoom on Canvas
+  cropCanvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (!cropState || !cropState.displayW || !cropState.displayH) return;
+
+    const factor = e.deltaY < 0 ? 0.92 : 1.08;
+
+    let newW = Math.round(cropState.displayW * factor);
+    let newH = Math.round(cropState.displayH * factor);
+
+    newW = Math.max(10, Math.min(newW, cropCanvas.width));
+    newH = Math.max(10, Math.min(newH, cropCanvas.height));
+
+    const centerX = cropState.displayX + cropState.displayW / 2;
+    const centerY = cropState.displayY + cropState.displayH / 2;
+
+    let newX = Math.round(centerX - newW / 2);
+    let newY = Math.round(centerY - newH / 2);
+
+    newX = Math.max(0, Math.min(newX, cropCanvas.width - newW));
+    newY = Math.max(0, Math.min(newY, cropCanvas.height - newH));
+
+    cropState.displayX = newX;
+    cropState.displayY = newY;
+    cropState.displayW = newW;
+    cropState.displayH = newH;
+
+    calculateVideoCropPixels();
+    renderCropRect();
+    updatePreview();
+  }, { passive: false });
 
   function resetCrop() {
     cropState = null;
