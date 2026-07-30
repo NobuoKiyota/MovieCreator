@@ -1204,25 +1204,49 @@ document.addEventListener('DOMContentLoaded', () => {
     return JSON.stringify(data, null, 2);
   }
 
-  // --- Download Handlers (Always Saves to Z:\MovieCreator\forSprite\) ---
+  // --- Direct Export & Saving Helper to Z:\MovieCreator\forSprite\ ---
+  async function saveSingleExportFile(ext, dataContent, isBase64 = false) {
+    const filenameBase = generatedResult.filenameBase || 'sprite_sheet';
+    try {
+      const payload = { filenameBase, ext, dataContent, isBase64 };
+      const res = await fetch(getApiUrl('/api/save-sprite-export'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Z:\\MovieCreator\\forSprite\\ に直接保存・上書きしました!\n保存ファイル: ${data.savedFile}`);
+        refreshForSpriteHierarchy();
+      } else {
+        alert(`❌ 保存エラー: ${data.error}`);
+      }
+    } catch (err) {
+      console.warn('API export offline, triggering fallback browser download:', err);
+      const safeName = `${filenameBase}${ext.startsWith('.') ? ext : '.' + ext}`;
+      if (isBase64) {
+        downloadFile(dataContent, safeName);
+      } else {
+        const mime = ext.includes('json') ? 'application/json' : 'text/xml';
+        const blob = new Blob([dataContent], { type: mime });
+        downloadFile(URL.createObjectURL(blob), safeName);
+      }
+    }
+  }
+
   btnDlPng.addEventListener('click', async () => {
     if (!generatedResult.pngDataUrl) return;
-    downloadFile(generatedResult.pngDataUrl, `${generatedResult.filenameBase}.png`);
-    await saveSpriteProject();
+    await saveSingleExportFile('.png', generatedResult.pngDataUrl, true);
   });
 
   btnDlPlist.addEventListener('click', async () => {
     if (!generatedResult.plistText) return;
-    const blob = new Blob([generatedResult.plistText], { type: 'text/xml' });
-    downloadFile(URL.createObjectURL(blob), `${generatedResult.filenameBase}.plist`);
-    await saveSpriteProject();
+    await saveSingleExportFile('.plist', generatedResult.plistText, false);
   });
 
   btnDlJson.addEventListener('click', async () => {
     if (!generatedResult.jsonText) return;
-    const blob = new Blob([generatedResult.jsonText], { type: 'application/json' });
-    downloadFile(URL.createObjectURL(blob), `${generatedResult.filenameBase}.json`);
-    await saveSpriteProject();
+    await saveSingleExportFile('.json', generatedResult.jsonText, false);
   });
 
   btnDlZip.addEventListener('click', async () => {
@@ -1245,8 +1269,8 @@ document.addEventListener('DOMContentLoaded', () => {
         folder.file(f.name, base64Data, { base64: true });
       }
 
-      const content = await zip.generateAsync({ type: 'blob' });
-      downloadFile(URL.createObjectURL(content), `${generatedResult.filenameBase}_frames.zip`);
+      const zipBase64 = await zip.generateAsync({ type: 'base64' });
+      await saveSingleExportFile('.zip', `data:application/zip;base64,${zipBase64}`, true);
     } catch (e) {
       console.error(e);
       alert('ZIP保存中にエラーが発生しました。');

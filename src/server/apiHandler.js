@@ -1239,6 +1239,45 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     return;
   }
 
+  // 15. POST /api/save-sprite-export - forSprite/ 内へ単体エクスポートファイルをダイレクト保存・上書き
+  if (req.method === 'POST' && pathname === '/api/save-sprite-export') {
+    let bodyStr = '';
+    req.on('data', chunk => { bodyStr += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const { filenameBase, ext, dataContent, isBase64 } = JSON.parse(bodyStr);
+        if (!filenameBase || !ext || !dataContent) {
+          throw new Error('filenameBase, ext, and dataContent are required');
+        }
+
+        if (!fs.existsSync(forSpriteDir)) {
+          fs.mkdirSync(forSpriteDir, { recursive: true });
+        }
+
+        const safeBase = filenameBase.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const safeExt = ext.startsWith('.') ? ext : `.${ext}`;
+        const fileName = `${safeBase}${safeExt}`;
+        const filePath = path.join(forSpriteDir, fileName);
+
+        if (isBase64) {
+          const cleanBase64 = dataContent.replace(/^data:[^;]+;base64,/, '');
+          const buffer = Buffer.from(cleanBase64, 'base64');
+          fs.writeFileSync(filePath, buffer);
+        } else {
+          fs.writeFileSync(filePath, dataContent, 'utf-8');
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, savedFile: fileName, fullPath: filePath }));
+      } catch (err) {
+        console.error('[API Server] /api/save-sprite-export error:', err);
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
   // APIルートだが、GET/POST以外のメソッドや、未定義のエンドポイントへのリクエスト
   res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ error: 'API route not found' }));
