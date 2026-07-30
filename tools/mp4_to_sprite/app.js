@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cfg.cropState) {
       cropState = { ...cfg.cropState };
       renderCropRect();
+      updateCropInputsFromState();
     }
 
     updateRangeInputs();
@@ -676,6 +677,86 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePreview();
   });
 
+  // --- Video Zoom Controls (50% ~ 400%) ---
+  let videoZoomScale = 1.0;
+  const videoWrapperEl = document.getElementById('video-wrapper');
+  const zoomValTextEl = document.getElementById('zoom-val-text');
+  const btnZoomIn = document.getElementById('btn-zoom-in');
+  const btnZoomOut = document.getElementById('btn-zoom-out');
+  const btnZoomReset = document.getElementById('btn-zoom-reset');
+
+  function setVideoZoom(newScale) {
+    videoZoomScale = Math.max(0.5, Math.min(4.0, newScale));
+    if (videoWrapperEl) {
+      videoWrapperEl.style.transform = `scale(${videoZoomScale})`;
+      videoWrapperEl.style.transformOrigin = 'center center';
+    }
+    if (zoomValTextEl) {
+      zoomValTextEl.textContent = `${Math.round(videoZoomScale * 100)}%`;
+    }
+  }
+
+  if (btnZoomIn) btnZoomIn.addEventListener('click', () => setVideoZoom(videoZoomScale + 0.15));
+  if (btnZoomOut) btnZoomOut.addEventListener('click', () => setVideoZoom(videoZoomScale - 0.15));
+  if (btnZoomReset) btnZoomReset.addEventListener('click', () => setVideoZoom(1.0));
+
+  // --- Crop PX Numeric Inputs ---
+  const inputCropX = document.getElementById('input-crop-x');
+  const inputCropY = document.getElementById('input-crop-y');
+  const inputCropW = document.getElementById('input-crop-w');
+  const inputCropH = document.getElementById('input-crop-h');
+
+  function updateCropInputsFromState() {
+    if (!cropState || !video.videoWidth || !video.videoHeight || !cropCanvas.width || !cropCanvas.height) return;
+    const scaleX = video.videoWidth / cropCanvas.width;
+    const scaleY = video.videoHeight / cropCanvas.height;
+
+    const realX = Math.round(cropState.displayX * scaleX);
+    const realY = Math.round(cropState.displayY * scaleY);
+    const realW = Math.round(cropState.displayW * scaleX);
+    const realH = Math.round(cropState.displayH * scaleY);
+
+    if (inputCropX) inputCropX.value = realX;
+    if (inputCropY) inputCropY.value = realY;
+    if (inputCropW) inputCropW.value = realW;
+    if (inputCropH) inputCropH.value = realH;
+  }
+
+  function applyCropStateFromInputs() {
+    if (!video.videoWidth || !video.videoHeight || !cropCanvas.width || !cropCanvas.height) return;
+
+    let realX = parseInt(inputCropX.value, 10) || 0;
+    let realY = parseInt(inputCropY.value, 10) || 0;
+    let realW = parseInt(inputCropW.value, 10) || 0;
+    let realH = parseInt(inputCropH.value, 10) || 0;
+
+    realX = Math.max(0, Math.min(realX, video.videoWidth - 1));
+    realY = Math.max(0, Math.min(realY, video.videoHeight - 1));
+    realW = Math.max(1, Math.min(realW, video.videoWidth - realX));
+    realH = Math.max(1, Math.min(realH, video.videoHeight - realY));
+
+    const scaleX = cropCanvas.width / video.videoWidth;
+    const scaleY = cropCanvas.height / video.videoHeight;
+
+    cropState = {
+      displayX: realX * scaleX,
+      displayY: realY * scaleY,
+      displayW: realW * scaleX,
+      displayH: realH * scaleY
+    };
+
+    calculateVideoCropPixels();
+    renderCropRect();
+    updatePreview();
+  }
+
+  [inputCropX, inputCropY, inputCropW, inputCropH].forEach(input => {
+    if (input) {
+      input.addEventListener('input', applyCropStateFromInputs);
+      input.addEventListener('change', applyCropStateFromInputs);
+    }
+  });
+
   window.addEventListener('mouseup', () => {
     if (activeInteraction) {
       activeInteraction = null;
@@ -683,45 +764,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!cropState || cropState.displayW < 10 || cropState.displayH < 10) {
         resetCrop();
       }
+      updateCropInputsFromState();
       updatePreview();
     }
   });
 
   btnResetCrop.addEventListener('click', () => {
     resetCrop();
+    updateCropInputsFromState();
     updatePreview();
   });
 
-  // Mouse Wheel Zoom on Canvas
+  // Whole Video Mouse Wheel Zoom on Canvas
   cropCanvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    if (!cropState || !cropState.displayW || !cropState.displayH) return;
-
-    const factor = e.deltaY < 0 ? 0.92 : 1.08;
-
-    let newW = Math.round(cropState.displayW * factor);
-    let newH = Math.round(cropState.displayH * factor);
-
-    newW = Math.max(10, Math.min(newW, cropCanvas.width));
-    newH = Math.max(10, Math.min(newH, cropCanvas.height));
-
-    const centerX = cropState.displayX + cropState.displayW / 2;
-    const centerY = cropState.displayY + cropState.displayH / 2;
-
-    let newX = Math.round(centerX - newW / 2);
-    let newY = Math.round(centerY - newH / 2);
-
-    newX = Math.max(0, Math.min(newX, cropCanvas.width - newW));
-    newY = Math.max(0, Math.min(newY, cropCanvas.height - newH));
-
-    cropState.displayX = newX;
-    cropState.displayY = newY;
-    cropState.displayW = newW;
-    cropState.displayH = newH;
-
-    calculateVideoCropPixels();
-    renderCropRect();
-    updatePreview();
+    const delta = e.deltaY < 0 ? 0.10 : -0.10;
+    setVideoZoom(videoZoomScale + delta);
   }, { passive: false });
 
   function resetCrop() {

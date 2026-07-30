@@ -35,22 +35,34 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <!-- Left Sidebar: forSprite Hierarchy Panel -->
-      <aside class="panel hierarchy-panel" style="width: 250px; min-width: 250px; display: flex; flex-direction: column; gap: 0.75rem; background: rgba(18, 16, 35, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.9rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">📁 forSprite Projects</h3>
-          <button id="btn-refresh-hierarchy" class="btn btn-sm btn-ghost" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="リストを更新">🔄</button>
-        </div>
-        <div id="hierarchy-project-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
-          <div style="font-size: 0.8rem; color: #64748b; text-align: center; padding: 1rem 0;">読み込み中...</div>
-        </div>
-      </aside>
-
       <!-- File Drop & Video Section -->
       <section class="panel video-section">
         <div class="panel-header">
           <h2>1. 動画ソース＆クロップ領域調整</h2>
           <span id="video-info" class="meta-tag">動画が未選択です</span>
+        </div>
+
+        <!-- Crop PX Inputs & Zoom Control Bar -->
+        <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 0.5rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.3rem;">
+            <span style="font-size: 0.75rem; color: #94a3b8;">🔍 ズーム:</span>
+            <button id="btn-zoom-out" class="btn btn-sm btn-secondary" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;">-</button>
+            <span id="zoom-val-text" style="font-family: monospace; font-size: 0.8rem; color: #3b82f6; width: 45px; text-align: center;">100%</span>
+            <button id="btn-zoom-in" class="btn btn-sm btn-secondary" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;">+</button>
+            <button id="btn-zoom-reset" class="btn btn-sm btn-ghost" style="padding: 0.1rem 0.3rem; font-size: 0.75rem;" title="100%にリセット">↺</button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.4rem; margin-left: auto;">
+            <span style="font-size: 0.75rem; color: #94a3b8;">✂️ クロップpx:</span>
+            <label style="font-size: 0.7rem; color: #94a3b8;">X:</label>
+            <input type="number" id="input-crop-x" min="0" value="0" style="width: 55px; font-size: 0.75rem; padding: 0.15rem; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px;">
+            <label style="font-size: 0.7rem; color: #94a3b8;">Y:</label>
+            <input type="number" id="input-crop-y" min="0" value="0" style="width: 55px; font-size: 0.75rem; padding: 0.15rem; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px;">
+            <label style="font-size: 0.7rem; color: #94a3b8;">W:</label>
+            <input type="number" id="input-crop-w" min="1" value="0" style="width: 55px; font-size: 0.75rem; padding: 0.15rem; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px;">
+            <label style="font-size: 0.7rem; color: #94a3b8;">H:</label>
+            <input type="number" id="input-crop-h" min="1" value="0" style="width: 55px; font-size: 0.75rem; padding: 0.15rem; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px;">
+          </div>
         </div>
 
         <!-- Drag & Drop Zone / Video Wrapper -->
@@ -304,6 +316,17 @@
           </div>
         </div>
       </section>
+
+      <!-- Rightmost Sidebar: forSprite Hierarchy Panel -->
+      <aside class="panel hierarchy-panel" style="width: 250px; min-width: 250px; display: flex; flex-direction: column; gap: 0.75rem; background: rgba(18, 16, 35, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.9rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">📁 forSprite Projects</h3>
+          <button id="btn-refresh-hierarchy" class="btn btn-sm btn-ghost" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="リストを更新">🔄</button>
+        </div>
+        <div id="hierarchy-project-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="font-size: 0.8rem; color: #64748b; text-align: center; padding: 1rem 0;">読み込み中...</div>
+        </div>
+      </aside>
     </main>
   </div>
 
