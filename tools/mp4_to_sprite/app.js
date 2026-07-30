@@ -310,7 +310,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (btnLoadConfig && configFileInput) {
-    btnLoadConfig.addEventListener('click', () => configFileInput.click());
+    btnLoadConfig.addEventListener('click', () => {
+      const hierarchyPanel = document.querySelector('.hierarchy-panel');
+      if (hierarchyPanel) {
+        hierarchyPanel.style.border = '2px solid #a855f7';
+        hierarchyPanel.style.boxShadow = '0 0 15px rgba(168, 85, 247, 0.5)';
+        setTimeout(() => {
+          hierarchyPanel.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+          hierarchyPanel.style.boxShadow = 'none';
+        }, 2000);
+      }
+      configFileInput.click();
+    });
+
     configFileInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         const file = e.target.files[0];
@@ -1192,22 +1204,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return JSON.stringify(data, null, 2);
   }
 
-  // --- Download Handlers ---
-  btnDlPng.addEventListener('click', () => {
+  // --- Download Handlers (Always Saves to Z:\MovieCreator\forSprite\) ---
+  btnDlPng.addEventListener('click', async () => {
     if (!generatedResult.pngDataUrl) return;
     downloadFile(generatedResult.pngDataUrl, `${generatedResult.filenameBase}.png`);
+    await saveSpriteProject();
   });
 
-  btnDlPlist.addEventListener('click', () => {
+  btnDlPlist.addEventListener('click', async () => {
     if (!generatedResult.plistText) return;
     const blob = new Blob([generatedResult.plistText], { type: 'text/xml' });
     downloadFile(URL.createObjectURL(blob), `${generatedResult.filenameBase}.plist`);
+    await saveSpriteProject();
   });
 
-  btnDlJson.addEventListener('click', () => {
+  btnDlJson.addEventListener('click', async () => {
     if (!generatedResult.jsonText) return;
     const blob = new Blob([generatedResult.jsonText], { type: 'application/json' });
     downloadFile(URL.createObjectURL(blob), `${generatedResult.filenameBase}.json`);
+    await saveSpriteProject();
   });
 
   btnDlZip.addEventListener('click', async () => {
