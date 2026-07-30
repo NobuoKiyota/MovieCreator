@@ -1,0 +1,3 @@
+@echo off
+echo Opening MovieCreator Sprite Viewer...
+start "" "%~dp0tools\sprite_viewer\index.html"

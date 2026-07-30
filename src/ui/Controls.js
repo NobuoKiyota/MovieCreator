@@ -552,6 +552,17 @@ export class Controls {
       });
     }
 
+    const btnLaunchSpriteViewer = document.getElementById('btn-launch-sprite-viewer');
+    if (btnLaunchSpriteViewer) {
+      btnLaunchSpriteViewer.addEventListener('click', async () => {
+        try {
+          await fetch('/api/open-sprite-viewer', { method: 'POST' });
+        } catch (err) {
+          console.error('Failed to launch Sprite Viewer:', err);
+        }
+      });
+    }
+
     // 6. API Layer Export/Import Events
     if (this.btnApiExportLayerEl) {
       this.btnApiExportLayerEl.addEventListener('click', () => {

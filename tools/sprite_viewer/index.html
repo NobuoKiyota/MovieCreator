@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MovieCreator - Sprite Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo-area">
+      <span class="logo-icon">👁️</span>
+      <h1>MovieCreator Sprite Viewer</h1>
+    </div>
+    <div class="header-actions">
+      <button id="btn-open-forsprite" class="btn">📁 forSprite フォルダを開く</button>
+      <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">📂 ファイルを開く</button>
+      <input type="file" id="file-input" accept=".png,.plist,.json" multiple style="display: none;">
+    </div>
+  </header>
+
+  <main class="main-layout">
+    <!-- Left Section: Main Animation Viewer -->
+    <section class="viewer-section">
+      <div id="drop-zone" class="drop-zone">
+        <div id="drop-prompt" class="drop-prompt">
+          <div class="drop-icon">🖼️</div>
+          <p style="font-size: 1.1rem; font-weight: 600;">スプライトファイル (PNG + JSON / PLIST) をドロップ</p>
+          <p style="color: var(--text-sub); font-size: 0.85rem; margin-top: 0.4rem;">または上の「ファイルを開く」ボタンから選択してください</p>
+        </div>
+
+        <div id="viewport" class="viewport-container checkerboard-bg hidden">
+          <canvas id="anim-canvas"></canvas>
+        </div>
+      </div>
+
+      <!-- Animation Controls -->
+      <div class="controls-bar">
+        <div class="btn-group">
+          <button id="btn-prev-frame" class="btn">◀ 1F</button>
+          <button id="btn-play-pause" class="btn btn-primary">▶ Play</button>
+          <button id="btn-next-frame" class="btn">1F ▶</button>
+        </div>
+
+        <span id="frame-counter" style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">Frame: 0 / 0</span>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
+          <label style="font-size: 0.85rem; color: var(--text-sub);">FPS:</label>
+          <input type="range" id="fps-slider" min="1" max="60" value="15" style="width: 100px;">
+          <span id="fps-val" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">15</span>
+        </div>
+
+        <div class="btn-group" style="margin-left: 1rem;">
+          <button class="btn btn-bg active" data-bg="checkerboard">🏁</button>
+          <button class="btn btn-bg" data-bg="black">⬛</button>
+          <button class="btn btn-bg" data-bg="white">⬜</button>
+          <button class="btn btn-bg" data-bg="green">🟩</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Section: Frame List & Meta Info -->
+    <aside class="sidebar">
+      <div class="section-title">素材情報</div>
+      <div id="info-card" class="info-card">
+        ファイルが読み込まれていません
+      </div>
+
+      <div class="section-title" style="margin-top: 0.5rem;">全フレーム一覧</div>
+      <div id="frames-grid" class="frames-grid">
+        <!-- Frame items rendered here -->
+      </div>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

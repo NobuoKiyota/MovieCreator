@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filenameBase: 'sprite_sheet'
   };
 
-  // --- Open forSprite Folder ---
+  // --- Open forSprite Folder & Viewer ---
   const btnOpenForSprite = document.getElementById('btn-open-forsprite');
   if (btnOpenForSprite) {
     btnOpenForSprite.addEventListener('click', async () => {
@@ -104,6 +104,159 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Failed to open forSprite folder:', err);
       }
     });
+  }
+
+  const btnOpenViewerTool = document.getElementById('btn-open-viewer-tool');
+  if (btnOpenViewerTool) {
+    btnOpenViewerTool.addEventListener('click', async () => {
+      try {
+        await fetch('/api/open-sprite-viewer', { method: 'POST' });
+      } catch (err) {
+        console.error('Failed to open Sprite Viewer:', err);
+      }
+    });
+  }
+
+  // --- Save / Load & Ctrl+S Shortcut ---
+  const btnSaveCtrlS = document.getElementById('btn-save-project-ctrls');
+  const btnLoadConfig = document.getElementById('btn-load-config-file');
+  const configFileInput = document.getElementById('config-file-input');
+
+  async function saveSpriteProject() {
+    const config = {
+      filenameBase: generatedResult.filenameBase || 'sprite_sheet',
+      inTime,
+      outTime,
+      nativeFps,
+      targetFps: parseInt(fpsInput.value, 10) || 15,
+      cols: parseInt(colsInput.value, 10) || 0,
+      padding: parseInt(paddingInput.value, 10) || 0,
+      cropState: cropState ? { ...cropState } : null,
+      keying: {
+        threshold: parseInt(thresholdRange.value, 10),
+        softness: parseInt(softnessRange.value, 10)
+      },
+      filters: {
+        brightness: parseInt(brightnessRange.value, 10),
+        contrast: parseInt(contrastRange.value, 10),
+        saturation: parseInt(saturationRange.value, 10),
+        sharpen: parseFloat(sharpenRange.value),
+        hue: parseInt(hueRange.value, 10)
+      },
+      savedAt: new Date().toISOString()
+    };
+
+    const payload = {
+      filenameBase: config.filenameBase,
+      config,
+      pngDataUrl: generatedResult.pngDataUrl,
+      plistText: generatedResult.plistText,
+      jsonText: generatedResult.jsonText
+    };
+
+    try {
+      if (btnSaveCtrlS) btnSaveCtrlS.textContent = '⏳ 保存中...';
+      const res = await fetch('/api/save-sprite-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ 保存完了!\n保存先: forSprite/\n保存ファイル:\n • ${data.savedFiles.join('\n • ')}`);
+      } else {
+        alert(`❌ 保存エラー: ${data.error}`);
+      }
+    } catch (err) {
+      console.error('Save sprite project error:', err);
+      alert(`保存処理中にエラーが発生しました: ${err.message}`);
+    } finally {
+      if (btnSaveCtrlS) btnSaveCtrlS.textContent = '💾 保存 (Ctrl+S)';
+    }
+  }
+
+  if (btnSaveCtrlS) {
+    btnSaveCtrlS.addEventListener('click', saveSpriteProject);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      saveSpriteProject();
+    }
+  });
+
+  if (btnLoadConfig && configFileInput) {
+    btnLoadConfig.addEventListener('click', () => configFileInput.click());
+    configFileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const config = JSON.parse(evt.target.result);
+            applyProjectConfig(config);
+            alert(`✅ 設定を読み込みました: ${file.name}`);
+          } catch (err) {
+            alert(`設定ファイルの読み込みに失敗しました: ${err.message}`);
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+  }
+
+  function applyProjectConfig(cfg) {
+    if (!cfg) return;
+    if (cfg.filenameBase) generatedResult.filenameBase = cfg.filenameBase;
+    if (typeof cfg.inTime === 'number') inTime = cfg.inTime;
+    if (typeof cfg.outTime === 'number') outTime = cfg.outTime;
+    if (typeof cfg.targetFps === 'number') fpsInput.value = cfg.targetFps;
+    if (typeof cfg.cols === 'number') colsInput.value = cfg.cols;
+    if (typeof cfg.padding === 'number') paddingInput.value = cfg.padding;
+
+    if (cfg.keying) {
+      if (typeof cfg.keying.threshold === 'number') {
+        thresholdRange.value = cfg.keying.threshold;
+        thresholdVal.textContent = cfg.keying.threshold;
+      }
+      if (typeof cfg.keying.softness === 'number') {
+        softnessRange.value = cfg.keying.softness;
+        softnessVal.textContent = cfg.keying.softness;
+      }
+    }
+
+    if (cfg.filters) {
+      if (typeof cfg.filters.brightness === 'number') {
+        brightnessRange.value = cfg.filters.brightness;
+        brightnessVal.textContent = `${cfg.filters.brightness}%`;
+      }
+      if (typeof cfg.filters.contrast === 'number') {
+        contrastRange.value = cfg.filters.contrast;
+        contrastVal.textContent = `${cfg.filters.contrast}%`;
+      }
+      if (typeof cfg.filters.saturation === 'number') {
+        saturationRange.value = cfg.filters.saturation;
+        saturationVal.textContent = `${cfg.filters.saturation}%`;
+      }
+      if (typeof cfg.filters.sharpen === 'number') {
+        sharpenRange.value = cfg.filters.sharpen;
+        sharpenVal.textContent = cfg.filters.sharpen;
+      }
+      if (typeof cfg.filters.hue === 'number') {
+        hueRange.value = cfg.filters.hue;
+        hueVal.textContent = `${cfg.filters.hue}°`;
+      }
+    }
+
+    if (cfg.cropState) {
+      cropState = { ...cfg.cropState };
+      renderCropRect();
+    }
+
+    updateRangeInputs();
+    updateTimelineHighlight();
+    updatePreview();
   }
 
   // --- Tab Switching ---

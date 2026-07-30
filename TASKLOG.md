@@ -9,6 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-30 15:16 [Antigravity] 完了: SpriteStudio Ctrl+S設定・成果物上書き保存APIおよびスプライト専用プレビューア(Sprite Viewer)開発完了
+- 2026-07-30 15:15 [Antigravity] 着手: SpriteStudio Ctrl+S上書き保存APIおよびSprite Viewerプレビューアプリの開発
 - 2026-07-30 14:32 [Antigravity] 完了: forSpriteデフォルトパス構成・output/forSpriteエクスプローラー閲覧APIおよびSprite Studioパイプライン起動機能の実装完了
 - 2026-07-30 14:13 [Antigravity] 着手: forSpriteパス構成・エクスプローラー閲覧API・Sprite Studioパイプライン起動機能の実装
 - 2026-07-30 02:18 [Antigravity] コミット＆プッシュ: パラメータ設定更新・最新プリセットおよびプロジェクト保存データの同期

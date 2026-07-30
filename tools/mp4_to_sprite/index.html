@@ -22,9 +22,13 @@
           <p class="subtitle">黒背景自動透過 / 精密フレーム範囲 / クロップ位置ズレ完全解消 / カラー＆シャープ補正</p>
         </div>
       </div>
-      <div class="header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+      <div class="header-actions" style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
         <span class="badge" title="デフォルト出力保存パス">Default: Z:\MovieCreator\forSprite</span>
-        <button id="btn-open-forsprite" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer;">📁 forSprite フォルダを開く</button>
+        <button id="btn-save-project-ctrls" class="btn btn-sm btn-primary" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer; background: linear-gradient(135deg, #10b981, #059669);" title="Ctrl + S で即座に forSprite/ へ一括保存">💾 保存 (Ctrl+S)</button>
+        <button id="btn-load-config-file" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer;">📂 設定読込</button>
+        <input type="file" id="config-file-input" accept=".json" style="display: none;">
+        <button id="btn-open-forsprite" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer;">📁 forSprite フォルダ</button>
+        <button id="btn-open-viewer-tool" class="btn btn-sm btn-accent" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer; background: linear-gradient(135deg, #3b82f6, #8b5cf6);">👁️ Viewer起動</button>
         <span class="badge">Pro Edition</span>
       </div>
     </header>

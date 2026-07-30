@@ -1081,6 +1081,91 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     return;
   }
 
+  // 11. POST /api/save-sprite-project - SpriteStudioの設定JSONおよび生成結果(PNG/plist/json)を forSprite/ フォルダへ一括保存
+  if (req.method === 'POST' && pathname === '/api/save-sprite-project') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        if (!body) throw new Error('Request body is empty');
+        const parsed = JSON.parse(body);
+        const { filenameBase, config, pngDataUrl, plistText, jsonText } = parsed;
+
+        if (!filenameBase) throw new Error('filenameBase is required');
+        const safeBase = getSafeFilename(filenameBase, 'sprite');
+
+        if (!fs.existsSync(forSpriteDir)) {
+          fs.mkdirSync(forSpriteDir, { recursive: true });
+        }
+
+        const savedFiles = [];
+
+        // 1. Config JSON
+        if (config) {
+          const cfgPath = path.join(forSpriteDir, `${safeBase}_config.json`);
+          fs.writeFileSync(cfgPath, JSON.stringify(config, null, 2), 'utf-8');
+          savedFiles.push(`${safeBase}_config.json`);
+        }
+
+        // 2. Sprite Sheet PNG (Base64 data URL)
+        if (pngDataUrl && pngDataUrl.startsWith('data:image/png;base64,')) {
+          const base64Data = pngDataUrl.replace(/^data:image\/png;base64,/, '');
+          const pngPath = path.join(forSpriteDir, `${safeBase}.png`);
+          fs.writeFileSync(pngPath, Buffer.from(base64Data, 'base64'));
+          savedFiles.push(`${safeBase}.png`);
+        }
+
+        // 3. Cocos Plist
+        if (plistText) {
+          const plistPath = path.join(forSpriteDir, `${safeBase}.plist`);
+          fs.writeFileSync(plistPath, plistText, 'utf-8');
+          savedFiles.push(`${safeBase}.plist`);
+        }
+
+        // 4. Unity / Generic JSON
+        if (jsonText) {
+          const jsonPath = path.join(forSpriteDir, `${safeBase}.json`);
+          fs.writeFileSync(jsonPath, jsonText, 'utf-8');
+          savedFiles.push(`${safeBase}.json`);
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ success: true, savedFiles, targetDir: forSpriteDir }));
+      } catch (err) {
+        console.error('[API Server] /api/save-sprite-project error:', err);
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
+  // 12. POST /api/open-sprite-viewer - open_sprite_viewer.bat / Sprite Viewer 画面を起動する
+  if (req.method === 'POST' && pathname === '/api/open-sprite-viewer') {
+    try {
+      const batPath = path.join(workspaceRoot, 'open_sprite_viewer.bat');
+      if (process.platform === 'win32' && fs.existsSync(batPath)) {
+        spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        const htmlPath = path.join(workspaceRoot, 'tools', 'sprite_viewer', 'index.html');
+        if (process.platform === 'win32') {
+          spawn('cmd.exe', ['/c', 'start', '""', htmlPath], { detached: true, stdio: 'ignore' }).unref();
+        } else if (process.platform === 'darwin') {
+          spawn('open', [htmlPath]);
+        } else {
+          spawn('xdg-open', [htmlPath]);
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      console.error('[API Server] /api/open-sprite-viewer error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // APIルートだが、GET/POST以外のメソッドや、未定義のエンドポイントへのリクエスト
   res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ error: 'API route not found' }));
