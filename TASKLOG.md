@@ -9,6 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-30 14:32 [Antigravity] 完了: forSpriteデフォルトパス構成・output/forSpriteエクスプローラー閲覧APIおよびSprite Studioパイプライン起動機能の実装完了
+- 2026-07-30 14:13 [Antigravity] 着手: forSpriteパス構成・エクスプローラー閲覧API・Sprite Studioパイプライン起動機能の実装
 - 2026-07-30 02:18 [Antigravity] コミット＆プッシュ: パラメータ設定更新・最新プリセットおよびプロジェクト保存データの同期
 - 2026-07-30 01:36 [Antigravity] 完了: Meteor ShowerのTailテーパー形状(流線形)およびTail Wiggle(尾の揺らぎ)・Head Size描画の実装完了
 - 2026-07-30 01:27 [Antigravity] 完了: ランダム仕様・変異幅(Spread/Jitter)減衰解除およびSpawn Jitter再抽選タイマー最適化完了

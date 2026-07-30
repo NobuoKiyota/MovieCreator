@@ -453,6 +453,7 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
   const presetsDir = path.resolve(workspaceRoot, 'presets');
   const dataDir = path.resolve(workspaceRoot, 'data');
   const outputDir = path.resolve(workspaceRoot, 'output');
+  const forSpriteDir = path.resolve(workspaceRoot, 'forSprite');
   const scoresPath = path.join(dataDir, 'scores.json');
 
   // ディレクトリがなければ自動作成する
@@ -468,6 +469,9 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     }
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+    }
+    if (!fs.existsSync(forSpriteDir)) {
+      fs.mkdirSync(forSpriteDir, { recursive: true });
     }
     if (!fs.existsSync(scoresPath)) {
       fs.writeFileSync(scoresPath, '[]', 'utf-8');
@@ -1021,6 +1025,59 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
         res.end(JSON.stringify({ error: `Failed to write export file: ${err.message}` }));
       }
     });
+    return;
+  }
+
+  // 9. POST /api/open-folder - output/ または forSprite/ フォルダをOSのエクスプローラーで開く
+  if (req.method === 'POST' && pathname === '/api/open-folder') {
+    const target = searchParams.get('target') || 'output';
+    const targetDir = target === 'forSprite' ? forSpriteDir : outputDir;
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    try {
+      if (process.platform === 'win32') {
+        spawn('explorer.exe', [targetDir]);
+      } else if (process.platform === 'darwin') {
+        spawn('open', [targetDir]);
+      } else {
+        spawn('xdg-open', [targetDir]);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, opened: targetDir }));
+    } catch (err) {
+      console.error('[API Server] /api/open-folder error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // 10. POST /api/open-sprite-studio - open_sprite_studio.bat / Sprite Studio 画面を起動する
+  if (req.method === 'POST' && pathname === '/api/open-sprite-studio') {
+    try {
+      const batPath = path.join(workspaceRoot, 'open_sprite_studio.bat');
+      if (process.platform === 'win32' && fs.existsSync(batPath)) {
+        spawn('cmd.exe', ['/c', batPath], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        const htmlPath = path.join(workspaceRoot, 'tools', 'mp4_to_sprite', 'index.html');
+        if (process.platform === 'win32') {
+          spawn('cmd.exe', ['/c', 'start', '""', htmlPath], { detached: true, stdio: 'ignore' }).unref();
+        } else if (process.platform === 'darwin') {
+          spawn('open', [htmlPath]);
+        } else {
+          spawn('xdg-open', [htmlPath]);
+        }
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true }));
+    } catch (err) {
+      console.error('[API Server] /api/open-sprite-studio error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
     return;
   }
 

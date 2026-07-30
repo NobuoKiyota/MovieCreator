@@ -519,6 +519,39 @@ export class Controls {
       });
     }
 
+    const btnOpenOutputFolder = document.getElementById('btn-open-output-folder');
+    if (btnOpenOutputFolder) {
+      btnOpenOutputFolder.addEventListener('click', async () => {
+        try {
+          await fetch('/api/open-folder?target=output', { method: 'POST' });
+        } catch (err) {
+          console.error('Failed to open output folder:', err);
+        }
+      });
+    }
+
+    const btnOpenForSpriteFolder = document.getElementById('btn-open-forsprite-folder');
+    if (btnOpenForSpriteFolder) {
+      btnOpenForSpriteFolder.addEventListener('click', async () => {
+        try {
+          await fetch('/api/open-folder?target=forSprite', { method: 'POST' });
+        } catch (err) {
+          console.error('Failed to open forSprite folder:', err);
+        }
+      });
+    }
+
+    const btnLaunchSpriteStudio = document.getElementById('btn-launch-sprite-studio');
+    if (btnLaunchSpriteStudio) {
+      btnLaunchSpriteStudio.addEventListener('click', async () => {
+        try {
+          await fetch('/api/open-sprite-studio', { method: 'POST' });
+        } catch (err) {
+          console.error('Failed to launch Sprite Studio:', err);
+        }
+      });
+    }
+
     // 6. API Layer Export/Import Events
     if (this.btnApiExportLayerEl) {
       this.btnApiExportLayerEl.addEventListener('click', () => {

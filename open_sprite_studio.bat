@@ -1,0 +1,3 @@
+@echo off
+echo Opening MP4 to SpriteSheet Studio from MovieCreator tools...
+start "" "%~dp0tools\mp4_to_sprite\index.html"

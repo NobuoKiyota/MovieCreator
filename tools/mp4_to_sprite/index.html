@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MP4 to SpriteSheet Studio | 黒抜き・範囲調整・画質補正機能付き</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- JSZip CDN for Zip export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-icon">🎬</div>
+        <div>
+          <h1>MP4 to SpriteSheet Studio</h1>
+          <p class="subtitle">黒背景自動透過 / 精密フレーム範囲 / クロップ位置ズレ完全解消 / カラー＆シャープ補正</p>
+        </div>
+      </div>
+      <div class="header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+        <span class="badge" title="デフォルト出力保存パス">Default: Z:\MovieCreator\forSprite</span>
+        <button id="btn-open-forsprite" class="btn btn-sm btn-secondary" style="font-size: 0.8rem; padding: 0.3rem 0.6rem; cursor: pointer;">📁 forSprite フォルダを開く</button>
+        <span class="badge">Pro Edition</span>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- File Drop & Video Section -->
+      <section class="panel video-section">
+        <div class="panel-header">
+          <h2>1. 動画ソース＆クロップ領域調整</h2>
+          <span id="video-info" class="meta-tag">動画が未選択です</span>
+        </div>
+
+        <!-- Drag & Drop Zone / Video Wrapper -->
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-prompt" id="drop-prompt">
+            <div class="upload-icon">📁</div>
+            <p class="primary-text">MP4動画ファイルをドラッグ＆ドロップ</p>
+            <p class="secondary-text">またはファイルを選択（完全ローカルブラウザ処理）</p>
+            <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">ファイルを開く</button>
+            <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/webm" style="display: none;">
+          </div>
+
+          <div id="video-container" class="video-container hidden">
+            <!-- Video Wrapper for 1:1 Pixel Accuracy -->
+            <div id="video-wrapper" class="video-wrapper">
+              <video id="video-player" playsinline preload="auto"></video>
+              <!-- Canvas Overlay for Crop Selection -->
+              <canvas id="crop-canvas"></canvas>
+              <div id="crop-rect" class="crop-rect hidden">
+                <div class="crop-handle nw" data-handle="nw"></div>
+                <div class="crop-handle ne" data-handle="ne"></div>
+                <div class="crop-handle sw" data-handle="sw"></div>
+                <div class="crop-handle se" data-handle="se"></div>
+                <div class="crop-label" id="crop-dimensions">400 x 400</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Player Controls -->
+        <div id="video-controls" class="controls-bar hidden">
+          <div class="playback-buttons">
+            <button id="btn-prev-frame" class="btn btn-sm btn-secondary">◀ 1Frame</button>
+            <button id="btn-play" class="btn btn-icon">▶</button>
+            <button id="btn-next-frame" class="btn btn-sm btn-secondary">1Frame ▶</button>
+          </div>
+          
+          <span id="time-display" class="time-display">00:00 (F: 0 / 0)</span>
+
+          <div class="timeline-container">
+            <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.01">
+            <div id="range-highlight" class="range-highlight"></div>
+          </div>
+
+          <button id="btn-set-in" class="btn btn-sm btn-primary">IN点設定</button>
+          <button id="btn-set-out" class="btn btn-sm btn-primary">OUT点設定</button>
+          <button id="btn-reset-crop" class="btn btn-sm btn-ghost">クロップ全解除</button>
+        </div>
+      </section>
+
+      <!-- Settings & Live Preview Section -->
+      <section class="panel settings-section">
+        <div class="panel-header">
+          <h2>2. 黒抜き・フレーム範囲・カラー＆シャープ補正</h2>
+          <span class="meta-tag">リアルタイム調整</span>
+        </div>
+
+        <!-- Tab Controls for Settings -->
+        <div class="tab-header">
+          <button class="tab-btn active" data-tab="tab-range">範囲・黒抜き設定</button>
+          <button class="tab-btn" data-tab="tab-color">カラー＆シャープ調整</button>
+        </div>
+
+        <!-- Tab 1: Range & Black Keying -->
+        <div id="tab-range" class="tab-content active">
+          <div class="settings-grid">
+            <!-- Time / Frame Range -->
+            <div class="control-group full-width">
+              <label>抽出フレーム範囲 (IN / OUT)</label>
+              <div class="range-inputs-advanced">
+                <div class="range-box">
+                  <span class="box-title">IN点 (開始)</span>
+                  <div class="input-pair">
+                    <label>Frame:</label>
+                    <input type="number" id="in-frame" value="0" min="0" step="1">
+                  </div>
+                  <div class="input-pair">
+                    <label>秒数(s):</label>
+                    <input type="number" id="in-sec" value="0.00" step="0.01" min="0">
+                  </div>
+                </div>
+                <div class="range-box">
+                  <span class="box-title">OUT点 (終了)</span>
+                  <div class="input-pair">
+                    <label>Frame:</label>
+                    <input type="number" id="out-frame" value="0" min="0" step="1">
+                  </div>
+                  <div class="input-pair">
+                    <label>秒数(s):</label>
+                    <input type="number" id="out-sec" value="0.00" step="0.01" min="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- FPS Settings -->
+            <div class="control-group">
+              <label for="fps-input">抽出コマ数 (FPS)</label>
+              <div class="input-with-unit">
+                <input type="number" id="fps-input" value="15" min="1" max="60">
+                <span class="unit">FPS</span>
+              </div>
+              <small class="hint">元動画のFPSから間引いて抽出</small>
+            </div>
+
+            <!-- Sheet Columns -->
+            <div class="control-group">
+              <label for="cols-input">スプライトシート列数 (Cols)</label>
+              <input type="number" id="cols-input" value="0" min="0" placeholder="0 = 自動計算">
+              <small class="hint">0指定で正方形に近いグリッド自動計算</small>
+            </div>
+
+            <!-- Frame Padding Option -->
+            <div class="control-group">
+              <label for="padding-input">コマ間パディング (Padding)</label>
+              <div class="input-with-unit">
+                <input type="number" id="padding-input" value="0" min="0" max="32">
+                <span class="unit">px</span>
+              </div>
+              <small class="hint">各コマ周囲の余白 (見切れ防止)</small>
+            </div>
+
+            <!-- Black Threshold -->
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="threshold-range">黒抜き感度 (Threshold)</label>
+                <span id="threshold-val">20</span>
+              </div>
+              <input type="range" id="threshold-range" min="0" max="100" value="20">
+              <small class="hint">背景黒判定の閾値 (0〜100)</small>
+            </div>
+
+            <!-- Softness -->
+            <div class="control-group full-width">
+              <div class="label-with-value">
+                <label for="softness-range">エッジぼかし (Softness)</label>
+                <span id="softness-val">10</span>
+              </div>
+              <input type="range" id="softness-range" min="1" max="50" value="10">
+              <small class="hint">アルファ境界のなめらかさ</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Color & Sharpen Adjustments -->
+        <div id="tab-color" class="tab-content">
+          <div class="settings-grid">
+            <!-- Brightness -->
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="brightness-range">明るさ (Brightness)</label>
+                <span id="brightness-val">100%</span>
+              </div>
+              <input type="range" id="brightness-range" min="50" max="200" value="100">
+            </div>
+
+            <!-- Contrast -->
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="contrast-range">コントラスト (Contrast)</label>
+                <span id="contrast-val">100%</span>
+              </div>
+              <input type="range" id="contrast-range" min="50" max="200" value="100">
+            </div>
+
+            <!-- Saturation -->
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="saturation-range">彩度 (Saturation)</label>
+                <span id="saturation-val">100%</span>
+              </div>
+              <input type="range" id="saturation-range" min="0" max="250" value="100">
+            </div>
+
+            <!-- Sharpen -->
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="sharpen-range">シャープネス (Sharpen)</label>
+                <span id="sharpen-val">0</span>
+              </div>
+              <input type="range" id="sharpen-range" min="0" max="5" value="0" step="0.5">
+            </div>
+
+            <!-- Hue Shift -->
+            <div class="control-group full-width">
+              <div class="label-with-value">
+                <label for="hue-range">色相シフト (Hue Rotate)</label>
+                <span id="hue-val">0°</span>
+              </div>
+              <input type="range" id="hue-range" min="-180" max="180" value="0">
+            </div>
+
+            <!-- Reset Color Button -->
+            <div class="control-group full-width">
+              <button id="btn-reset-color" class="btn btn-secondary btn-sm">画質調整リセット</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-time Preview Canvas -->
+        <div class="preview-box">
+          <div class="preview-header">
+            <span>透過＆画質補正プレビュー (現在フレーム)</span>
+            <div class="bg-toggle">
+              <button class="btn-bg active" data-bg="checker">チェッカー</button>
+              <button class="btn-bg" data-bg="black">黒</button>
+              <button class="btn-bg" data-bg="white">白</button>
+            </div>
+          </div>
+          <div class="canvas-preview-wrapper checker-bg" id="preview-wrapper">
+            <canvas id="preview-canvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <button id="btn-generate" class="btn btn-primary btn-large" disabled>
+          ✨ スプライトシートを生成する
+        </button>
+      </section>
+
+      <!-- Result & Download Section -->
+      <section id="result-section" class="panel result-section hidden">
+        <div class="panel-header">
+          <h2>3. 生成結果＆ダウンロード</h2>
+          <span id="result-info" class="meta-tag font-mono">---</span>
+        </div>
+
+        <div class="result-layout">
+          <!-- Sprite Sheet Preview -->
+          <div class="sheet-preview-container checker-bg">
+            <img id="result-sheet-img" alt="Sprite Sheet Output">
+          </div>
+
+          <!-- Export Actions -->
+          <div class="export-actions">
+            <h3>エクスポート形式選択</h3>
+            <div class="download-buttons">
+              <button id="btn-dl-png" class="btn btn-success">
+                📥 画像を保存 (.png)
+              </button>
+              <button id="btn-dl-plist" class="btn btn-info">
+                📄 Cocos Creator用 .plist を保存
+              </button>
+              <button id="btn-dl-json" class="btn btn-info">
+                📜 Unity / Generic .json を保存
+              </button>
+              <button id="btn-dl-zip" class="btn btn-secondary">
+                📦 連番PNG一括保存 (.zip)
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
