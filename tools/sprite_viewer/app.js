@@ -76,10 +76,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
           base,
           isLocal: true,
+          config: item.config,
           pngDataUrl: item.pngDataUrl,
           jsonText: item.jsonText,
           plistText: item.plistText,
-          pngFile: item.pngDataUrl ? `${base}.png` : null,
+          pngFile: item.pngFile || `${base}.png`,
           plistFile: item.plistText ? `${base}.plist` : null,
           jsonFile: item.jsonText ? `${base}.json` : null
         };
@@ -245,6 +246,37 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Auto-register to localStorage for offline file:// persistence
+    try {
+      const targetFile = imgFile || metaFile;
+      const baseName = targetFile.name.replace(/(_config\.json|\.json|\.plist|\.png)$/i, '');
+      const localStore = JSON.parse(localStorage.getItem('moviecreator_forsprite_projects') || '{}');
+      if (!localStore[baseName]) localStore[baseName] = { filenameBase: baseName, savedAt: new Date().toISOString() };
+      
+      if (imgFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          localStore[baseName].pngDataUrl = e.target.result;
+          localStore[baseName].pngFile = imgFile.name;
+          localStorage.setItem('moviecreator_forsprite_projects', JSON.stringify(localStore));
+          refreshForSpriteHierarchy();
+        };
+        reader.readAsDataURL(imgFile);
+      }
+      if (metaFile) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (metaFile.name.endsWith('.json')) localStore[baseName].jsonText = e.target.result;
+          else if (metaFile.name.endsWith('.plist')) localStore[baseName].plistText = e.target.result;
+          localStorage.setItem('moviecreator_forsprite_projects', JSON.stringify(localStore));
+          refreshForSpriteHierarchy();
+        };
+        reader.readAsText(metaFile);
+      }
+    } catch (e) {
+      console.warn('Failed to auto register to localStorage in Viewer:', e);
+    }
+
     if (imgFile) {
       const url = URL.createObjectURL(imgFile);
       spriteImage = new Image();
@@ -252,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (metaFile) {
           parseMetaFile(metaFile);
         } else {
-          // Meta file not provided -> Auto Grid Split (e.g. 4x4)
           autoGridSplit(spriteImage.width, spriteImage.height);
         }
       };

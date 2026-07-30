@@ -334,7 +334,25 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (evt) => {
           try {
             const config = JSON.parse(evt.target.result);
+            const baseName = file.name.replace(/(_config\.json|\.json)$/i, '');
+            if (!config.filenameBase) config.filenameBase = baseName;
+
             applyProjectConfig(config);
+
+            // Auto-register to localStorage for offline file:// persistence
+            try {
+              const localStore = JSON.parse(localStorage.getItem('moviecreator_forsprite_projects') || '{}');
+              localStore[baseName] = {
+                filenameBase: baseName,
+                config,
+                savedAt: new Date().toISOString()
+              };
+              localStorage.setItem('moviecreator_forsprite_projects', JSON.stringify(localStore));
+            } catch (errLocal) {
+              console.warn('Failed to auto register to localStorage:', errLocal);
+            }
+
+            refreshForSpriteHierarchy();
             alert(`✅ 設定を読み込みました: ${file.name}`);
           } catch (err) {
             alert(`設定ファイルの読み込みに失敗しました: ${err.message}`);

@@ -1173,32 +1173,47 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
         fs.mkdirSync(forSpriteDir, { recursive: true });
       }
       const files = fs.readdirSync(forSpriteDir);
-      
-      const baseNames = new Set();
+
+      const itemsMap = new Map();
+
       files.forEach(file => {
+        if (file.startsWith('.')) return;
+
         let base = file;
-        if (base.endsWith('_config.json')) base = base.replace(/_config\.json$/, '');
-        else if (base.endsWith('_frames.zip')) base = base.replace(/_frames\.zip$/, '');
-        else if (base.endsWith('.png')) base = base.replace(/\.png$/, '');
-        else if (base.endsWith('.plist')) base = base.replace(/\.plist$/, '');
-        else if (base.endsWith('.json')) base = base.replace(/\.json$/, '');
-        else if (base.endsWith('.zip')) base = base.replace(/\.zip$/, '');
-
-        if (base && !base.startsWith('.')) {
-          baseNames.add(base);
+        if (file.endsWith('_config.json')) {
+          base = file.replace(/_config\.json$/, '');
+        } else if (file.endsWith('_frames.zip')) {
+          base = file.replace(/_frames\.zip$/, '');
+        } else {
+          const extIndex = file.lastIndexOf('.');
+          if (extIndex > 0) {
+            base = file.substring(0, extIndex);
+          }
         }
+
+        if (!itemsMap.has(base)) {
+          itemsMap.set(base, {
+            base,
+            configFile: null,
+            pngFile: null,
+            plistFile: null,
+            jsonFile: null,
+            zipFile: null,
+            rawFiles: []
+          });
+        }
+
+        const item = itemsMap.get(base);
+        item.rawFiles.push(file);
+
+        if (file.endsWith('_config.json')) item.configFile = file;
+        else if (file.endsWith('.png')) item.pngFile = file;
+        else if (file.endsWith('.plist')) item.plistFile = file;
+        else if (file.endsWith('.json')) item.jsonFile = file;
+        else if (file.endsWith('.zip')) item.zipFile = file;
       });
 
-      const projects = Array.from(baseNames).map(base => {
-        return {
-          base,
-          configFile: files.includes(`${base}_config.json`) ? `${base}_config.json` : null,
-          pngFile: files.includes(`${base}.png`) ? `${base}.png` : null,
-          plistFile: files.includes(`${base}.plist`) ? `${base}.plist` : null,
-          jsonFile: files.includes(`${base}.json`) ? `${base}.json` : null,
-          zipFile: files.includes(`${base}_frames.zip`) ? `${base}_frames.zip` : (files.includes(`${base}.zip`) ? `${base}.zip` : null)
-        };
-      });
+      const projects = Array.from(itemsMap.values());
 
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ success: true, projects, standalonePngs: [], allFiles: files }));
