@@ -1174,22 +1174,34 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
       }
       const files = fs.readdirSync(forSpriteDir);
       
-      const configFiles = files.filter(f => f.endsWith('_config.json'));
-      const projects = configFiles.map(cfgFile => {
-        const base = cfgFile.replace(/_config\.json$/, '');
+      const baseNames = new Set();
+      files.forEach(file => {
+        let base = file;
+        if (base.endsWith('_config.json')) base = base.replace(/_config\.json$/, '');
+        else if (base.endsWith('_frames.zip')) base = base.replace(/_frames\.zip$/, '');
+        else if (base.endsWith('.png')) base = base.replace(/\.png$/, '');
+        else if (base.endsWith('.plist')) base = base.replace(/\.plist$/, '');
+        else if (base.endsWith('.json')) base = base.replace(/\.json$/, '');
+        else if (base.endsWith('.zip')) base = base.replace(/\.zip$/, '');
+
+        if (base && !base.startsWith('.')) {
+          baseNames.add(base);
+        }
+      });
+
+      const projects = Array.from(baseNames).map(base => {
         return {
           base,
-          configFile: cfgFile,
+          configFile: files.includes(`${base}_config.json`) ? `${base}_config.json` : null,
           pngFile: files.includes(`${base}.png`) ? `${base}.png` : null,
           plistFile: files.includes(`${base}.plist`) ? `${base}.plist` : null,
-          jsonFile: files.includes(`${base}.json`) ? `${base}.json` : null
+          jsonFile: files.includes(`${base}.json`) ? `${base}.json` : null,
+          zipFile: files.includes(`${base}_frames.zip`) ? `${base}_frames.zip` : (files.includes(`${base}.zip`) ? `${base}.zip` : null)
         };
       });
 
-      const standalonePngs = files.filter(f => f.endsWith('.png') && !projects.some(p => p.pngFile === f));
-
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true, projects, standalonePngs, allFiles: files }));
+      res.end(JSON.stringify({ success: true, projects, standalonePngs: [], allFiles: files }));
     } catch (err) {
       console.error('[API Server] /api/forsprite-files error:', err);
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });

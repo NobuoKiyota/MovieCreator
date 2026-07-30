@@ -9,6 +9,8 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-07-30 17:26 [Antigravity] 完了: forSprite/全成果物の自動ベース名グループ化およびFORSPRITE表示バグ修正完了
+- 2026-07-30 17:25 [Antigravity] 着手: forSprite/全成果物の自動ベース名グループ化およびFORSPRITE表示バグ修正
 - 2026-07-30 17:21 [Antigravity] 完了: Node.js API経由エクスポートのZ:\MovieCreator\forSpriteダイレクト保存化完了
 - 2026-07-30 17:18 [Antigravity] 着手: Node.js API経由エクスポートのZ:\MovieCreator\forSpriteダイレクト保存化
 - 2026-07-30 16:43 [Antigravity] 完了: Studio①エクスポート・②保存・③設定読込・④FORSPRITE PROJECTSのZ:\MovieCreator\forSprite完全デフォルト化完了

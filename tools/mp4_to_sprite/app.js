@@ -197,10 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       card.innerHTML = `
         <div style="font-weight: 600; font-size: 0.82rem; color: #f3f4f6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${proj.base}</div>
-        <div style="font-size: 0.7rem; color: #94a3b8; display: flex; gap: 0.3rem;">
+        <div style="font-size: 0.7rem; color: #94a3b8; display: flex; gap: 0.3rem; flex-wrap: wrap;">
+          ${proj.configFile ? '<span style="color:#ec4899; font-weight:600;">CFG</span>' : ''}
           ${proj.pngFile ? '<span style="color:#10b981;">PNG</span>' : ''}
           ${proj.plistFile ? '<span style="color:#06b6d4;">PLIST</span>' : ''}
           ${proj.jsonFile ? '<span style="color:#a855f7;">JSON</span>' : ''}
+          ${proj.zipFile ? '<span style="color:#f59e0b;">ZIP</span>' : ''}
         </div>
       `;
 
@@ -212,11 +214,13 @@ document.addEventListener('DOMContentLoaded', () => {
           if (proj.isLocal && proj.config) {
             applyProjectConfig(proj.config);
             alert(`✅ ローカル保持設定を復元しました: ${proj.base}`);
-          } else {
+          } else if (proj.configFile) {
             const res = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(proj.configFile)}`));
             const cfg = await res.json();
             applyProjectConfig(cfg);
             alert(`✅ プロジェクト設定を復元しました: ${proj.base}`);
+          } else {
+            alert(`ℹ️ 素材ファイル (${proj.base}) が見つかりました。\n設定ファイル (_config.json) はまだ保存されていません。Viewer等で直接表示可能です。`);
           }
         } catch (err) {
           alert(`設定の読み込みに失敗しました: ${err.message}`);
