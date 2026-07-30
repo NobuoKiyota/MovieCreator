@@ -65,7 +65,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem 1.2rem;
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
   backdrop-filter: blur(12px);
@@ -73,6 +73,36 @@ body {
   box-shadow: var(--shadow-panel);
   height: 70px;
   min-height: 70px;
+  gap: 1rem;
+}
+
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  justify-content: flex-end;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.transport-controls::-webkit-scrollbar {
+  height: 3px;
+}
+
+.transport-controls::-webkit-scrollbar-thumb {
+  background: var(--border-color-active);
+  border-radius: 3px;
+}
+
+.controls-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .header-logo {
