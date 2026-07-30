@@ -94,12 +94,20 @@ document.addEventListener('DOMContentLoaded', () => {
     filenameBase: 'sprite_sheet'
   };
 
+  // --- API Helper for file:// protocol fallback ---
+  function getApiUrl(endpoint) {
+    if (window.location.protocol === 'file:') {
+      return `http://localhost:5173${endpoint}`;
+    }
+    return endpoint;
+  }
+
   // --- Open forSprite Folder & Viewer ---
   const btnOpenForSprite = document.getElementById('btn-open-forsprite');
   if (btnOpenForSprite) {
     btnOpenForSprite.addEventListener('click', async () => {
       try {
-        await fetch('/api/open-folder?target=forSprite', { method: 'POST' });
+        await fetch(getApiUrl('/api/open-folder?target=forSprite'), { method: 'POST' });
       } catch (err) {
         console.error('Failed to open forSprite folder:', err);
       }
@@ -110,12 +118,85 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnOpenViewerTool) {
     btnOpenViewerTool.addEventListener('click', async () => {
       try {
-        await fetch('/api/open-sprite-viewer', { method: 'POST' });
+        await fetch(getApiUrl('/api/open-sprite-viewer'), { method: 'POST' });
       } catch (err) {
         console.error('Failed to open Sprite Viewer:', err);
       }
     });
   }
+
+  // --- Hierarchy Sidebar Logic ---
+  const hierarchyProjectListEl = document.getElementById('hierarchy-project-list');
+  const btnRefreshHierarchyEl = document.getElementById('btn-refresh-hierarchy');
+
+  if (btnRefreshHierarchyEl) {
+    btnRefreshHierarchyEl.addEventListener('click', refreshForSpriteHierarchy);
+  }
+
+  async function refreshForSpriteHierarchy() {
+    if (!hierarchyProjectListEl) return;
+    try {
+      const res = await fetch(getApiUrl('/api/forsprite-files'));
+      const data = await res.json();
+      if (data.success && data.projects) {
+        renderHierarchyList(data.projects, data.standalonePngs);
+      }
+    } catch (err) {
+      console.warn('Failed to load forSprite files:', err);
+      hierarchyProjectListEl.innerHTML = `<div style="font-size:0.75rem; color:#ef4444; padding:0.5rem;">読み込み失敗 (開発サーバー非稼働)</div>`;
+    }
+  }
+
+  function renderHierarchyList(projects, standalonePngs) {
+    hierarchyProjectListEl.innerHTML = '';
+
+    if (projects.length === 0 && (!standalonePngs || standalonePngs.length === 0)) {
+      hierarchyProjectListEl.innerHTML = `<div style="font-size:0.8rem; color:#64748b; text-align:center; padding:1rem 0;">保存プロジェクトがありません</div>`;
+      return;
+    }
+
+    projects.forEach(proj => {
+      const card = document.createElement('div');
+      card.className = 'hierarchy-item';
+      card.style.cssText = `
+        background: rgba(30, 27, 55, 0.6);
+        border: 1px solid rgba(168, 85, 247, 0.2);
+        border-radius: 8px;
+        padding: 0.5rem 0.6rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      `;
+      card.innerHTML = `
+        <div style="font-weight: 600; font-size: 0.82rem; color: #f3f4f6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">📄 ${proj.base}</div>
+        <div style="font-size: 0.7rem; color: #94a3b8; display: flex; gap: 0.3rem;">
+          ${proj.pngFile ? '<span style="color:#10b981;">PNG</span>' : ''}
+          ${proj.plistFile ? '<span style="color:#06b6d4;">PLIST</span>' : ''}
+          ${proj.jsonFile ? '<span style="color:#a855f7;">JSON</span>' : ''}
+        </div>
+      `;
+
+      card.addEventListener('mouseenter', () => { card.style.background = 'rgba(168, 85, 247, 0.25)'; });
+      card.addEventListener('mouseleave', () => { card.style.background = 'rgba(30, 27, 55, 0.6)'; });
+
+      card.addEventListener('click', async () => {
+        try {
+          const res = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(proj.configFile)}`));
+          const cfg = await res.json();
+          applyProjectConfig(cfg);
+          alert(`✅ プロジェクト設定を復元しました: ${proj.base}`);
+        } catch (err) {
+          alert(`設定の読み込みに失敗しました: ${err.message}`);
+        }
+      });
+
+      hierarchyProjectListEl.appendChild(card);
+    });
+  }
+
+  refreshForSpriteHierarchy();
 
   // --- Save / Load & Ctrl+S Shortcut ---
   const btnSaveCtrlS = document.getElementById('btn-save-project-ctrls');
@@ -156,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       if (btnSaveCtrlS) btnSaveCtrlS.textContent = '⏳ 保存中...';
-      const res = await fetch('/api/save-sprite-project', {
+      const res = await fetch(getApiUrl('/api/save-sprite-project'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -164,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await res.json();
       if (data.success) {
         alert(`✅ 保存完了!\n保存先: forSprite/\n保存ファイル:\n • ${data.savedFiles.join('\n • ')}`);
+        refreshForSpriteHierarchy();
       } else {
         alert(`❌ 保存エラー: ${data.error}`);
       }

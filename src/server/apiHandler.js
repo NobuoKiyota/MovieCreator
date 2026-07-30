@@ -1166,6 +1166,79 @@ export function handleApiRequest(req, res, next, workspaceRoot) {
     return;
   }
 
+  // 13. GET /api/forsprite-files - forSprite/ 内のプロジェクト設定・スプライトアトラス一覧の取得
+  if (req.method === 'GET' && pathname === '/api/forsprite-files') {
+    try {
+      if (!fs.existsSync(forSpriteDir)) {
+        fs.mkdirSync(forSpriteDir, { recursive: true });
+      }
+      const files = fs.readdirSync(forSpriteDir);
+      
+      const configFiles = files.filter(f => f.endsWith('_config.json'));
+      const projects = configFiles.map(cfgFile => {
+        const base = cfgFile.replace(/_config\.json$/, '');
+        return {
+          base,
+          configFile: cfgFile,
+          pngFile: files.includes(`${base}.png`) ? `${base}.png` : null,
+          plistFile: files.includes(`${base}.plist`) ? `${base}.plist` : null,
+          jsonFile: files.includes(`${base}.json`) ? `${base}.json` : null
+        };
+      });
+
+      const standalonePngs = files.filter(f => f.endsWith('.png') && !projects.some(p => p.pngFile === f));
+
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, projects, standalonePngs, allFiles: files }));
+    } catch (err) {
+      console.error('[API Server] /api/forsprite-files error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
+  // 14. GET /api/load-forsprite-file - forSprite/ 内の指定ファイルを直接読み込み返却
+  if (req.method === 'GET' && pathname === '/api/load-forsprite-file') {
+    try {
+      const filename = searchParams.get('file');
+      if (!filename) throw new Error('file query parameter is required');
+
+      const safeFile = path.basename(filename);
+      const filePath = path.join(forSpriteDir, safeFile);
+
+      if (!fs.existsSync(filePath)) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: `File not found: ${safeFile}` }));
+        return;
+      }
+
+      const ext = path.extname(safeFile).toLowerCase();
+      if (ext === '.png') {
+        const buffer = fs.readFileSync(filePath);
+        res.writeHead(200, { 'Content-Type': 'image/png' });
+        res.end(buffer);
+      } else if (ext === '.json') {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(content);
+      } else if (ext === '.plist') {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'text/xml; charset=utf-8' });
+        res.end(content);
+      } else {
+        const buffer = fs.readFileSync(filePath);
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+        res.end(buffer);
+      }
+    } catch (err) {
+      console.error('[API Server] /api/load-forsprite-file error:', err);
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   // APIルートだが、GET/POST以外のメソッドや、未定義のエンドポイントへのリクエスト
   res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify({ error: 'API route not found' }));

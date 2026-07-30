@@ -35,6 +35,17 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <!-- Left Sidebar: forSprite Hierarchy Panel -->
+      <aside class="panel hierarchy-panel" style="width: 250px; min-width: 250px; display: flex; flex-direction: column; gap: 0.75rem; background: rgba(18, 16, 35, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 0.9rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 0.85rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">📁 forSprite Projects</h3>
+          <button id="btn-refresh-hierarchy" class="btn btn-sm btn-ghost" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="リストを更新">🔄</button>
+        </div>
+        <div id="hierarchy-project-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="font-size: 0.8rem; color: #64748b; text-align: center; padding: 1rem 0;">読み込み中...</div>
+        </div>
+      </aside>
+
       <!-- File Drop & Video Section -->
       <section class="panel video-section">
         <div class="panel-header">

@@ -30,14 +30,141 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastFrameTime = 0;
   let animTimer = null;
 
+  // --- API Helper for file:// protocol fallback ---
+  function getApiUrl(endpoint) {
+    if (window.location.protocol === 'file:') {
+      return `http://localhost:5173${endpoint}`;
+    }
+    return endpoint;
+  }
+
   // Open forSprite folder button
   if (btnOpenForSprite) {
     btnOpenForSprite.addEventListener('click', async () => {
       try {
-        await fetch('/api/open-folder?target=forSprite', { method: 'POST' });
+        await fetch(getApiUrl('/api/open-folder?target=forSprite'), { method: 'POST' });
       } catch (e) { console.error(e); }
     });
   }
+
+  // --- Hierarchy Sidebar Logic ---
+  const viewerHierarchyListEl = document.getElementById('viewer-hierarchy-list');
+  const btnRefreshViewerHierarchyEl = document.getElementById('btn-refresh-viewer-hierarchy');
+
+  if (btnRefreshViewerHierarchyEl) {
+    btnRefreshViewerHierarchyEl.addEventListener('click', refreshForSpriteHierarchy);
+  }
+
+  async function refreshForSpriteHierarchy() {
+    if (!viewerHierarchyListEl) return;
+    try {
+      const res = await fetch(getApiUrl('/api/forsprite-files'));
+      const data = await res.json();
+      if (data.success && data.projects) {
+        renderHierarchyList(data.projects, data.standalonePngs);
+      }
+    } catch (err) {
+      console.warn('Failed to load forSprite files in Viewer:', err);
+      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.75rem; color:#ef4444; padding:0.5rem;">読み込み失敗 (開発サーバー非稼働)</div>`;
+    }
+  }
+
+  function renderHierarchyList(projects, standalonePngs) {
+    viewerHierarchyListEl.innerHTML = '';
+
+    const items = [...projects];
+    if (standalonePngs && standalonePngs.length > 0) {
+      standalonePngs.forEach(png => {
+        const base = png.replace(/\.png$/, '');
+        items.push({ base, pngFile: png, jsonFile: null, plistFile: null });
+      });
+    }
+
+    if (items.length === 0) {
+      viewerHierarchyListEl.innerHTML = `<div style="font-size:0.8rem; color:var(--text-sub); text-align:center; padding:1rem 0;">保存素材がありません</div>`;
+      return;
+    }
+
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'hierarchy-item';
+      card.style.cssText = `
+        background: var(--bg-control);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 0.6rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      `;
+      card.innerHTML = `
+        <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">🎞️ ${item.base}</div>
+        <div style="font-size: 0.7rem; color: var(--text-sub); display: flex; gap: 0.3rem;">
+          ${item.pngFile ? '<span style="color:#10b981;">PNG</span>' : ''}
+          ${item.plistFile ? '<span style="color:#06b6d4;">PLIST</span>' : ''}
+          ${item.jsonFile ? '<span style="color:#a855f7;">JSON</span>' : ''}
+        </div>
+      `;
+
+      card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--accent)'; });
+      card.addEventListener('mouseleave', () => { card.style.borderColor = 'var(--border)'; });
+
+      card.addEventListener('click', async () => {
+        loadProjectFromApi(item);
+      });
+
+      viewerHierarchyListEl.appendChild(card);
+    });
+  }
+
+  async function loadProjectFromApi(item) {
+    try {
+      if (!item.pngFile) {
+        alert('スプライト画像(PNG)が見つかりません。');
+        return;
+      }
+
+      // 1. Fetch PNG
+      const pngRes = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(item.pngFile)}`));
+      const blob = await pngRes.blob();
+      const url = URL.createObjectURL(blob);
+
+      spriteImage = new Image();
+      spriteImage.onload = async () => {
+        // 2. Fetch JSON or Plist
+        if (item.jsonFile) {
+          try {
+            const jsonRes = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(item.jsonFile)}`));
+            const json = await jsonRes.json();
+            parseJsonMeta(json);
+          } catch (e) {
+            autoGridSplit(spriteImage.width, spriteImage.height);
+          }
+        } else if (item.plistFile) {
+          try {
+            const plistRes = await fetch(getApiUrl(`/api/load-forsprite-file?file=${encodeURIComponent(item.plistFile)}`));
+            const xml = await plistRes.text();
+            parsePlistMeta(xml);
+          } catch (e) {
+            autoGridSplit(spriteImage.width, spriteImage.height);
+          }
+        } else {
+          autoGridSplit(spriteImage.width, spriteImage.height);
+        }
+
+        initAnimation();
+      };
+      spriteImage.src = url;
+
+    } catch (err) {
+      console.error('Failed to load project asset:', err);
+      alert(`素材の読み込みに失敗しました: ${err.message}`);
+    }
+  }
+
+  refreshForSpriteHierarchy();
 
   // --- Drag & Drop Handlers ---
   ['dragenter', 'dragover'].forEach(evt => {
