@@ -237,6 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (files.length > 0) processFiles(files);
   });
 
+  const btnBatchLoadViewer = document.getElementById('btn-batch-load-viewer');
+  const batchFileInput = document.getElementById('batch-file-input');
+
+  if (btnBatchLoadViewer && batchFileInput) {
+    btnBatchLoadViewer.addEventListener('click', () => batchFileInput.click());
+    batchFileInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) processFiles(files);
+    });
+  }
+
   async function processFiles(files) {
     let imgFile = files.find(f => f.type.startsWith('image/') || f.name.endsWith('.png'));
     let metaFile = files.find(f => f.name.endsWith('.json') || f.name.endsWith('.plist'));

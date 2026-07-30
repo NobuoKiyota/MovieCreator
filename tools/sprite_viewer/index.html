@@ -64,9 +64,13 @@
 
     <!-- Right Section: forSprite Assets, Frame List & Meta Info -->
     <aside class="sidebar">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.3rem;">
         <span class="section-title">📁 forSprite Assets</span>
-        <button id="btn-refresh-viewer-hierarchy" class="btn" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;" title="更新">🔄</button>
+        <div style="display: flex; gap: 0.2rem;">
+          <button id="btn-batch-load-viewer" class="btn" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;" title="forSprite内のファイルを選択して一括登録">📂 選択/一括登録</button>
+          <input type="file" id="batch-file-input" multiple accept=".png,.json,.plist" style="display: none;">
+          <button id="btn-refresh-viewer-hierarchy" class="btn" style="padding: 0.15rem 0.4rem; font-size: 0.75rem;" title="更新">🔄</button>
+        </div>
       </div>
       <div id="viewer-hierarchy-list" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.5rem;">
         <div style="font-size: 0.8rem; color: var(--text-sub); text-align: center; padding: 0.5rem 0;">読み込み中...</div>
