@@ -212,6 +212,31 @@ class PipelineGUI:
         )
         btn_mixer.grid(row=4, column=0, columnspan=3, padx=4, pady=(10, 0), sticky="ew")
 
+        # ボタン行 5 (スプライトツール ＆ forSprite)
+        btn_sprite_studio = tk.Button(
+            ctrl_card, text="🎨 Sprite Studio",
+            bg="#313244", fg="#cba6f7", activebackground="#45475a", activeforeground="#ffffff",
+            font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=10, pady=4, cursor="hand2",
+            command=self.open_sprite_studio
+        )
+        btn_sprite_studio.grid(row=5, column=0, padx=4, pady=(8, 0), sticky="ew")
+
+        btn_sprite_viewer = tk.Button(
+            ctrl_card, text="👁️ Sprite Viewer",
+            bg="#313244", fg="#89b4fa", activebackground="#45475a", activeforeground="#ffffff",
+            font=("Segoe UI", 9, "bold"), bd=1, relief="solid", padx=10, pady=4, cursor="hand2",
+            command=self.open_sprite_viewer
+        )
+        btn_sprite_viewer.grid(row=5, column=1, padx=4, pady=(8, 0), sticky="ew")
+
+        btn_forsprite = tk.Button(
+            ctrl_card, text="📁 forSprite フォルダ",
+            bg="#181825", fg="#94e2d5", activebackground="#313244", activeforeground="#ffffff",
+            font=("Segoe UI", 9), bd=1, relief="solid", padx=10, pady=4, cursor="hand2",
+            command=self.open_forsprite_dir
+        )
+        btn_forsprite.grid(row=5, column=2, padx=4, pady=(8, 0), sticky="ew")
+
         ctrl_card.columnconfigure(0, weight=1)
         ctrl_card.columnconfigure(1, weight=1)
         ctrl_card.columnconfigure(2, weight=1)
@@ -437,6 +462,31 @@ class PipelineGUI:
         if not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
         os.startfile(output_dir)
+
+    def open_forsprite_dir(self):
+        """forSprite ディレクトリをエクスプローラーで開く"""
+        forsprite_dir = os.path.join(BASE_DIR, "forSprite")
+        if not os.path.exists(forsprite_dir):
+            os.makedirs(forsprite_dir, exist_ok=True)
+        os.startfile(forsprite_dir)
+
+    def open_sprite_studio(self):
+        """Sprite Studio ツールを開く"""
+        bat_path = os.path.join(BASE_DIR, "open_sprite_studio.bat")
+        if os.path.exists(bat_path):
+            os.startfile(bat_path)
+        else:
+            html_path = os.path.join(BASE_DIR, "tools", "mp4_to_sprite", "index.html")
+            webbrowser.open(html_path)
+
+    def open_sprite_viewer(self):
+        """Sprite Viewer ツールを開く"""
+        bat_path = os.path.join(BASE_DIR, "open_sprite_viewer.bat")
+        if os.path.exists(bat_path):
+            os.startfile(bat_path)
+        else:
+            html_path = os.path.join(BASE_DIR, "tools", "sprite_viewer", "index.html")
+            webbrowser.open(html_path)
 
     def create_achievement_post(self):
         """成果ポスト自動化処理の実行"""
