@@ -1,0 +1,3 @@
+@echo off
+echo Opening MP4 to SpriteSheet Studio in your default browser...
+start "" "%~dp0index.html"
