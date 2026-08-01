@@ -417,7 +417,7 @@
     "flame": {
       "density": {
         "min": 10,
-        "max": 200,
+        "max": 1000,
         "step": 5
       },
       "speed": {
@@ -437,7 +437,7 @@
       },
       "strokeWidth": {
         "min": 1,
-        "max": 30,
+        "max": 100,
         "step": 1
       },
       "shapeType": {
@@ -767,13 +767,13 @@
     },
     "glass-crack": {
       "cycleDuration": {
-        "min": 500,
+        "min": 10,
         "max": 10000,
-        "step": 100
+        "step": 10
       },
       "crackCount": {
         "min": 4,
-        "max": 24,
+        "max": 50,
         "step": 1
       },
       "crackLength": {
@@ -783,7 +783,7 @@
       },
       "complexity": {
         "min": 2,
-        "max": 10,
+        "max": 25,
         "step": 1
       },
       "displace": {

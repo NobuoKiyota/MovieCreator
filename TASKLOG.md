@@ -9,6 +9,7 @@ Claude CodeとAntigravity IDEの間で「今どのタスクをどこまでやっ
 - 区切りの良い作業(タスク着手・完了・中断)のたびに、**一番上**に1行追記する(新しい順)。
 - 1行で収まる長さに留める。詳細はコミットメッセージ側に書く。
 
+- 2026-08-02 00:33 [Antigravity] 完了: 他PC実行用自動インストーラーバッチ(setup.bat)・requirements.txt作成＆プッシュ完了
 - 2026-07-30 19:36 [Antigravity] 完了: forSprite/生成物(スプライトPNG/plist/json)含めリポジトリへコミット＆プッシュ完了
 - 2026-07-30 19:33 [Antigravity] 完了: Viewer/Studio起動バグ修正(バッチ起動時の自動APIサーバー連動&forSprite全自動読込)完了
 - 2026-07-30 19:32 [Antigravity] 着手: Viewer/Studio起動バグ修正(バッチ起動時の自動APIサーバー連動&forSprite全自動読込)
