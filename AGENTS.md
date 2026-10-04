@@ -1,5 +1,10 @@
 # MovieCreator Project Guidelines & Integrated Tools
 
+## Design docs (read first when editing / redesigning)
+- `docs/SPEC.md` — design specification (architecture, runtime model, data formats, APIs, learning logic, tech debt & redesign guidance).
+- `docs/MANUAL.md` — user manual + modification recipes (how to add generators/FX, verification steps, pitfalls).
+- Where these conflict with CLAUDE.md/TASKLOG.md, trust the docs and the code (see SPEC §14.4).
+
 ## Integrated Sub-tools
 
 ### MP4 to SpriteSheet Studio (`tools/mp4_to_sprite/`)
