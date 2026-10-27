@@ -1226,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return JSON.stringify(data, null, 2);
   }
 
-  // --- Direct Export & Saving Helper to Z:\MovieCreator\forSprite\ ---
+  // --- Direct Export & Saving Helper to forSprite/ ---
   async function saveSingleExportFile(ext, dataContent, isBase64 = false) {
     const filenameBase = generatedResult.filenameBase || 'sprite_sheet';
     try {
